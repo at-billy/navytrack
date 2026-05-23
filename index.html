@@ -2300,9 +2300,10 @@ function renderAdminContent() {
 }
 
 async function adminAcceptRecruit(appId, targetId, targetName) {
-  if(!confirm(`Accept ${targetName} as Member? This will grant them the Member role.`)) return;
+  if(!confirm(`Accept ${targetName} as Member? Their recruit role will be replaced with member.`)) return;
   try {
     await convexMutation('users:grantRole',{sessionToken:state.sessionToken,targetUserId:targetId,role:'member'});
+    await convexMutation('users:revokeRole',{sessionToken:state.sessionToken,targetUserId:targetId,role:'recruit'});
     await convexMutation('applications:markReviewed',{sessionToken:state.sessionToken,applicationId:appId});
     toast(`${targetName} accepted as Member`);
     await refreshAll();
@@ -2402,7 +2403,6 @@ const TASK_PRIORITIES = [
   {id:'whenever',label:'Whenever', cls:'p-whenever'},
 ];
 const NAVY_ROLES = [
-  {id:'recruit', label:'Recruit'},
   {id:'member',  label:'Member'},
   {id:'core',    label:'Core'},
   {id:'command', label:'Command'},
