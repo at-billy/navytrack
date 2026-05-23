@@ -1309,9 +1309,9 @@ function pageItems() {
     </div>
 
     <div style="display:flex;gap:0;margin-bottom:0;border-bottom:2px solid var(--border);">
-      <div class="nav-sub-item${itemsTab==='inventory'?' active':''}" style="padding:0 20px 12px;cursor:pointer;" onclick="setItemsTab('inventory')">Inventory (${inventory.length})</div>
-      <div class="nav-sub-item${itemsTab==='handed_out'?' active':''}" style="padding:0 20px 12px;cursor:pointer;" onclick="setItemsTab('handed_out')">Handed Out (${handedOut.length})</div>
-      <div class="nav-sub-item${itemsTab==='used'?' active':''}" style="padding:0 20px 12px;cursor:pointer;" onclick="setItemsTab('used')">Used (${used.length})</div>
+      <div class="nav-sub-item${itemsTab==='inventory'?' active':''}" style="padding:0 20px 12px;cursor:pointer;" onclick="setItemsTab('inventory')">Inventory${inventory.length?` (${inventory.length})`:''}</div>
+      <div class="nav-sub-item${itemsTab==='handed_out'?' active':''}" style="padding:0 20px 12px;cursor:pointer;" onclick="setItemsTab('handed_out')">Handed Out${handedOut.length?` (${handedOut.length})`:''}</div>
+      <div class="nav-sub-item${itemsTab==='used'?' active':''}" style="padding:0 20px 12px;cursor:pointer;" onclick="setItemsTab('used')">Used${used.length?` (${used.length})`:''}</div>
     </div>
 
     <div id="items-content" style="margin-top:32px;">${renderItemsContent()}</div>`;
