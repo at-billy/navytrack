@@ -20,7 +20,7 @@ export const create = mutation({
   },
   handler: async (ctx, { sessionToken, ...rest }) => {
     const user = await requireSession(ctx.db, sessionToken);
-    const canCreate = user.roles.some(r => ["admin", "command", "core"].includes(r));
+    const canCreate = user.roles.some(r => ["admin", "command"].includes(r));
     if (!canCreate) throw new Error("Not authorized");
     const id = await ctx.db.insert("tasks", {
       ...rest,
@@ -69,7 +69,7 @@ export const close = mutation({
   args: { sessionToken: v.string(), taskId: v.id("tasks") },
   handler: async (ctx, { sessionToken, taskId }) => {
     const user = await requireSession(ctx.db, sessionToken);
-    const canClose = user.roles.some(r => ["admin", "command", "core"].includes(r));
+    const canClose = user.roles.some(r => ["admin", "command"].includes(r));
     if (!canClose) throw new Error("Not authorized");
     const task = await ctx.db.get(taskId);
     if (!task) throw new Error("Project not found");
@@ -87,7 +87,7 @@ export const reopen = mutation({
   args: { sessionToken: v.string(), taskId: v.id("tasks") },
   handler: async (ctx, { sessionToken, taskId }) => {
     const user = await requireSession(ctx.db, sessionToken);
-    const canEdit = user.roles.some(r => ["admin", "command", "core"].includes(r));
+    const canEdit = user.roles.some(r => ["admin", "command"].includes(r));
     if (!canEdit) throw new Error("Not authorized");
     const task = await ctx.db.get(taskId);
     if (!task) throw new Error("Project not found");

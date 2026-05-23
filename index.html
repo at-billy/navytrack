@@ -1009,7 +1009,14 @@ function roleTagHtml(role) {
   const cls={'recruit':' recruit','member':' member','core':' core','command':' command','admin':' admin','removed':' removed'};
   return `<span class="role-tag${cls[role]||''}">${labels[role]||role}</span>`;
 }
-function isAdmin(u) { return u && (u.roles||[]).includes('admin'); }
+function isAdmin(u)   { return u && (u.roles||[]).includes('admin'); }
+function isCommand(u) { return u && (u.roles||[]).includes('command'); }
+function canManageLottery(u) { return isAdmin(u) || isCommand(u); }
+function canCreateTask(u)    { return u && (u.roles||[]).some(r=>['admin','command'].includes(r)); }
+function canHandOut(u)       { return u && (u.roles||[]).some(r=>['admin','command','core'].includes(r)); }
+function canEditAnyItem(u)   { return u && (u.roles||[]).some(r=>['admin','command'].includes(r)); }
+function canEditOwnItem(u)   { return u && (u.roles||[]).some(r=>['admin','command','core','member'].includes(r)); }
+function canEditItem(u,item) { return canEditAnyItem(u) || (canEditOwnItem(u) && item.addedBy===u._id); }
 function hasAdmin() { return state.allUsers.some(u=>(u.roles||[]).includes('admin')); }
 function isRecruit(u) { return u && (u.roles||[]).length===1 && (u.roles||[]).includes('recruit'); }
 
@@ -1034,7 +1041,7 @@ function renderNav() {
     return;
   }
 
-  const inLog=['archive','admin','member',...(isAdmin(u)?['lottery']:[])];
+  const inLog=['archive','admin','member',...(canManageLottery(u)?['lottery']:[])];
   let main='mat';
   if(currentPage==='tasks') main='task';
   else if(currentPage==='items') main='items';
@@ -1057,7 +1064,7 @@ function renderNav() {
     sub=`
       <div class="nav-sub-item${currentPage==='archive'?' active':''}" onclick="goTo('archive')">Log</div>
       ${isAdmin(u)?`<div class="nav-sub-item${currentPage==='admin'?' active':''}" onclick="goTo('admin')">Admin</div>`:''}
-      ${isAdmin(u)?`<div class="nav-sub-item${currentPage==='lottery'?' active':''}" onclick="goTo('lottery')">Lottery${openLotteries?' ('+openLotteries+')':''}</div>`:''}
+      ${canManageLottery(u)?`<div class="nav-sub-item${currentPage==='lottery'?' active':''}" onclick="goTo('lottery')">Lottery${openLotteries?' ('+openLotteries+')':''}</div>`:''}
       <div class="nav-sub-item${currentPage==='member'?' active':''}" onclick="goTo('member')">${esc(u.username)}</div>
       <div class="nav-sub-item" onclick="doLogout()">Sign out</div>`;
   }
@@ -1273,7 +1280,6 @@ let aiSelectedComp = null; // {name, type, typeName, grade, gradeName, size, tie
 function pageItems() {
   const u = state.user;
   const canAdd = u.roles.some(r=>['admin','command','core','member'].includes(r));
-  const canEdit = u.roles.some(r=>['admin','command','core'].includes(r));
   const allItems = state.navItems;
   const inventory = allItems.filter(i=>i.status==='available');
   const handedOut = allItems.filter(i=>i.status==='handed_out');
@@ -1294,20 +1300,18 @@ function pageItems() {
       <div class="nav-sub-item${itemsTab==='used'?' active':''}" style="padding:0 20px 12px;cursor:pointer;" onclick="setItemsTab('used')">Used (${used.length})</div>
     </div>
 
-    <div id="items-content" style="margin-top:32px;">${renderItemsContent(canEdit)}</div>`;
+    <div id="items-content" style="margin-top:32px;">${renderItemsContent()}</div>`;
 }
 
 function setItemsTab(tab){ itemsTab=tab; itemsCatFilter='all'; itemsSubcat='all'; itemsSearch=''; itemsSearchActive=false; renderPage(); }
 
-function renderItemsContent(canEdit) {
-  const u = state.user;
-  if(canEdit===undefined) canEdit=u.roles.some(r=>['admin','command','core'].includes(r));
-  if(itemsTab==='handed_out') return renderHandedOutList(canEdit);
-  if(itemsTab==='used')       return renderUsedList(canEdit);
-  return renderInventoryList(canEdit);
+function renderItemsContent() {
+  if(itemsTab==='handed_out') return renderHandedOutList();
+  if(itemsTab==='used')       return renderUsedList();
+  return renderInventoryList();
 }
 
-function renderInventoryList(canEdit) {
+function renderInventoryList() {
   const u = state.user;
   const catCfg = itemCatCfg(itemsCatFilter);
   const hasSub = catCfg && catCfg.sub.length > 0;
@@ -1340,6 +1344,8 @@ function renderInventoryList(canEdit) {
         const isWikelo = i.category==='wikelo';
         const compInfo = i.compType?`<div style="font-size:15px;color:var(--fg);margin-top:2px;">${itemCompDesc(i)}</div>`:'';
         const subInfo  = i.subcategory&&i.category==='fps_armor'?`<div style="font-size:15px;color:var(--fg);margin-top:2px;">${itemSubcatLabel(i.category,i.subcategory)}</div>`:'';
+        const showHandOut = canHandOut(u);
+        const showDel     = canEditItem(u, i);
         return `<tr>
           <td style="font-weight:700;">${esc(i.name)}${i.description?`<div style="font-size:15px;font-weight:400;color:var(--fg);">${esc(i.description)}</div>`:''}${compInfo}${subInfo}</td>
           <td><span class="item-cat-tag">${itemCatLabel(i.category)}</span></td>
@@ -1348,42 +1354,44 @@ function renderInventoryList(canEdit) {
           <td style="font-size:18px;">${esc(i.location)}${i.system?` <span class="sys-badge">${esc(i.system)}</span>`:''}</td>
           <td style="color:var(--fg);">${esc(i.addedByName)}</td>
           <td style="white-space:nowrap;">
-            ${canEdit?`<button class="btn btn-outline btn-sm" style="margin-right:4px;" onclick="openHandOutModal('${esc(i._id)}')">Hand Out</button>`:''}
-            ${isWikelo&&canEdit?`<button class="btn btn-outline btn-sm" style="margin-right:4px;" onclick="openUsedModal('${esc(i._id)}')">Used</button>`:''}
-            ${canEdit?`<button class="btn-del" onclick="deleteNavItem('${esc(i._id)}')">&times;</button>`:''}
+            ${showHandOut?`<button class="btn btn-outline btn-sm" style="margin-right:4px;" onclick="openHandOutModal('${esc(i._id)}')">Hand Out</button>`:''}
+            ${isWikelo?`<button class="btn btn-outline btn-sm" style="margin-right:4px;" onclick="openUsedModal('${esc(i._id)}')">Used</button>`:''}
+            ${showDel?`<button class="btn-del" onclick="deleteNavItem('${esc(i._id)}')">&times;</button>`:''}
           </td>
         </tr>`;
       }).join('')}</tbody>
     </table>`}`;
 }
 
-function renderHandedOutList(canEdit) {
+function renderHandedOutList() {
+  const u = state.user;
   const items = state.navItems.filter(i=>i.status==='handed_out');
   if(!items.length) return `<div class="empty">No items have been handed out yet.</div>`;
   return `<table>
-    <thead><tr><th>Item</th><th>Category</th><th>Qty</th><th>Given To</th><th>Location</th>${canEdit?'<th></th>':''}</tr></thead>
+    <thead><tr><th>Item</th><th>Category</th><th>Qty</th><th>Given To</th><th>Location</th><th></th></tr></thead>
     <tbody>${items.map(i=>`<tr>
       <td style="font-weight:700;">${esc(i.name)}${i.compType?`<div style="font-size:15px;color:var(--fg);">${itemCompDesc(i)}</div>`:''}</td>
       <td><span class="item-cat-tag">${itemCatLabel(i.category)}</span></td>
       <td>${i.handedOutQty||i.quantity}</td>
       <td style="font-weight:700;">${esc(i.handedOutTo||'—')}</td>
       <td style="font-size:18px;">${esc(i.location)}</td>
-      ${canEdit?`<td><button class="btn-del" onclick="deleteNavItem('${esc(i._id)}')">&times;</button></td>`:''}
+      <td>${canEditItem(u,i)?`<button class="btn-del" onclick="deleteNavItem('${esc(i._id)}')">&times;</button>`:''}</td>
     </tr>`).join('')}</tbody>
   </table>`;
 }
 
-function renderUsedList(canEdit) {
+function renderUsedList() {
+  const u = state.user;
   const items = state.navItems.filter(i=>i.status==='used');
   if(!items.length) return `<div class="empty">No Wikelo items have been marked as used yet.</div>`;
   return `<table>
-    <thead><tr><th>Item</th><th>Qty</th><th>Used For</th><th>Added By</th>${canEdit?'<th></th>':''}</tr></thead>
+    <thead><tr><th>Item</th><th>Qty</th><th>Used For</th><th>Added By</th><th></th></tr></thead>
     <tbody>${items.map(i=>`<tr>
       <td style="font-weight:700;">${esc(i.name)}</td>
       <td>${i.quantity}</td>
       <td style="color:var(--fg);">${esc(i.usedFor||'—')}</td>
       <td style="color:var(--fg);">${esc(i.addedByName)}</td>
-      ${canEdit?`<td><button class="btn-del" onclick="deleteNavItem('${esc(i._id)}')">&times;</button></td>`:''}
+      <td>${canEditItem(u,i)?`<button class="btn-del" onclick="deleteNavItem('${esc(i._id)}')">&times;</button>`:''}</td>
     </tr>`).join('')}</tbody>
   </table>`;
 }
@@ -2086,7 +2094,7 @@ function toggleTaskSearch(){ tasksSearchActive=!tasksSearchActive; if(!tasksSear
 
 function pageTasks() {
   const u=state.user; const admin=isAdmin(u);
-  const canCreate=u.roles.some(r=>['admin','command','core'].includes(r));
+  const canCreate=canCreateTask(u);
   const openCount=state.tasks.filter(t=>t.status==='open').length;
   return `
     <div class="page-head">
@@ -2217,13 +2225,13 @@ async function confirmCreateTask() {
 
 // ─── LOTTERY PAGE ─────────────────────────────────────────────────────────────
 function pageLottery() {
-  if(!isAdmin(state.user)){ currentPage='overview'; return pageOverview(); }
+  if(!canManageLottery(state.user)){ currentPage='overview'; return pageOverview(); }
   if(lotteryView==='detail' && lotteryDetailId) return pageLotteryDetail();
   return pageLotteryList();
 }
 
 function pageLotteryList() {
-  const u=state.user; const admin=isAdmin(u);
+  const u=state.user; const admin=canManageLottery(u);
   const active=state.lotteries.filter(l=>l.status==='open');
   const drawn=state.lotteries.filter(l=>l.status==='drawn');
   const drafts=state.lotteries.filter(l=>l.status==='draft');
@@ -2269,7 +2277,7 @@ function pageLotteryList() {
 }
 
 function lotteryCardHtml(l) {
-  const u=state.user; const admin=isAdmin(u);
+  const u=state.user; const admin=canManageLottery(u);
   const pkgs=l.packages||[];
   const winnerCount=pkgs.filter(p=>p.winner).length;
   const myWin=pkgs.find(p=>p.winner&&p.winner.id===u._id);
@@ -2312,7 +2320,7 @@ function openLotteryDetail(id) {
 }
 
 function pageLotteryDetail() {
-  const u=state.user; const admin=isAdmin(u);
+  const u=state.user; const admin=canManageLottery(u);
   const l=state.lotteries.find(x=>x._id===lotteryDetailId);
   if(!l) return `<div class="page-head"><div class="page-title">Lottery</div></div><div class="empty">Lottery not found.</div>`;
 
@@ -2344,7 +2352,7 @@ function pageLotteryDetail() {
 }
 
 function renderLotteryDraftDetail(l) {
-  const admin=isAdmin(state.user);
+  const admin=canManageLottery(state.user);
   const pkgs=l.packages||[];
   const totalVal=l.items.reduce((s,i)=>s+i.value,0);
 
@@ -2467,7 +2475,7 @@ function renderCompCatalogList(lotteryId) {
 }
 
 function renderLotteryOpenDetail(l) {
-  const u=state.user; const admin=isAdmin(u);
+  const u=state.user; const admin=canManageLottery(u);
   const pkgs=(l.packages||[]).slice().sort((a,b)=>b.totalValue-a.totalValue);
   const extNames=l.externalNames||[];
   const totalHats=pkgs.reduce((s,p)=>s+(p.interested||[]).length,0);
@@ -2597,7 +2605,7 @@ function renderLotteryClosedDetail(l) {
 }
 
 function renderPackageCard(pkg, lottery, readOnly) {
-  const u=state.user; const admin=isAdmin(u);
+  const u=state.user; const admin=canManageLottery(u);
   const interested=pkg.interested||[];
   const iHaveHat=interested.some(i=>i.id===u._id);
   const isOpen=lottery.status==='open';

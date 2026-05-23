@@ -63,8 +63,14 @@ export const update = mutation({
   },
   handler: async (ctx, { sessionToken, itemId, ...rest }) => {
     const user = await requireSession(ctx.db, sessionToken);
-    const canEdit = user.roles.some(r => ["admin", "command", "core"].includes(r));
-    if (!canEdit) throw new Error("Not authorized");
+    const canEditAny = user.roles.some(r => ["admin", "command"].includes(r));
+    const canEditOwn = user.roles.some(r => ["core", "member"].includes(r));
+    if (!canEditAny && !canEditOwn) throw new Error("Not authorized");
+    if (!canEditAny) {
+      const item = await ctx.db.get(itemId);
+      if (!item) throw new Error("Item not found");
+      if (item.addedBy !== user._id) throw new Error("Not authorized — you can only edit items you added");
+    }
     const patch: Record<string, any> = {};
     for (const [k, v] of Object.entries(rest)) {
       if (v !== undefined) patch[k] = v;
@@ -151,10 +157,12 @@ export const remove = mutation({
   args: { sessionToken: v.string(), itemId: v.id("items") },
   handler: async (ctx, { sessionToken, itemId }) => {
     const user = await requireSession(ctx.db, sessionToken);
-    const canDelete = user.roles.some(r => ["admin", "command"].includes(r));
-    if (!canDelete) throw new Error("Not authorized");
+    const canDeleteAny = user.roles.some(r => ["admin", "command"].includes(r));
+    const canDeleteOwn = user.roles.some(r => ["core", "member"].includes(r));
+    if (!canDeleteAny && !canDeleteOwn) throw new Error("Not authorized");
     const item = await ctx.db.get(itemId);
     if (!item) throw new Error("Item not found");
+    if (!canDeleteAny && item.addedBy !== user._id) throw new Error("Not authorized — you can only remove items you added");
     await ctx.db.delete(itemId);
     await ctx.db.insert("archive", {
       type: "item_removed",
