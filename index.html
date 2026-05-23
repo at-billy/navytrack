@@ -1251,6 +1251,7 @@ const ITEM_CATEGORIES_CFG = [
   { id:'ship_component',  label:'Ship Components',  sub:[] },
   { id:'ship_weapon',     label:'Ship Weapons',     sub:[] },
   { id:'wikelo',          label:'Wikelo',           sub:[] },
+  { id:'other',           label:'Other',            sub:[] },
 ];
 function itemCatCfg(id){ return ITEM_CATEGORIES_CFG.find(c=>c.id===id)||null; }
 function itemCatLabel(id){ return itemCatCfg(id)?.label||id||'—'; }
@@ -1272,7 +1273,7 @@ const FPS_ARMOR_PRESETS = {
 };
 
 // Wikelo preset item names
-const WIKELO_PRESETS = ['DCHS-01','DCHS-02','DCHS-03','DCHS-04','DCHS-05','DCHS-06','DCHS-07'];
+const WIKELO_PRESETS = ['DCHS-01','DCHS-02','DCHS-03','DCHS-04','DCHS-05','DCHS-06','DCHS-07','Wikelo Favors','Ace Interceptor Helmet','Government Cartography Medal (Pristine)'];
 
 let itemsView      = 'inventory'; // 'inventory' | 'handed_out' | 'used' | 'logistics'
 let logisticsDetailId = null;
@@ -1801,9 +1802,9 @@ function openAddItemModal() {
     </div>
     <div id="ai-wikelo-wrap" style="display:none;" class="field"><label class="lbl">Item</label>
       <select id="ai-wikelo-preset" onchange="onWikeloPresetChange()">
-        <option value="">Select preset…</option>
-        ${WIKELO_PRESETS.map(p=>`<option value="${p}">${p}</option>`).join('')}
+        <option value="">Select item…</option>
         <option value="__custom__">Custom…</option>
+        ${WIKELO_PRESETS.map(p=>`<option value="${p}">${p}</option>`).join('')}
       </select>
     </div>
     <div id="ai-name-wrap" style="display:none;" class="field"><label class="lbl">Name</label>
@@ -1934,18 +1935,17 @@ function onAICatChange() {
   // Wikelo preset selector
   if(wikeloWrap) wikeloWrap.style.display=(cat==='wikelo'?'':'none');
 
-  // Name field: shown only for fps_weapon, ship_weapon, and wikelo-custom
-  if(nameWrap) nameWrap.style.display=(cat==='fps_weapon'||cat==='ship_weapon'?'':'none');
+  // Name field: shown for fps_weapon, ship_weapon, other, and wikelo-custom
+  if(nameWrap) nameWrap.style.display=(cat==='fps_weapon'||cat==='ship_weapon'||cat==='other'?'':'none');
 
-  // Description: wikelo only
-  if(descWrap) descWrap.style.display=(cat==='wikelo'?'':'none');
+  // Description: wikelo and other
+  if(descWrap) descWrap.style.display=(cat==='wikelo'||cat==='other'?'':'none');
 
   // Qty field: hidden for fps_armor (each preset has its own qty input)
-  // Keep the row visible so quality still shows for armor
   if(qtyField) qtyField.style.display=(cat==='fps_armor'?'none':'');
-  if(qtyWrap) qtyWrap.style.display=''; // always show the row
-  // Quality: not applicable for wikelo
-  if(qualityWrap) qualityWrap.style.display=(cat==='wikelo'?'none':'');
+  if(qtyWrap) qtyWrap.style.display='';
+  // Quality: not applicable for wikelo or other
+  if(qualityWrap) qualityWrap.style.display=(cat==='wikelo'||cat==='other'?'none':'');
 }
 
 function onAISubcatChange() {
@@ -2035,7 +2035,7 @@ async function confirmAddItem() {
       name=preset;
     }
   } else {
-    // fps_weapon, ship_weapon
+    // fps_weapon, ship_weapon, other
     name=(document.getElementById('ai-name')||{value:''}).value.trim();
     if(!name){alert('Enter an item name');return;}
   }
