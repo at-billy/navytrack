@@ -841,7 +841,6 @@ function updateLiveView() {
     if(el) el.innerHTML=renderArchiveTable(openMonths);
     const s=document.getElementById('archive-count'); if(s) s.textContent=`${state.archive.length} action${state.archive.length!==1?'s':''} recorded`;
   }
-  if (currentPage==='craft' && craftState.itemId) recomputePlan();
   if (currentPage==='admin') {
     const el=document.getElementById('admin-wrap'); if(el) el.innerHTML=renderAdminContent();
   }
@@ -1138,19 +1137,19 @@ function pageItems() {
   const items=state.navItems.filter(i=>i.status!=='removed');
   const filtered=itemsCatFilter==='all'?items:items.filter(i=>i.category===itemsCatFilter);
   const cnt=items.length;
-  return \`
+  return `
     <div class="page-head">
       <div class="page-head-left">
         <div class="page-title">Items</div>
-        <div class="page-sub" id="items-count">\${cnt} item\${cnt!==1?'s':''}</div>
+        <div class="page-sub" id="items-count">${cnt} item${cnt!==1?'s':''}</div>
       </div>
-      \${canAdd?\`<button class="btn btn-black" onclick="openAddItemModal()">+ Add Item</button>\`:''}
+      ${canAdd?`<button class="btn btn-black" onclick="openAddItemModal()">+ Add Item</button>`:''}
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:36px;">
-      <button class="btn-ghost btn-sm\${itemsCatFilter==='all'?' active':''}" onclick="setItemsCatFilter('all')">All</button>
-      \${ITEM_CATS.map(c=>\`<button class="btn-ghost btn-sm\${itemsCatFilter===c?' active':''}" onclick="setItemsCatFilter('\${c}')">\${c}</button>\`).join('')}
+      <button class="btn-ghost btn-sm${itemsCatFilter==='all'?' active':''}" onclick="setItemsCatFilter('all')">All</button>
+      ${ITEM_CATS.map(c=>`<button class="btn-ghost btn-sm${itemsCatFilter===c?' active':''}" onclick="setItemsCatFilter('${c}')">${c}</button>`).join('')}
     </div>
-    <div id="items-list">\${renderNavItemsList()}</div>\`;
+    <div id="items-list">${renderNavItemsList()}</div>`;
 }
 
 let itemsCatFilter = 'all';
@@ -1161,34 +1160,34 @@ function renderNavItemsList() {
   const canEdit=u.roles.some(r=>['admin','command','core'].includes(r));
   const items=state.navItems.filter(i=>i.status!=='removed');
   const filtered=itemsCatFilter==='all'?items:items.filter(i=>i.category===itemsCatFilter);
-  if(!filtered.length) return \`<div class="empty">No items\${itemsCatFilter!=='all'?' in '+itemsCatFilter:''}.</div>\`;
-  return \`<table>
+  if(!filtered.length) return `<div class="empty">No items${itemsCatFilter!=='all'?' in '+itemsCatFilter:''}.</div>`;
+  return `<table>
     <thead><tr>
       <th>Item</th><th>Category</th><th>Qty</th><th>Quality</th><th>Location</th><th>Held By</th><th>Added By</th>
-      \${canEdit?'<th></th>':''}
+      ${canEdit?'<th></th>':''}
     </tr></thead>
-    <tbody>\${filtered.map(i=>\`<tr>
-      <td style="font-weight:700;">\${esc(i.name)}\${i.description?\`<div style="font-size:18px;font-weight:400;color:var(--fg);">\${esc(i.description)}</div>\`:''}
+    <tbody>${filtered.map(i=>`<tr>
+      <td style="font-weight:700;">${esc(i.name)}${i.description?`<div style="font-size:18px;font-weight:400;color:var(--fg);">${esc(i.description)}</div>`:''}
       </td>
-      <td><span class="item-cat-tag">\${esc(i.category)}</span></td>
-      <td style="font-weight:700;">\${i.quantity}</td>
-      <td>\${i.quality!=null?i.quality:'—'}</td>
-      <td>\${esc(i.location)}\${i.system?\` <span class="sys-badge">\${esc(i.system)}</span>\`:''}
+      <td><span class="item-cat-tag">${esc(i.category)}</span></td>
+      <td style="font-weight:700;">${i.quantity}</td>
+      <td>${i.quality!=null?i.quality:'—'}</td>
+      <td>${esc(i.location)}${i.system?` <span class="sys-badge">${esc(i.system)}</span>`:''}
       </td>
-      <td>\${i.heldBy?esc(i.heldBy):'—'}</td>
-      <td style="color:var(--fg);">\${esc(i.addedByName)}</td>
-      \${canEdit?\`<td><button class="btn-del" onclick="deleteNavItem('\${esc(i._id)}')">✕</button></td>\`:''}
-    </tr>\`).join('')}
-    </tbody></table>\`;
+      <td>${i.heldBy?esc(i.heldBy):'—'}</td>
+      <td style="color:var(--fg);">${esc(i.addedByName)}</td>
+      ${canEdit?`<td><button class="btn-del" onclick="deleteNavItem('${esc(i._id)}')">✕</button></td>`:''}
+    </tr>`).join('')}
+    </tbody></table>`;
 }
 
 function openAddItemModal() {
-  showModal(\`
+  showModal(`
     <div class="modal-title">Add Item</div>
     <div class="field"><label class="lbl">Name</label><input type="text" id="ai-name" placeholder="Item name…"></div>
     <div class="field"><label class="lbl">Category</label>
       <select id="ai-cat">
-        \${ITEM_CATS.map(c=>\`<option value="\${c}">\${c}</option>\`).join('')}
+        ${ITEM_CATS.map(c=>`<option value="${c}">${c}</option>`).join('')}
       </select>
     </div>
     <div class="field"><label class="lbl">Description <span style="font-weight:400;">(optional)</span></label>
@@ -1202,7 +1201,7 @@ function openAddItemModal() {
       <div class="field"><label class="lbl">System</label>
         <select id="ai-sys" onchange="document.getElementById('ai-loc').innerHTML=locationOptions(this.value)">
           <option value="">—</option>
-          \${Object.keys(SYSTEMS).map(s=>\`<option value="\${s}">\${s}</option>\`).join('')}
+          ${Object.keys(SYSTEMS).map(s=>`<option value="${s}">${s}</option>`).join('')}
         </select>
       </div>
       <div class="field"><label class="lbl">Location</label>
@@ -1215,7 +1214,7 @@ function openAddItemModal() {
     <div style="display:flex;gap:10px;margin-top:8px;">
       <button class="btn btn-black" onclick="confirmAddItem()">Add Item</button>
       <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
-    </div>\`);
+    </div>`);
 }
 
 async function confirmAddItem() {
@@ -1519,6 +1518,9 @@ const NAVY_ROLES = [
   {id:'command', label:'Command'},
   {id:'admin',   label:'Admin'},
 ];
+
+function setTasksFilter(f){ tasksFilter=f; tasksSearchActive=false; tasksSearch=''; renderPage(); renderNav(); }
+function toggleTaskSearch(){ tasksSearchActive=!tasksSearchActive; if(!tasksSearchActive) tasksSearch=''; renderPage(); renderNav(); }
 
 function pageTasks() {
   const u=state.user; const admin=isAdmin(u);
