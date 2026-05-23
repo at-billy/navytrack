@@ -30,6 +30,35 @@ export const create = mutation({
     const user = await requireSession(ctx.db, sessionToken);
     const canAdd = user.roles.some(r => ["admin", "command", "core", "member"].includes(r));
     if (!canAdd) throw new Error("Not authorized");
+
+    // Auto-stack: find an identical available item and increment its quantity
+    const all = await ctx.db.query("items").withIndex("by_status", q => q.eq("status", "available")).collect();
+    const match = all.find(i =>
+      i.name        === rest.name &&
+      i.category    === rest.category &&
+      (i.subcategory ?? null) === (rest.subcategory ?? null) &&
+      (i.description ?? null) === (rest.description ?? null) &&
+      (i.quality     ?? null) === (rest.quality     ?? null) &&
+      i.location    === rest.location &&
+      (i.system      ?? null) === (rest.system      ?? null) &&
+      (i.heldBy      ?? null) === (rest.heldBy      ?? null) &&
+      (i.compType    ?? null) === (rest.compType    ?? null) &&
+      (i.compGrade   ?? null) === (rest.compGrade   ?? null) &&
+      (i.compSize    ?? null) === (rest.compSize    ?? null) &&
+      (i.compTier    ?? null) === (rest.compTier    ?? null)
+    );
+
+    if (match) {
+      await ctx.db.patch(match._id, { quantity: match.quantity + rest.quantity });
+      await ctx.db.insert("archive", {
+        type: "item_added",
+        userId: user._id,
+        userName: user.username,
+        details: { name: rest.name, category: rest.category, quantity: rest.quantity },
+      });
+      return match._id;
+    }
+
     const id = await ctx.db.insert("items", {
       ...rest,
       addedBy: user._id,
