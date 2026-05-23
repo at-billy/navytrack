@@ -807,13 +807,13 @@ function locationOptions(system) {
 async function refreshAll(silent=false) {
   try {
     const [navItems, archive, allUsers, tasks, lotteries, applications, logistics] = await Promise.all([
-      convexQuery('items:getAll'),
-      convexQuery('archive:getAll'),
-      convexQuery('users:getAllUsers'),
-      convexQuery('tasks:getAll'),
-      convexQuery('lotteries:getAll'),
-      convexQuery('applications:getAll'),
-      convexQuery('logistics:getAll'),
+      convexQuery('items:getAll').catch(()=>[]),
+      convexQuery('archive:getAll').catch(()=>[]),
+      convexQuery('users:getAllUsers').catch(()=>[]),
+      convexQuery('tasks:getAll').catch(()=>[]),
+      convexQuery('lotteries:getAll').catch(()=>[]),
+      convexQuery('applications:getAll').catch(()=>[]),
+      convexQuery('logistics:getAll').catch(()=>[]),
     ]);
     state.navItems      = navItems      || [];
     state.archive       = archive       || [];
