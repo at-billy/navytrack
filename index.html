@@ -1326,6 +1326,9 @@ function renderItemsContent() {
 }
 
 // ── LOGISTICS PAGE ────────────────────────────────────────────────────────────
+function canDeleteLogistics(u)      { return u.roles.some(r=>['admin','command'].includes(r)); }
+function canEditLogistics(u, task)  { return task.status==='open' && (u.roles.some(r=>['admin','command'].includes(r)) || task.createdBy===u._id); }
+
 function pageLogistics() {
   if(logisticsDetailId) return pageLogisticsDetail(logisticsDetailId);
   const u = state.user;
@@ -1344,23 +1347,27 @@ function pageLogistics() {
     ${open.length?`
       <div style="margin-top:32px;">
         <div style="font-size:13px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--fg);margin-bottom:12px;">Open</div>
-        ${open.map(t=>renderLogisticsRow(t)).join('')}
+        ${open.map(t=>renderLogisticsRow(t,u)).join('')}
       </div>`:''}
     ${closed.length?`
       <div style="margin-top:32px;">
         <div style="font-size:13px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--fg);margin-bottom:12px;">Completed</div>
-        ${closed.map(t=>renderLogisticsRow(t)).join('')}
+        ${closed.map(t=>renderLogisticsRow(t,u)).join('')}
       </div>`:''}`;
 }
 
-function renderLogisticsRow(t) {
+function renderLogisticsRow(t, u) {
   const statusDot = t.status==='open'
     ? `<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#22c55e;margin-right:8px;"></span>`
     : `<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#94a3b8;margin-right:8px;"></span>`;
+  const actions = `<div style="display:flex;gap:6px;align-items:center;" onclick="event.stopPropagation()">
+    ${canEditLogistics(u,t)?`<button class="btn-ghost btn-sm" onclick="openEditLogisticsModal('${esc(t._id)}')">Edit</button>`:''}
+    ${canDeleteLogistics(u)?`<button class="btn-del" onclick="deleteLogisticsTask('${esc(t._id)}')">&times;</button>`:''}
+  </div>`;
   return `<div onclick="logisticsDetailId='${esc(t._id)}';renderPage();" style="padding:14px 18px;border:1px solid var(--border);margin-bottom:8px;cursor:pointer;transition:background .1s;" onmouseover="this.style.background='var(--hover)'" onmouseout="this.style.background=''">
     <div style="display:flex;align-items:center;justify-content:space-between;">
       <div style="font-size:19px;font-weight:700;">${statusDot}${esc(t.items.length)} item${t.items.length!==1?'s':''} &rarr; ${esc(t.destinationLocation)}${t.destinationSystem?` <span style="font-weight:400;font-size:15px;color:var(--fg);">(${esc(t.destinationSystem)})</span>`:''}</div>
-      <div style="font-size:14px;color:var(--fg);">${t.status==='open'?'Open':'Completed'}</div>
+      ${actions}
     </div>
     <div style="font-size:15px;color:var(--fg);margin-top:4px;">Created by ${esc(t.createdByName)} &middot; Stored by ${esc(t.storedBy)}${t.completedByName?` &middot; Completed by ${esc(t.completedByName)}`:''}</div>
   </div>`;
@@ -1384,7 +1391,11 @@ function pageLogisticsDetail(id) {
           ${t.completedByName?`&middot; Completed by ${esc(t.completedByName)}`:''}
         </div>
       </div>
-      ${canComplete?`<button class="btn btn-black" onclick="openCompleteLogisticsModal('${esc(t._id)}')">Complete Task</button>`:''}
+      <div style="display:flex;gap:8px;align-items:center;">
+        ${canEditLogistics(u,t)?`<button class="btn btn-outline" onclick="openEditLogisticsModal('${esc(t._id)}')">Edit</button>`:''}
+        ${canDeleteLogistics(u)?`<button class="btn btn-outline" style="color:var(--red);border-color:var(--red);" onclick="deleteLogisticsTask('${esc(t._id)}')">Delete</button>`:''}
+        ${canComplete?`<button class="btn btn-black" onclick="openCompleteLogisticsModal('${esc(t._id)}')">Complete Task</button>`:''}
+      </div>
     </div>
 
     <div style="margin-top:24px;padding:14px 18px;background:var(--hover);border:1px solid var(--border);margin-bottom:28px;">
@@ -1488,6 +1499,88 @@ async function confirmCompleteLogistics(logisticsId) {
     await convexMutation('logistics:complete',{sessionToken:state.sessionToken,logisticsId,storedBy});
     closeModal(); toast('Task completed — items updated');
     await refreshAll(); logisticsDetailId=null; renderPage();
+  } catch(e){ alert(e.message); }
+}
+
+async function deleteLogisticsTask(logisticsId) {
+  if(!confirm('Delete this logistics task?')) return;
+  try {
+    await convexMutation('logistics:deleteTask',{sessionToken:state.sessionToken,logisticsId});
+    toast('Task deleted');
+    await refreshAll(); logisticsDetailId=null; renderPage();
+  } catch(e){ alert(e.message); }
+}
+
+function openEditLogisticsModal(logisticsId) {
+  const t = state.logistics.find(l=>l._id===logisticsId);
+  if(!t) return;
+  const inventory = state.navItems.filter(i=>i.status==='available');
+  const currentIds = new Set(t.items.map(i=>i.itemId));
+  // Items in the task that are no longer in inventory still need to be shown as checked
+  const taskItemsNotInInventory = t.items.filter(ti=>!inventory.find(i=>i._id===ti.itemId));
+  const allRows = [
+    ...inventory.map((item,idx)=>({item, idx, inTask: currentIds.has(item._id), fromTask: false})),
+    ...taskItemsNotInInventory.map((ti,idx)=>({
+      item:{_id:ti.itemId, name:ti.name, category:ti.category, location:ti.fromLocation, system:ti.fromSystem, status:'available'},
+      idx: inventory.length+idx, inTask:true, fromTask:true
+    })),
+  ];
+  // Pre-select destination system
+  const initLocs = SYSTEMS[t.destinationSystem] ? SYSTEMS[t.destinationSystem].map(l=>`<option value="${esc(l)}"${l===t.destinationLocation?' selected':''}>${esc(l)}</option>`).join('') : `<option value="${esc(t.destinationLocation)}" selected>${esc(t.destinationLocation)}</option>`;
+  showModal(`
+    <div class="modal-title">Edit Task</div>
+    <div class="field"><label class="lbl">Items to move</label>
+      <div style="max-height:220px;overflow-y:auto;border:1px solid var(--border);padding:4px 0;">
+        ${allRows.map(({item,idx,inTask,fromTask})=>`
+          <div style="display:flex;align-items:center;gap:10px;padding:7px 12px;border-bottom:1px solid var(--border);">
+            <input type="checkbox" id="elog-item-${idx}" value="${esc(item._id)}" ${inTask?'checked':''} style="width:18px;height:18px;flex-shrink:0;cursor:pointer;">
+            <label for="elog-item-${idx}" style="flex:1;cursor:pointer;">
+              <div style="font-size:17px;font-weight:700;">${esc(item.name)}${fromTask?` <span style="font-size:13px;color:var(--fg);">(not in inventory)</span>`:''}</div>
+              <div style="font-size:13px;color:var(--fg);">${itemCatLabel(item.category)} &middot; ${esc(item.location||'—')}${item.system?` (${esc(item.system)})`:''}</div>
+            </label>
+          </div>`).join('')}
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label class="lbl">Destination System</label>
+        <select id="elog-sys" onchange="document.getElementById('elog-loc').innerHTML=locationOptions(this.value)">
+          <option value="">—</option>
+          ${Object.keys(SYSTEMS).map(s=>`<option value="${s}"${s===t.destinationSystem?' selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field"><label class="lbl">Destination Location</label>
+        <select id="elog-loc"><option value="${esc(t.destinationLocation)}" selected>${esc(t.destinationLocation)}</option>${initLocs}</select>
+      </div>
+    </div>
+    <div class="field"><label class="lbl">Stored by</label>
+      <input type="text" id="elog-storedby" value="${esc(t.storedBy)}">
+    </div>
+    <div style="display:flex;gap:10px;margin-top:8px;">
+      <button class="btn btn-black" onclick="confirmEditLogisticsTask('${esc(logisticsId)}',${allRows.length})">Save</button>
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+    </div>`);
+}
+
+async function confirmEditLogisticsTask(logisticsId, rowCount) {
+  const allInventory = state.navItems.filter(i=>i.status==='available');
+  const t = state.logistics.find(l=>l._id===logisticsId);
+  if(!t) return;
+  const taskItemsNotInInventory = t.items.filter(ti=>!allInventory.find(i=>i._id===ti.itemId));
+  const allRows = [...allInventory, ...taskItemsNotInInventory.map(ti=>({_id:ti.itemId}))];
+  const itemIds = [];
+  allRows.forEach((item,idx)=>{
+    const cb=document.getElementById(`elog-item-${idx}`);
+    if(cb&&cb.checked) itemIds.push(item._id);
+  });
+  if(!itemIds.length){ alert('Select at least one item'); return; }
+  const destinationSystem=(document.getElementById('elog-sys')||{value:''}).value||undefined;
+  const destinationLocation=(document.getElementById('elog-loc')||{value:''}).value;
+  if(!destinationLocation){ alert('Select a destination location'); return; }
+  const storedBy=(document.getElementById('elog-storedby')||{value:''}).value.trim()||state.user.username;
+  try {
+    await convexMutation('logistics:update',{sessionToken:state.sessionToken,logisticsId,destinationSystem,destinationLocation,storedBy,itemIds});
+    closeModal(); toast('Task updated');
+    await refreshAll(); renderPage();
   } catch(e){ alert(e.message); }
 }
 
