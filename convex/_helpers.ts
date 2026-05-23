@@ -1,6 +1,6 @@
 import { DatabaseReader } from "./_generated/server";
 
-const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+const SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 export async function requireSession(db: DatabaseReader, token: string) {
   const session = await db
