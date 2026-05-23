@@ -860,8 +860,13 @@ function updateLiveView() {
     }
   }
   if (currentPage==='overview') {
-    const pw=document.getElementById('page-wrap');
-    if(pw) pw.innerHTML=`<div class="page">${pageOverview()}</div>`;
+    // Don't clobber the page if the user is actively typing in a form field
+    const active = document.activeElement;
+    const typing = active && (active.tagName==='INPUT'||active.tagName==='TEXTAREA') && document.getElementById('page-wrap')?.contains(active);
+    if(!typing) {
+      const pw=document.getElementById('page-wrap');
+      if(pw) pw.innerHTML=`<div class="page">${pageOverview()}</div>`;
+    }
   }
   // Sync nav for role changes (e.g. crafter approved)
   renderNav();
@@ -1299,7 +1304,7 @@ function renderInventoryList(canEdit) {
       <button class="btn-ghost btn-sm${itemsCatFilter==='all'?' active':''}" onclick="setItemsCat('all')">All</button>
       ${ITEM_CATEGORIES_CFG.map(c=>`<button class="btn-ghost btn-sm${itemsCatFilter===c.id?' active':''}" onclick="setItemsCat('${c.id}')">${c.label}</button>`).join('')}
       <div style="flex:1;"></div>
-      <button class="btn-ghost btn-sm${itemsSearchActive?' active':''}" onclick="toggleItemsSearch()">${itemsSearchActive?'✕ Search':'Search'}</button>
+      <button class="btn-ghost btn-sm${itemsSearchActive?' active':''}" onclick="toggleItemsSearch()">${itemsSearchActive?'Close Search':'Search'}</button>
     </div>
     ${hasSub?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;">
       <button class="btn-ghost btn-sm${itemsSubcat==='all'?' active':''}" onclick="setItemsSubcat('all')">All</button>
@@ -1328,7 +1333,7 @@ function renderInventoryList(canEdit) {
           <td style="white-space:nowrap;">
             ${canEdit?`<button class="btn btn-outline btn-sm" style="margin-right:4px;" onclick="openHandOutModal('${esc(i._id)}')">Hand Out</button>`:''}
             ${isWikelo&&canEdit?`<button class="btn btn-outline btn-sm" style="margin-right:4px;" onclick="openUsedModal('${esc(i._id)}')">Used</button>`:''}
-            ${canEdit?`<button class="btn-del" onclick="deleteNavItem('${esc(i._id)}')">✕</button>`:''}
+            ${canEdit?`<button class="btn-del" onclick="deleteNavItem('${esc(i._id)}')">&times;</button>`:''}
           </td>
         </tr>`;
       }).join('')}</tbody>
@@ -1346,7 +1351,7 @@ function renderHandedOutList(canEdit) {
       <td>${i.handedOutQty||i.quantity}</td>
       <td style="font-weight:700;">${esc(i.handedOutTo||'—')}</td>
       <td style="font-size:18px;">${esc(i.location)}</td>
-      ${canEdit?`<td><button class="btn-del" onclick="deleteNavItem('${esc(i._id)}')">✕</button></td>`:''}
+      ${canEdit?`<td><button class="btn-del" onclick="deleteNavItem('${esc(i._id)}')">&times;</button></td>`:''}
     </tr>`).join('')}</tbody>
   </table>`;
 }
@@ -1361,7 +1366,7 @@ function renderUsedList(canEdit) {
       <td>${i.quantity}</td>
       <td style="color:var(--fg);">${esc(i.usedFor||'—')}</td>
       <td style="color:var(--fg);">${esc(i.addedByName)}</td>
-      ${canEdit?`<td><button class="btn-del" onclick="deleteNavItem('${esc(i._id)}')">✕</button></td>`:''}
+      ${canEdit?`<td><button class="btn-del" onclick="deleteNavItem('${esc(i._id)}')">&times;</button></td>`:''}
     </tr>`).join('')}</tbody>
   </table>`;
 }
@@ -1652,7 +1657,7 @@ function renderMonthRows(entries){
       <td><span class="badge badge-${e.type}">${labels[e.type]||e.type}</span></td>
       <td style="font-weight:600;font-size:18px;">${esc(e.userName)}</td>
       <td style="font-size:18px;color:var(--fg);">${fmtArchiveDetails(e)}</td>
-      ${admin?`<td><button class="btn-del" onclick="adminDeleteLog('${esc(e._id)}')">✕</button></td>`:''}
+      ${admin?`<td><button class="btn-del" onclick="adminDeleteLog('${esc(e._id)}')">&times;</button></td>`:''}
     </tr>`).join('')}</tbody></table>`;
 }
 function fmtArchiveDetails(e){
@@ -1769,7 +1774,7 @@ function renderAdminContent() {
               <div style="font-size:15px;color:var(--fg);margin-top:2px;">Applied ${fmtDate(app._creationTime)}</div>
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
-              ${member&&!member.roles.includes('member')?`<button class="btn btn-black btn-sm" onclick="adminAcceptRecruit('${esc(app._id)}','${esc(app.userId)}','${esc(app.userName)}')">✓ Accept as Member</button>`:''}
+              ${member&&!member.roles.includes('member')?`<button class="btn btn-black btn-sm" onclick="adminAcceptRecruit('${esc(app._id)}','${esc(app.userId)}','${esc(app.userName)}')">Accept as Member</button>`:''}
               <button class="btn btn-outline btn-sm" onclick="adminMarkAppReviewed('${esc(app._id)}')">Mark Reviewed</button>
             </div>
           </div>
@@ -2001,7 +2006,7 @@ function renderTasksList() {
           ${t.status==='open'&&isMember?`<button class="btn btn-outline btn-sm" onclick="leaveTask('${esc(t._id)}')">Leave</button>`:''}
           ${canManage&&t.status==='open'?`<button class="btn-ghost btn-sm" onclick="closeTask('${esc(t._id)}')">Close</button>`:''}
           ${canManage&&t.status==='closed'?`<button class="btn-ghost btn-sm" onclick="reopenTask('${esc(t._id)}')">Reopen</button>`:''}
-          ${admin?`<button class="btn-del" onclick="deleteTask('${esc(t._id)}')">✕</button>`:''}
+          ${admin?`<button class="btn-del" onclick="deleteTask('${esc(t._id)}')">&times;</button>`:''}
         </div>
       </div>
     </div>`;
