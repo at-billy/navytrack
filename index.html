@@ -1274,12 +1274,16 @@ const FPS_ARMOR_PRESETS = {
 // Wikelo preset item names
 const WIKELO_PRESETS = ['DCHS-01','DCHS-02','DCHS-03','DCHS-04','DCHS-05','DCHS-06','DCHS-07'];
 
-let itemsView      = 'inventory'; // 'inventory' | 'logistics'
+let itemsView      = 'inventory'; // 'inventory' | 'handed_out' | 'used' | 'logistics'
 let logisticsDetailId = null;
 let itemsCatFilter = 'all';
 let itemsSubcat    = 'all';
 let itemsSearch    = '';
 let itemsSearchActive = false;
+// Ship component sub-filters (inventory view only)
+let invCompType = 'all';
+let invCompSize = 'all';
+let invCompTier = 'all';
 
 // Component picker state (for Add Item modal)
 let aiCompTypeFilter = 'all';
@@ -1595,11 +1599,23 @@ async function confirmEditLogisticsTask(logisticsId, rowCount) {
 function renderInventoryList() {
   const u = state.user;
   const catCfg = itemCatCfg(itemsCatFilter);
-  const hasSub = catCfg && catCfg.sub.length > 0;
+  const hasSub  = catCfg && catCfg.sub.length > 0;
+  const isComp  = itemsCatFilter === 'ship_component';
   let items = state.navItems.filter(i=>i.status==='available');
   if(itemsCatFilter!=='all') items=items.filter(i=>i.category===itemsCatFilter);
   if(hasSub && itemsSubcat!=='all') items=items.filter(i=>i.subcategory===itemsSubcat);
+  if(isComp){
+    if(invCompType!=='all') items=items.filter(i=>i.compType===invCompType);
+    if(invCompSize!=='all') items=items.filter(i=>String(i.compSize)===invCompSize);
+    if(invCompTier!=='all') items=items.filter(i=>i.compTier===invCompTier);
+  }
   if(itemsSearch.trim()){const q=itemsSearch.trim().toLowerCase();items=items.filter(i=>i.name.toLowerCase().includes(q)||(i.description||'').toLowerCase().includes(q));}
+
+  // Derive available filter values from unfiltered comp items (so empty options are hidden)
+  const allComps = isComp ? state.navItems.filter(i=>i.status==='available'&&i.category==='ship_component') : [];
+  const compTypes = isComp ? [...new Set(allComps.map(i=>i.compType).filter(Boolean))].sort() : [];
+  const compSizes = isComp ? [...new Set(allComps.map(i=>i.compSize).filter(v=>v!=null))].sort((a,b)=>a-b) : [];
+  const compTiers = isComp ? [...new Set(allComps.map(i=>i.compTier).filter(Boolean))].sort() : [];
 
   return `
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;align-items:center;">
@@ -1612,10 +1628,28 @@ function renderInventoryList() {
       <button class="btn-ghost btn-sm${itemsSubcat==='all'?' active':''}" onclick="setItemsSubcat('all')">All</button>
       ${catCfg.sub.map(s=>`<button class="btn-ghost btn-sm${itemsSubcat===s.id?' active':''}" onclick="setItemsSubcat('${s.id}')">${s.label}</button>`).join('')}
     </div>`:''}
+    ${isComp&&(compTypes.length||compSizes.length||compTiers.length)?`
+    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;">
+      ${compTypes.length>1?`<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;">
+        <span style="font-size:13px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--fg);margin-right:4px;">Type</span>
+        <button class="btn-ghost btn-sm${invCompType==='all'?' active':''}" onclick="invCompType='all';document.getElementById('items-content').innerHTML=renderInventoryList();">All</button>
+        ${compTypes.map(t=>`<button class="btn-ghost btn-sm${invCompType===t?' active':''}" onclick="invCompType='${t}';document.getElementById('items-content').innerHTML=renderInventoryList();">${COMP_TYPE_MAP[t]||t}</button>`).join('')}
+      </div>`:''}
+      ${compSizes.length>1?`<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;">
+        <span style="font-size:13px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--fg);margin-right:4px;">Size</span>
+        <button class="btn-ghost btn-sm${invCompSize==='all'?' active':''}" onclick="invCompSize='all';document.getElementById('items-content').innerHTML=renderInventoryList();">All</button>
+        ${compSizes.map(s=>`<button class="btn-ghost btn-sm${invCompSize===String(s)?' active':''}" onclick="invCompSize='${s}';document.getElementById('items-content').innerHTML=renderInventoryList();">S${s}</button>`).join('')}
+      </div>`:''}
+      ${compTiers.length>1?`<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;">
+        <span style="font-size:13px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--fg);margin-right:4px;">Grade</span>
+        <button class="btn-ghost btn-sm${invCompTier==='all'?' active':''}" onclick="invCompTier='all';document.getElementById('items-content').innerHTML=renderInventoryList();">All</button>
+        ${compTiers.map(t=>`<button class="btn-ghost btn-sm${invCompTier===t?' active':''}" onclick="invCompTier='${t}';document.getElementById('items-content').innerHTML=renderInventoryList();">Grade ${t}</button>`).join('')}
+      </div>`:''}
+    </div>`:''}
     ${itemsSearchActive?`<div style="margin-bottom:20px;"><input type="text" id="items-search-inp" placeholder="Search items…" value="${esc(itemsSearch)}"
       style="width:100%;max-width:400px;"
       oninput="itemsSearch=this.value;document.getElementById('items-content').innerHTML=renderInventoryList();"></div>`:''}
-    ${!items.length?`<div class="empty">No items${itemsCatFilter!=='all'?' in '+itemCatLabel(itemsCatFilter):''}${hasSub&&itemsSubcat!=='all'?' / '+itemSubcatLabel(itemsCatFilter,itemsSubcat):''}.</div>`:`
+    ${!items.length?`<div class="empty">No items${itemsCatFilter!=='all'?' in '+itemCatLabel(itemsCatFilter):''}.</div>`:`
     <table>
       <thead><tr>
         <th>Item</th><th>Category</th><th>Qty</th><th>Quality</th><th>Location</th><th>Added By</th>
@@ -1685,7 +1719,7 @@ function itemCompDesc(i){
   return [tn,gn,s,t].filter(Boolean).join(' · ');
 }
 
-function setItemsCat(cat){ itemsCatFilter=cat; itemsSubcat='all'; document.getElementById('items-content').innerHTML=renderInventoryList(); }
+function setItemsCat(cat){ itemsCatFilter=cat; itemsSubcat='all'; invCompType='all'; invCompSize='all'; invCompTier='all'; document.getElementById('items-content').innerHTML=renderInventoryList(); }
 function setItemsSubcat(s){ itemsSubcat=s; document.getElementById('items-content').innerHTML=renderInventoryList(); }
 function toggleItemsSearch(){ itemsSearchActive=!itemsSearchActive; itemsSearch=''; document.getElementById('items-content').innerHTML=renderInventoryList(); setTimeout(()=>{const el=document.getElementById('items-search-inp');if(el)el.focus();},0); }
 
