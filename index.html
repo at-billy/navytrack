@@ -727,7 +727,7 @@ function compDefaultValue(comp) {
 // ─── CONFIG / STATE ───────────────────────────────────────────────────────────
 let CONVEX_URL = localStorage.getItem('navytrack_url') || 'https://colorless-stoat-737.eu-west-1.convex.cloud';
 let currentPage = 'overview';
-const state = { user: null, sessionToken: null, navItems: [], archive: [], allUsers: [], tasks: [], lotteries: [] };
+const state = { user: null, sessionToken: null, navItems: [], archive: [], allUsers: [], tasks: [], lotteries: [], applications: [] };
 let tasksFilter = 'open';
 let tasksSearchActive = false;
 let tasksSearch = '';
@@ -805,18 +805,20 @@ function locationOptions(system) {
 // ─── POLLING / DATA ───────────────────────────────────────────────────────────
 async function refreshAll(silent=false) {
   try {
-    const [navItems, archive, allUsers, tasks, lotteries] = await Promise.all([
+    const [navItems, archive, allUsers, tasks, lotteries, applications] = await Promise.all([
       convexQuery('items:getAll'),
       convexQuery('archive:getAll'),
       convexQuery('users:getAllUsers'),
       convexQuery('tasks:getAll'),
       convexQuery('lotteries:getAll'),
+      convexQuery('applications:getAll'),
     ]);
-    state.navItems   = navItems  || [];
-    state.archive    = archive   || [];
-    state.allUsers   = allUsers  || [];
-    state.tasks      = tasks     || [];
-    state.lotteries  = lotteries || [];
+    state.navItems      = navItems      || [];
+    state.archive       = archive       || [];
+    state.allUsers      = allUsers      || [];
+    state.tasks         = tasks         || [];
+    state.lotteries     = lotteries     || [];
+    state.applications  = applications  || [];
     // Sync logged-in user's roles from server
     if(state.user) {
       const fresh=state.allUsers.find(u=>u._id===state.user._id);
@@ -1003,11 +1005,33 @@ function roleTagHtml(role) {
 }
 function isAdmin(u) { return u && (u.roles||[]).includes('admin'); }
 function hasAdmin() { return state.allUsers.some(u=>(u.roles||[]).includes('admin')); }
+function isRecruit(u) { return u && (u.roles||[]).length===1 && (u.roles||[]).includes('recruit'); }
 
 function renderNav() {
   const u=state.user; if(!u) return;
-  const inLog=['archive','admin','member',...(isAdmin(u)?['lottery']:[])];
+  const recruit = isRecruit(u);
 
+  // Recruits: nav is locked — only NAVY visible, rest shown as lock
+  if(recruit){
+    const dark=document.body.classList.contains('dark');
+    const sub=`
+      <div class="nav-sub-item" style="cursor:default;">Welcome, ${esc(u.username)}</div>
+      <div class="nav-sub-item" onclick="toggleDark()">${dark?'DAYTIME':'NIGHTTIME'}</div>
+      <div class="nav-sub-item" onclick="doLogout()">Sign out</div>`;
+    const el=document.getElementById('nav');
+    el.innerHTML=`
+      <div id="nav-primary">
+        <div class="nav-main active" onclick="goTo('overview')">NAVY</div>
+        <div class="nav-main" style="opacity:.25;cursor:not-allowed;" title="Members only">TASK</div>
+        <div class="nav-main" style="opacity:.25;cursor:not-allowed;" title="Members only">ITEMS</div>
+        <div class="nav-main outline" style="opacity:.25;cursor:not-allowed;" title="Members only">LOG</div>
+      </div>
+      <div id="nav-sub">${sub}</div>`;
+    if(window._navScrollUpdate) window._navScrollUpdate();
+    return;
+  }
+
+  const inLog=['archive','admin','member',...(isAdmin(u)?['lottery']:[])];
   let main='mat';
   if(currentPage==='tasks') main='task';
   else if(currentPage==='items') main='items';
@@ -1047,6 +1071,10 @@ function renderNav() {
   if(window._navScrollUpdate) window._navScrollUpdate();
 }
 function renderPage() {
+  // Recruits can only see the overview page
+  if(isRecruit(state.user) && currentPage!=='overview') {
+    currentPage='overview';
+  }
   const pages={overview:pageOverview,items:pageItems,tasks:pageTasks,archive:pageArchive,admin:pageAdmin,member:pageMember,lottery:pageLottery};
   const pw=document.getElementById('page-wrap');
   if(pw) pw.innerHTML=`<div class="page">${(pages[currentPage]||pageOverview)()}</div>`;
@@ -1055,22 +1083,20 @@ function renderPage() {
 // ─── OVERVIEW PAGE ────────────────────────────────────────────────────────────
 function pageOverview() {
   const u = state.user;
-  const now = new Date();
-  const dateStr = now.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+
+  // Recruits see the application form
+  if(isRecruit(u)) return pageRecruitOverview(u);
 
   const openTasks  = state.tasks.filter(t=>t.status==='open');
   const urgentCnt  = openTasks.filter(t=>t.priority==='urgent').length;
   const memberCnt  = state.allUsers.filter(u=>!u.roles.includes('removed')).length;
-  const itemsCnt   = state.navItems.filter(i=>i.status!=='removed').length;
-
+  const itemsCnt   = state.navItems.filter(i=>i.status==='available').length;
   const prioOrder  = {urgent:0,high:1,normal:2,whenever:3};
   const topTasks   = openTasks.slice().sort((a,b)=>(prioOrder[a.priority]??2)-(prioOrder[b.priority]??2)).slice(0,6);
   const recentLog  = state.archive.filter(e=>!LOTTERY_LOG_TYPES.has(e.type)).slice(0,7);
-
   function shortDate(ts){const d=new Date(ts);return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});}
 
   return `<div class="ov-wrap">
-
     <div class="ov-stats">
       <div class="ov-stat" style="padding-right:28px;">
         <div class="ov-stat-num${urgentCnt>0?' red':''}">${openTasks.length}</div>
@@ -1088,15 +1114,14 @@ function pageOverview() {
         <div class="ov-stat-sub">&nbsp;</div>
       </div>
     </div>
-
     <div style="border-top:2px solid var(--border);padding:60px 0;">
       <div class="ov-col-head">Open Projects</div>
       ${topTasks.length ? topTasks.map(t=>{
         const pb=TASK_PRIORITIES.find(p=>p.id===t.priority)||TASK_PRIORITIES[2];
-        return `<div class="ov-task-row" style="display:flex;align-items:baseline;gap:28px;padding:14px 0;border-bottom:1px solid var(--border-l);">
+        return `<div style="display:flex;align-items:baseline;gap:28px;padding:14px 0;border-bottom:1px solid var(--border-l);">
           <div style="flex:1;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;">
             <span class="p-badge ${pb.cls}">${pb.label}</span>
-            <span class="ov-task-title" style="font-size:24px;font-weight:900;">${esc(t.title)}</span>
+            <span style="font-size:24px;font-weight:900;">${esc(t.title)}</span>
             ${t.description?`<span style="font-size:18px;color:var(--fg);">${esc(t.description)}</span>`:''}
           </div>
           <div style="font-size:18px;white-space:nowrap;">${t.members.length} joined</div>
@@ -1105,7 +1130,6 @@ function pageOverview() {
       : `<div class="ov-empty" style="padding:40px 0;">No open projects.</div>`}
       ${openTasks.length>6?`<div style="padding-top:20px;"><span style="font-size:18px;cursor:pointer;text-decoration:underline;" onclick="goTo('tasks')">All projects (${openTasks.length}) →</span></div>`:''}
     </div>
-
     <div style="border-top:2px solid var(--border);padding:60px 0;">
       <div class="ov-col-head">Recent Activity</div>
       ${recentLog.length?recentLog.map(e=>`
@@ -1116,8 +1140,85 @@ function pageOverview() {
         </div>`).join('')
       :`<div class="ov-empty" style="padding:40px 0;">No activity yet.</div>`}
     </div>
-
   </div>`;
+}
+
+function pageRecruitOverview(u) {
+  const noAdmin = !hasAdmin();
+  const myApp = state.applications.find(a => a.userId === u._id);
+
+  if(myApp) {
+    // Already submitted
+    return `
+      <div class="page-head">
+        <div class="page-head-left">
+          <div class="page-title">${esc(u.username)}</div>
+        </div>
+        ${noAdmin?`<button class="btn btn-outline" style="border-color:var(--red);color:var(--fg);font-size:18px;" onclick="claimBootstrapAdmin()">Claim Admin</button>`:''}
+      </div>
+      <div style="max-width:640px;">
+        <div style="font-size:32px;font-weight:900;letter-spacing:-.5px;margin-bottom:16px;">Application submitted.</div>
+        <div style="font-size:20px;color:var(--fg);line-height:1.6;">
+          Your application has been handed in. Sit tight — you'll hear from us soon.
+        </div>
+      </div>`;
+  }
+
+  // Show the form
+  return `
+    <div class="page-head">
+      <div class="page-head-left">
+        <div class="page-title">FRCN Navy Application Form</div>
+        <div class="page-sub">Complete your application to join the wing</div>
+      </div>
+      ${noAdmin?`<button class="btn btn-outline" style="border-color:var(--red);color:var(--fg);font-size:18px;" onclick="claimBootstrapAdmin()">Claim Admin</button>`:''}
+    </div>
+
+    <div style="max-width:640px;">
+      <div style="font-size:18px;color:var(--fg);line-height:1.7;margin-bottom:48px;padding:24px;background:#f5f5f5;">
+        So you're interested in joining FRCN Navy? Good stuff! Just a few more steps and you are good to go to submit your application to join the wing!
+      </div>
+
+      <div class="field" style="margin-bottom:36px;">
+        <label class="lbl" style="font-size:20px;">1. What is your Discord and Star Citizen handles?</label>
+        <div style="font-size:18px;color:var(--fg);margin-bottom:10px;">Please put both if they are not similar</div>
+        <textarea id="app-handles" rows="3" placeholder="e.g. Discord: username#0000 / SC: HanSolo" style="width:100%;padding:12px;font-size:18px;font-family:inherit;border:2px solid #000;resize:vertical;background:var(--bg);color:var(--fg);"></textarea>
+      </div>
+
+      <div class="field" style="margin-bottom:36px;">
+        <label class="lbl" style="font-size:20px;">2. Why do you want to join FRCN Navy?</label>
+        <div style="font-size:18px;color:var(--fg);margin-bottom:10px;">How did you hear about us?</div>
+        <textarea id="app-why" rows="4" placeholder="Tell us why you want to join and how you found us…" style="width:100%;padding:12px;font-size:18px;font-family:inherit;border:2px solid #000;resize:vertical;background:var(--bg);color:var(--fg);"></textarea>
+      </div>
+
+      <div class="field" style="margin-bottom:48px;">
+        <label class="lbl" style="font-size:20px;">3. What do you want to do within the wing?</label>
+        <div style="font-size:18px;color:var(--fg);margin-bottom:10px;">e.g: Engineering, Gunner, Pilot, Marine</div>
+        <textarea id="app-role" rows="3" placeholder="Describe what role interests you…" style="width:100%;padding:12px;font-size:18px;font-family:inherit;border:2px solid #000;resize:vertical;background:var(--bg);color:var(--fg);"></textarea>
+      </div>
+
+      <div style="font-size:18px;color:var(--fg);margin-bottom:28px;font-style:italic;">
+        That's it! You'll hear from us soon! Just click "Submit" below.
+      </div>
+
+      <div class="err-msg" id="app-err" style="margin-bottom:12px;"></div>
+      <button class="btn btn-black" style="font-size:20px;padding:14px 32px;" onclick="submitApplication()">Submit Application</button>
+    </div>`;
+}
+
+async function submitApplication() {
+  const handles = (document.getElementById('app-handles')||{value:''}).value.trim();
+  const whyJoin = (document.getElementById('app-why')||{value:''}).value.trim();
+  const role    = (document.getElementById('app-role')||{value:''}).value.trim();
+  if(!handles){showErr('app-err','Please fill in your Discord and SC handles');return;}
+  if(!whyJoin){showErr('app-err','Please fill in why you want to join');return;}
+  if(!role){showErr('app-err','Please fill in what you want to do in the wing');return;}
+  try {
+    await convexMutation('applications:submit',{sessionToken:state.sessionToken,handles,whyJoin,role});
+    toast('Application submitted!');
+    await refreshAll();
+    renderPage();
+  } catch(e){ showErr('app-err', e.message); }
 }
 
 // ─── ITEMS PAGE ───────────────────────────────────────────────────────────────
@@ -1649,7 +1750,60 @@ function renderAdminContent() {
   const u=state.user;
   const MANAGEABLE=['recruit','member','core','command'];
   const members=state.allUsers;
+  const pendingApps = state.applications.filter(a=>a.status==='pending');
+  const reviewedApps = state.applications.filter(a=>a.status==='reviewed');
+
   return `
+    ${pendingApps.length?`
+    <div style="margin-bottom:56px;">
+      <div style="font-size:18px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--red);display:flex;align-items:center;gap:12px;">
+        Recruit Applications
+        <span style="background:var(--red);color:#fff;padding:1px 8px;font-size:18px;">${pendingApps.length} pending</span>
+      </div>
+      ${pendingApps.map(app=>{
+        const member = state.allUsers.find(m=>m._id===app.userId);
+        return `<div style="padding:20px;border:2px solid #000;margin-bottom:16px;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
+            <div>
+              <div style="font-size:22px;font-weight:900;">${esc(app.userName)}</div>
+              <div style="font-size:15px;color:var(--fg);margin-top:2px;">Applied ${fmtDate(app._creationTime)}</div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              ${member&&!member.roles.includes('member')?`<button class="btn btn-black btn-sm" onclick="adminAcceptRecruit('${esc(app._id)}','${esc(app.userId)}','${esc(app.userName)}')">✓ Accept as Member</button>`:''}
+              <button class="btn btn-outline btn-sm" onclick="adminMarkAppReviewed('${esc(app._id)}')">Mark Reviewed</button>
+            </div>
+          </div>
+          <div style="display:grid;gap:14px;">
+            <div>
+              <div style="font-size:15px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--fg);margin-bottom:4px;">Discord &amp; SC Handles</div>
+              <div style="font-size:18px;white-space:pre-wrap;">${esc(app.handles)}</div>
+            </div>
+            <div>
+              <div style="font-size:15px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--fg);margin-bottom:4px;">Why they want to join</div>
+              <div style="font-size:18px;white-space:pre-wrap;">${esc(app.whyJoin)}</div>
+            </div>
+            <div>
+              <div style="font-size:15px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--fg);margin-bottom:4px;">Desired role</div>
+              <div style="font-size:18px;white-space:pre-wrap;">${esc(app.role)}</div>
+            </div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`:''}
+
+    ${reviewedApps.length?`
+    <details style="margin-bottom:40px;">
+      <summary style="font-size:18px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;padding-bottom:8px;border-bottom:1px solid var(--border);">
+        Reviewed Applications (${reviewedApps.length})
+      </summary>
+      <div style="margin-top:16px;">
+        ${reviewedApps.map(app=>`<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border-m);">
+          <span style="font-size:18px;font-weight:700;">${esc(app.userName)}</span>
+          <span style="font-size:18px;color:var(--fg);">${fmtDate(app._creationTime)}</span>
+        </div>`).join('')}
+      </div>
+    </details>`:''}
+
     <div>
       <div style="font-size:18px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--border);">All Members</div>
       ${members.map(m=>{
@@ -1674,6 +1828,26 @@ function renderAdminContent() {
         </div>`;
       }).join('')}
     </div>`;
+}
+
+async function adminAcceptRecruit(appId, targetId, targetName) {
+  if(!confirm(`Accept ${targetName} as Member? This will grant them the Member role.`)) return;
+  try {
+    await convexMutation('users:grantRole',{sessionToken:state.sessionToken,targetUserId:targetId,role:'member'});
+    await convexMutation('applications:markReviewed',{sessionToken:state.sessionToken,applicationId:appId});
+    toast(`${targetName} accepted as Member`);
+    await refreshAll();
+    document.getElementById('admin-wrap').innerHTML=renderAdminContent();
+  } catch(e){alert(e.message);}
+}
+
+async function adminMarkAppReviewed(appId) {
+  try {
+    await convexMutation('applications:markReviewed',{sessionToken:state.sessionToken,applicationId:appId});
+    toast('Application marked as reviewed');
+    await refreshAll();
+    document.getElementById('admin-wrap').innerHTML=renderAdminContent();
+  } catch(e){alert(e.message);}
 }
 
 async function adminGrantRole(targetId, targetName, role) {

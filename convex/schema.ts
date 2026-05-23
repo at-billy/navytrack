@@ -92,6 +92,16 @@ export default defineSchema({
     externalNames: v.optional(v.array(v.string())),
   }).index("by_status", ["status"]),
 
+  // Recruit application forms
+  applications: defineTable({
+    userId: v.id("users"),
+    userName: v.string(),
+    handles: v.string(),   // Q1: Discord + SC handles
+    whyJoin: v.string(),   // Q2: why join + how heard
+    role: v.string(),      // Q3: what they want to do
+    status: v.string(),    // "pending" | "reviewed"
+  }).index("by_userId", ["userId"]),
+
   archive: defineTable({
     type: v.string(),
     userId: v.id("users"),
