@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MATTRACK</title>
+<title>NAVYTRACK</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 :root{--red:#cc0000;--mid:#888;--fg:#000;--bg:#fff;--bg2:#f5f5f5;--border:#000;--border-l:#e0e0e0;--border-m:#e8e8e8;}
@@ -919,7 +919,7 @@ function showSetup() {
   document.getElementById('root').innerHTML = `
     <div class="center-screen">
       <div class="auth-box" style="max-width:480px;">
-        <div class="auth-logo">MATTRACK</div>
+        <div class="auth-logo">NAVYTRACK</div>
         <div style="font-size:18px;color:var(--fg);margin-bottom:24px;text-align:center;">Connect to your Convex backend.</div>
         <div class="field">
           <label class="lbl">Convex Deployment URL</label>
@@ -957,7 +957,7 @@ function showAuth(tab='signin') {
   document.getElementById('root').innerHTML = `
     <div class="center-screen">
       <div class="auth-box">
-        <div class="auth-logo">MATTRACK</div>
+        <div class="auth-logo">NAVYTRACK</div>
         <div class="tabs">
           <button class="tab-btn${tab==='signin'?' active':''}" onclick="showAuth('signin')">Sign In</button>
           <button class="tab-btn${tab==='signup'?' active':''}" onclick="showAuth('signup')">Sign Up</button>
@@ -1104,7 +1104,7 @@ function renderNav() {
   const el=document.getElementById('nav');
   el.innerHTML=`
     <div id="nav-primary">
-      <div class="nav-main${main==='mat'?' active':''}" onclick="goTo('overview')">MAT</div>
+      <div class="nav-main${main==='mat'?' active':''}" onclick="goTo('overview')">NAVY</div>
       <div class="nav-main${main==='task'?' active':''}" onclick="goTo('tasks')">TASK</div>
       <div class="nav-main${main==='craft'?' active':''}" onclick="goTo('craft')">CRAFT</div>
       <div class="nav-main outline${main==='log'?' active':''}" onclick="goTo('archive')">LOG</div>
