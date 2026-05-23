@@ -1498,7 +1498,7 @@ function openAddItemModal() {
       <input type="text" id="ai-desc" placeholder="Short description…">
     </div>
     <div id="ai-qty-wrap" class="grid2">
-      <div class="field"><label class="lbl">Quantity</label><input type="number" id="ai-qty" value="1" min="1" step="1"></div>
+      <div id="ai-qty-field" class="field"><label class="lbl">Quantity</label><input type="number" id="ai-qty" value="1" min="1" step="1"></div>
       <div id="ai-quality-wrap" class="field"><label class="lbl">Quality <span style="font-weight:400;">(optional, 0–1000)</span></label><input type="number" id="ai-quality" placeholder="e.g. 900" min="0" max="1000" step="1"></div>
     </div>
     <div class="grid2">
@@ -1592,6 +1592,7 @@ function onAICatChange() {
   const nameWrap     = document.getElementById('ai-name-wrap');
   const descWrap     = document.getElementById('ai-desc-wrap');
   const qtyWrap      = document.getElementById('ai-qty-wrap');
+  const qtyField     = document.getElementById('ai-qty-field');
   const qualityWrap  = document.getElementById('ai-quality-wrap');
 
   // Reset armor presets
@@ -1624,8 +1625,10 @@ function onAICatChange() {
   // Description: wikelo only
   if(descWrap) descWrap.style.display=(cat==='wikelo'?'':'none');
 
-  // Qty/quality row: hidden for fps_armor (each preset has its own qty input)
-  if(qtyWrap) qtyWrap.style.display=(cat==='fps_armor'?'none':'');
+  // Qty field: hidden for fps_armor (each preset has its own qty input)
+  // Keep the row visible so quality still shows for armor
+  if(qtyField) qtyField.style.display=(cat==='fps_armor'?'none':'');
+  if(qtyWrap) qtyWrap.style.display=''; // always show the row
   // Quality: not applicable for wikelo
   if(qualityWrap) qualityWrap.style.display=(cat==='wikelo'?'none':'');
 }
@@ -1690,9 +1693,11 @@ async function confirmAddItem() {
       }
     }
     if(!toAdd.length){alert('Select at least one item');return;}
+    const armorQualityRaw=(document.getElementById('ai-quality')||{value:''}).value;
+    const armorQuality=armorQualityRaw?parseInt(armorQualityRaw):undefined;
     try{
       for(const item of toAdd){
-        await convexMutation('items:create',{sessionToken:state.sessionToken,name:item.name,category,subcategory:subcat,quantity:item.qty,location,system});
+        await convexMutation('items:create',{sessionToken:state.sessionToken,name:item.name,category,subcategory:subcat,quantity:item.qty,quality:armorQuality,location,system});
       }
       closeModal(); toast(`${toAdd.length} item${toAdd.length>1?'s':''} added`);
       await refreshAll(); renderPage();
