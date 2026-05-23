@@ -729,7 +729,7 @@ function compDefaultValue(comp) {
 }
 
 // ─── CONFIG / STATE ───────────────────────────────────────────────────────────
-let CONVEX_URL = localStorage.getItem('mattrack_url') || 'https://colorless-stoat-737.eu-west-1.convex.cloud';
+let CONVEX_URL = localStorage.getItem('navytrack_url') || 'https://colorless-stoat-737.eu-west-1.convex.cloud';
 let currentPage = 'overview';
 const state = { user: null, sessionToken: null, stock: [], craftItems: [], archive: [], allUsers: [], inventory: [], tasks: [], lotteries: [] };
 let tasksFilter = 'open';
@@ -766,7 +766,7 @@ async function convexQuery(path, args = {}) {
 function handleSessionError(e) {
   if(e.message&&(e.message.includes('SESSION_INVALID')||e.message.includes('SESSION_EXPIRED'))) {
     state.user=null; state.sessionToken=null;
-    localStorage.removeItem('mattrack_token');
+    localStorage.removeItem('navytrack_token');
     showAuth(); toast('Session expired — please sign in again');
     return true;
   }
@@ -785,7 +785,7 @@ async function convexMutation(path, args = {}) {
 
 // ─── UTILS ────────────────────────────────────────────────────────────────────
 async function hashPwd(pw) {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw+'|mattrack_v1'));
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw+'|navytrack_v1'));
   return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
 const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -906,11 +906,11 @@ function goTo(tab) {
 // ─── DARK MODE ────────────────────────────────────────────────────────────────
 function toggleDark() {
   const on=document.body.classList.toggle('dark');
-  localStorage.setItem('mattrack_dark', on?'1':'0');
+  localStorage.setItem('navytrack_dark', on?'1':'0');
   renderNav();
 }
 (function initDark(){
-  if(localStorage.getItem('mattrack_dark')==='1') document.body.classList.add('dark');
+  if(localStorage.getItem('navytrack_dark')==='1') document.body.classList.add('dark');
 })();
 
 // ─── SETUP ────────────────────────────────────────────────────────────────────
@@ -945,7 +945,7 @@ async function saveSetup() {
   try {
     document.getElementById('setup-err').style.display='none';
     await fetch(`${url}/api/query`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:'materials:getCatalog',args:{},format:'json'})});
-    CONVEX_URL=url; localStorage.setItem('mattrack_url',url);
+    CONVEX_URL=url; localStorage.setItem('navytrack_url',url);
     await convexMutation('materials:seedCatalog');
     showAuth();
   } catch(e) { showErr('setup-err','Could not connect. Check the URL.'); }
@@ -1005,7 +1005,7 @@ async function doSignIn() {
     const res=await convexMutation('users:authenticate',{username,passwordHash:ph});
     if(!res){showErr('si-err','Invalid username or password');return;}
     state.user=res; state.sessionToken=res.token;
-    localStorage.setItem('mattrack_token',res.token); showApp();
+    localStorage.setItem('navytrack_token',res.token); showApp();
   } catch(e){showErr('si-err',e.message);}
 }
 
@@ -1033,7 +1033,7 @@ async function doSignUp() {
     const roles=[...(isProv?['provider']:[]),...(isCraft?['crafter_pending']:[]),...(isLogi?['logistics_pending']:[])];
     const res=await convexMutation('users:signUp',{username,passwordHash:ph,roles});
     state.user=res; state.sessionToken=res.token;
-    localStorage.setItem('mattrack_token',res.token); showApp();
+    localStorage.setItem('navytrack_token',res.token); showApp();
   } catch(e){
     showErr('su-err',e.message.includes('USERNAME_TAKEN')?'Username already taken':e.message);
   }
@@ -1045,7 +1045,7 @@ async function doLogout() {
     try { await convexMutation('sessions:remove',{token:state.sessionToken}); } catch(e){}
   }
   state.user=null; state.sessionToken=null;
-  localStorage.removeItem('mattrack_token'); showAuth();
+  localStorage.removeItem('navytrack_token'); showAuth();
 }
 
 // ─── APP SHELL ────────────────────────────────────────────────────────────────
@@ -3690,14 +3690,14 @@ async function claimBootstrapAdmin() {
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 async function init(){
   if(!CONVEX_URL){showSetup();return;}
-  const token=localStorage.getItem('mattrack_token');
+  const token=localStorage.getItem('navytrack_token');
   if(token){
     try{
       const user=await convexQuery('sessions:whoami',{token});
       if(user){state.user=user;state.sessionToken=token;showApp();return;}
     }catch(e){/* fall through */}
   }
-  localStorage.removeItem('mattrack_token');
+  localStorage.removeItem('navytrack_token');
   showAuth();
 }
 init();
