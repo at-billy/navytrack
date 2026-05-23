@@ -104,9 +104,8 @@ tbody tr:hover{background:#f9f9f9;}
 .badge-admin_granted,.badge-task_created,.badge-task_closed,.badge-item_added,
 .badge-item_updated,.badge-item_removed{background:none;color:#000;}
 
-/* ── INVENTORY ───────────────────────────────────────────────────── */
-.inv-quality{font-size:32px;font-weight:900;letter-spacing:-1px;line-height:1;}
-.inv-row{padding:32px 0;}
+/* ── ITEMS ───────────────────────────────────────────────────────── */
+.item-cat-tag{font-size:15px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border:1px solid #000;white-space:nowrap;}
 
 
 /* ── TASKS ───────────────────────────────────────────────────────── */
@@ -831,8 +830,8 @@ function stopPolling()  { if(pollTimer) clearInterval(pollTimer); }
 
 function updateLiveView() {
   if (currentPage==='items') {
-    const el=document.getElementById('items-list'); if(el) el.innerHTML=renderNavItemsList();
-    const s=document.getElementById('items-count'); if(s) s.textContent=`${state.navItems.filter(i=>i.status!=='removed').length} item${state.navItems.filter(i=>i.status!=='removed').length!==1?'s':''}`;
+    const el=document.getElementById('items-content');
+    if(el) el.innerHTML=renderItemsContent();
   }
   if (currentPage==='archive') {
     // Re-render grouped archive; preserve open/closed state of months
@@ -1121,81 +1120,247 @@ function pageOverview() {
   </div>`;
 }
 
-// ─── MATERIALS PAGE ───────────────────────────────────────────────────────────
-function matNameOptions(cat) {
-  return `<option value="">Select material…</option>
-    ${SC_CATALOG.filter(m=>m.cat===cat).map(m=>`<option value="${esc(m.name)}">${esc(m.name)}</option>`).join('')}
-    <option value="__new__">+ Add new type…</option>`;
-}
-
 // ─── ITEMS PAGE ───────────────────────────────────────────────────────────────
-const ITEM_CATS = ['FPS','ARMA','Components'];
+
+// Category & subcategory config
+const ITEM_CATEGORIES_CFG = [
+  { id:'fps_armor',       label:'FPS Armor',       sub:[{id:'standard_issue',label:'Standard Issue Kit'},{id:'standard_heavy',label:'Standard Heavy Kit'}] },
+  { id:'fps_weapon',      label:'FPS Weapons',      sub:[] },
+  { id:'ship_component',  label:'Ship Components',  sub:[] },
+  { id:'ship_weapon',     label:'Ship Weapons',     sub:[] },
+  { id:'wikelo',          label:'Wikelo',           sub:[] },
+];
+function itemCatCfg(id){ return ITEM_CATEGORIES_CFG.find(c=>c.id===id)||null; }
+function itemCatLabel(id){ return itemCatCfg(id)?.label||id||'—'; }
+function itemSubcatLabel(catId, subId){ return itemCatCfg(catId)?.sub.find(s=>s.id===subId)?.label||subId||'—'; }
+
+let itemsTab       = 'inventory'; // 'inventory' | 'handed_out' | 'used'
+let itemsCatFilter = 'all';
+let itemsSubcat    = 'all';
+let itemsSearch    = '';
+let itemsSearchActive = false;
+
+// Component picker state (for Add Item modal)
+let aiCompTypeFilter = 'all';
+let aiCompGradeFilter = 'all';
+let aiCompSizeFilter = 'all';
+let aiCompSearch = '';
+let aiSelectedComp = null; // {name, type, typeName, grade, gradeName, size, tier}
 
 function pageItems() {
-  const u=state.user; const admin=isAdmin(u);
-  const canAdd=u.roles.some(r=>['admin','command','core','member'].includes(r));
-  const items=state.navItems.filter(i=>i.status!=='removed');
-  const filtered=itemsCatFilter==='all'?items:items.filter(i=>i.category===itemsCatFilter);
-  const cnt=items.length;
+  const u = state.user;
+  const canAdd = u.roles.some(r=>['admin','command','core','member'].includes(r));
+  const canEdit = u.roles.some(r=>['admin','command','core'].includes(r));
+  const allItems = state.navItems;
+  const inventory = allItems.filter(i=>i.status==='available');
+  const handedOut = allItems.filter(i=>i.status==='handed_out');
+  const used      = allItems.filter(i=>i.status==='used');
+
   return `
     <div class="page-head">
       <div class="page-head-left">
         <div class="page-title">Items</div>
-        <div class="page-sub" id="items-count">${cnt} item${cnt!==1?'s':''}</div>
+        <div class="page-sub">${inventory.length} in inventory &middot; ${handedOut.length} handed out &middot; ${used.length} used</div>
       </div>
       ${canAdd?`<button class="btn btn-black" onclick="openAddItemModal()">+ Add Item</button>`:''}
     </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:36px;">
-      <button class="btn-ghost btn-sm${itemsCatFilter==='all'?' active':''}" onclick="setItemsCatFilter('all')">All</button>
-      ${ITEM_CATS.map(c=>`<button class="btn-ghost btn-sm${itemsCatFilter===c?' active':''}" onclick="setItemsCatFilter('${c}')">${c}</button>`).join('')}
+
+    <div style="display:flex;gap:0;margin-bottom:0;border-bottom:2px solid var(--border);">
+      <div class="nav-sub-item${itemsTab==='inventory'?' active':''}" style="padding:0 20px 12px;cursor:pointer;" onclick="setItemsTab('inventory')">Inventory (${inventory.length})</div>
+      <div class="nav-sub-item${itemsTab==='handed_out'?' active':''}" style="padding:0 20px 12px;cursor:pointer;" onclick="setItemsTab('handed_out')">Handed Out (${handedOut.length})</div>
+      <div class="nav-sub-item${itemsTab==='used'?' active':''}" style="padding:0 20px 12px;cursor:pointer;" onclick="setItemsTab('used')">Used (${used.length})</div>
     </div>
-    <div id="items-list">${renderNavItemsList()}</div>`;
+
+    <div id="items-content" style="margin-top:32px;">${renderItemsContent(canEdit)}</div>`;
 }
 
-let itemsCatFilter = 'all';
-function setItemsCatFilter(cat){ itemsCatFilter=cat; renderPage(); }
+function setItemsTab(tab){ itemsTab=tab; itemsCatFilter='all'; itemsSubcat='all'; itemsSearch=''; itemsSearchActive=false; renderPage(); }
 
-function renderNavItemsList() {
-  const u=state.user; const admin=isAdmin(u);
-  const canEdit=u.roles.some(r=>['admin','command','core'].includes(r));
-  const items=state.navItems.filter(i=>i.status!=='removed');
-  const filtered=itemsCatFilter==='all'?items:items.filter(i=>i.category===itemsCatFilter);
-  if(!filtered.length) return `<div class="empty">No items${itemsCatFilter!=='all'?' in '+itemsCatFilter:''}.</div>`;
+function renderItemsContent(canEdit) {
+  const u = state.user;
+  if(canEdit===undefined) canEdit=u.roles.some(r=>['admin','command','core'].includes(r));
+  if(itemsTab==='handed_out') return renderHandedOutList(canEdit);
+  if(itemsTab==='used')       return renderUsedList(canEdit);
+  return renderInventoryList(canEdit);
+}
+
+function renderInventoryList(canEdit) {
+  const u = state.user;
+  const catCfg = itemCatCfg(itemsCatFilter);
+  const hasSub = catCfg && catCfg.sub.length > 0;
+  let items = state.navItems.filter(i=>i.status==='available');
+  if(itemsCatFilter!=='all') items=items.filter(i=>i.category===itemsCatFilter);
+  if(hasSub && itemsSubcat!=='all') items=items.filter(i=>i.subcategory===itemsSubcat);
+  if(itemsSearch.trim()){const q=itemsSearch.trim().toLowerCase();items=items.filter(i=>i.name.toLowerCase().includes(q)||(i.description||'').toLowerCase().includes(q));}
+
+  return `
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;align-items:center;">
+      <button class="btn-ghost btn-sm${itemsCatFilter==='all'?' active':''}" onclick="setItemsCat('all')">All</button>
+      ${ITEM_CATEGORIES_CFG.map(c=>`<button class="btn-ghost btn-sm${itemsCatFilter===c.id?' active':''}" onclick="setItemsCat('${c.id}')">${c.label}</button>`).join('')}
+      <div style="flex:1;"></div>
+      <button class="btn-ghost btn-sm${itemsSearchActive?' active':''}" onclick="toggleItemsSearch()">${itemsSearchActive?'✕ Search':'Search'}</button>
+    </div>
+    ${hasSub?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;">
+      <button class="btn-ghost btn-sm${itemsSubcat==='all'?' active':''}" onclick="setItemsSubcat('all')">All</button>
+      ${catCfg.sub.map(s=>`<button class="btn-ghost btn-sm${itemsSubcat===s.id?' active':''}" onclick="setItemsSubcat('${s.id}')">${s.label}</button>`).join('')}
+    </div>`:''}
+    ${itemsSearchActive?`<div style="margin-bottom:20px;"><input type="text" id="items-search-inp" placeholder="Search items…" value="${esc(itemsSearch)}"
+      style="width:100%;max-width:400px;"
+      oninput="itemsSearch=this.value;document.getElementById('items-content').innerHTML=renderItemsContent();"></div>`:''}
+    ${!items.length?`<div class="empty">No items${itemsCatFilter!=='all'?' in '+itemCatLabel(itemsCatFilter):''}${hasSub&&itemsSubcat!=='all'?' / '+itemSubcatLabel(itemsCatFilter,itemsSubcat):''}.</div>`:`
+    <table>
+      <thead><tr>
+        <th>Item</th><th>Category</th><th>Qty</th><th>Quality</th><th>Location</th><th>Added By</th>
+        <th></th>
+      </tr></thead>
+      <tbody>${items.map(i=>{
+        const isWikelo = i.category==='wikelo';
+        const compInfo = i.compType?`<div style="font-size:15px;color:var(--fg);margin-top:2px;">${itemCompDesc(i)}</div>`:'';
+        const subInfo  = i.subcategory&&i.category==='fps_armor'?`<div style="font-size:15px;color:var(--fg);margin-top:2px;">${itemSubcatLabel(i.category,i.subcategory)}</div>`:'';
+        return `<tr>
+          <td style="font-weight:700;">${esc(i.name)}${i.description?`<div style="font-size:15px;font-weight:400;color:var(--fg);">${esc(i.description)}</div>`:''}${compInfo}${subInfo}</td>
+          <td><span class="item-cat-tag">${itemCatLabel(i.category)}</span></td>
+          <td style="font-weight:700;">${i.quantity}</td>
+          <td>${i.quality!=null?i.quality:'—'}</td>
+          <td style="font-size:18px;">${esc(i.location)}${i.system?` <span class="sys-badge">${esc(i.system)}</span>`:''}</td>
+          <td style="color:var(--fg);">${esc(i.addedByName)}</td>
+          <td style="white-space:nowrap;">
+            ${canEdit?`<button class="btn btn-outline btn-sm" style="margin-right:4px;" onclick="openHandOutModal('${esc(i._id)}')">Hand Out</button>`:''}
+            ${isWikelo&&canEdit?`<button class="btn btn-outline btn-sm" style="margin-right:4px;" onclick="openUsedModal('${esc(i._id)}')">Used</button>`:''}
+            ${canEdit?`<button class="btn-del" onclick="deleteNavItem('${esc(i._id)}')">✕</button>`:''}
+          </td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>`}`;
+}
+
+function renderHandedOutList(canEdit) {
+  const items = state.navItems.filter(i=>i.status==='handed_out');
+  if(!items.length) return `<div class="empty">No items have been handed out yet.</div>`;
   return `<table>
-    <thead><tr>
-      <th>Item</th><th>Category</th><th>Qty</th><th>Quality</th><th>Location</th><th>Held By</th><th>Added By</th>
-      ${canEdit?'<th></th>':''}
-    </tr></thead>
-    <tbody>${filtered.map(i=>`<tr>
-      <td style="font-weight:700;">${esc(i.name)}${i.description?`<div style="font-size:18px;font-weight:400;color:var(--fg);">${esc(i.description)}</div>`:''}
-      </td>
-      <td><span class="item-cat-tag">${esc(i.category)}</span></td>
-      <td style="font-weight:700;">${i.quantity}</td>
-      <td>${i.quality!=null?i.quality:'—'}</td>
-      <td>${esc(i.location)}${i.system?` <span class="sys-badge">${esc(i.system)}</span>`:''}
-      </td>
-      <td>${i.heldBy?esc(i.heldBy):'—'}</td>
+    <thead><tr><th>Item</th><th>Category</th><th>Qty</th><th>Given To</th><th>Location</th>${canEdit?'<th></th>':''}</tr></thead>
+    <tbody>${items.map(i=>`<tr>
+      <td style="font-weight:700;">${esc(i.name)}${i.compType?`<div style="font-size:15px;color:var(--fg);">${itemCompDesc(i)}</div>`:''}</td>
+      <td><span class="item-cat-tag">${itemCatLabel(i.category)}</span></td>
+      <td>${i.handedOutQty||i.quantity}</td>
+      <td style="font-weight:700;">${esc(i.handedOutTo||'—')}</td>
+      <td style="font-size:18px;">${esc(i.location)}</td>
+      ${canEdit?`<td><button class="btn-del" onclick="deleteNavItem('${esc(i._id)}')">✕</button></td>`:''}
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+
+function renderUsedList(canEdit) {
+  const items = state.navItems.filter(i=>i.status==='used');
+  if(!items.length) return `<div class="empty">No Wikelo items have been marked as used yet.</div>`;
+  return `<table>
+    <thead><tr><th>Item</th><th>Qty</th><th>Used For</th><th>Added By</th>${canEdit?'<th></th>':''}</tr></thead>
+    <tbody>${items.map(i=>`<tr>
+      <td style="font-weight:700;">${esc(i.name)}</td>
+      <td>${i.quantity}</td>
+      <td style="color:var(--fg);">${esc(i.usedFor||'—')}</td>
       <td style="color:var(--fg);">${esc(i.addedByName)}</td>
       ${canEdit?`<td><button class="btn-del" onclick="deleteNavItem('${esc(i._id)}')">✕</button></td>`:''}
-    </tr>`).join('')}
-    </tbody></table>`;
+    </tr>`).join('')}</tbody>
+  </table>`;
 }
 
+function itemCompDesc(i){
+  const tn = COMP_TYPE_MAP[i.compType]||i.compType||'';
+  const gn = COMP_GRADE_MAP[i.compGrade]||i.compGrade||'';
+  const s  = i.compSize!=null?`S${i.compSize}`:'';
+  const t  = i.compTier||'';
+  return [tn,gn,s,t].filter(Boolean).join(' · ');
+}
+
+function setItemsCat(cat){ itemsCatFilter=cat; itemsSubcat='all'; document.getElementById('items-content').innerHTML=renderItemsContent(); }
+function setItemsSubcat(s){ itemsSubcat=s; document.getElementById('items-content').innerHTML=renderItemsContent(); }
+function toggleItemsSearch(){ itemsSearchActive=!itemsSearchActive; itemsSearch=''; document.getElementById('items-content').innerHTML=renderItemsContent(); setTimeout(()=>{const el=document.getElementById('items-search-inp');if(el)el.focus();},0); }
+
+// ── HAND OUT MODAL ────────────────────────────────────────────────────────────
+function openHandOutModal(itemId) {
+  const item = state.navItems.find(i=>i._id===itemId);
+  if(!item) return;
+  showModal(`
+    <div class="modal-title">Hand Out: ${esc(item.name)}</div>
+    <div style="font-size:18px;color:var(--fg);margin-bottom:20px;">${itemCatLabel(item.category)} &middot; ${item.quantity} available</div>
+    <div class="field"><label class="lbl">Hand out to</label>
+      <input type="text" id="ho-recipient" placeholder="Member name…" autofocus>
+    </div>
+    <div class="field"><label class="lbl">Quantity</label>
+      <input type="number" id="ho-qty" value="${item.quantity}" min="1" max="${item.quantity}" step="1">
+      <div style="font-size:15px;color:var(--fg);margin-top:4px;">Max: ${item.quantity}</div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:8px;">
+      <button class="btn btn-black" onclick="confirmHandOut('${esc(itemId)}',${item.quantity})">Hand Out</button>
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+    </div>`);
+}
+
+async function confirmHandOut(itemId, maxQty) {
+  const recipient = (document.getElementById('ho-recipient')||{value:''}).value.trim();
+  const qty = parseInt((document.getElementById('ho-qty')||{value:'1'}).value)||1;
+  if(!recipient){alert('Enter a recipient name');return;}
+  if(qty<1||qty>maxQty){alert(`Quantity must be between 1 and ${maxQty}`);return;}
+  try {
+    await convexMutation('items:handOut',{sessionToken:state.sessionToken,itemId,handedOutTo:recipient,handedOutQty:qty});
+    closeModal(); toast(`Handed out to ${recipient}`);
+    await refreshAll(); renderPage();
+  } catch(e){alert(e.message);}
+}
+
+// ── USED MODAL (Wikelo) ───────────────────────────────────────────────────────
+function openUsedModal(itemId) {
+  const item = state.navItems.find(i=>i._id===itemId);
+  if(!item) return;
+  showModal(`
+    <div class="modal-title">Mark as Used: ${esc(item.name)}</div>
+    <div class="field"><label class="lbl">Used for</label>
+      <input type="text" id="used-for" placeholder="Brief description of what it was used for…" autofocus>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:8px;">
+      <button class="btn btn-black" onclick="confirmUsed('${esc(itemId)}')">Confirm</button>
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+    </div>`);
+}
+
+async function confirmUsed(itemId) {
+  const usedFor = (document.getElementById('used-for')||{value:''}).value.trim();
+  if(!usedFor){alert('Enter what the item was used for');return;}
+  try {
+    await convexMutation('items:markUsed',{sessionToken:state.sessionToken,itemId,usedFor});
+    closeModal(); toast('Marked as used');
+    await refreshAll(); renderPage();
+  } catch(e){alert(e.message);}
+}
+
+// ── ADD ITEM MODAL ────────────────────────────────────────────────────────────
 function openAddItemModal() {
+  aiCompTypeFilter='all'; aiCompGradeFilter='all'; aiCompSizeFilter='all'; aiCompSearch=''; aiSelectedComp=null;
   showModal(`
     <div class="modal-title">Add Item</div>
-    <div class="field"><label class="lbl">Name</label><input type="text" id="ai-name" placeholder="Item name…"></div>
     <div class="field"><label class="lbl">Category</label>
-      <select id="ai-cat">
-        ${ITEM_CATS.map(c=>`<option value="${c}">${c}</option>`).join('')}
+      <select id="ai-cat" onchange="onAICatChange()">
+        ${ITEM_CATEGORIES_CFG.map(c=>`<option value="${c.id}">${c.label}</option>`).join('')}
       </select>
+    </div>
+    <div id="ai-subcat-wrap" style="display:none;" class="field"><label class="lbl">Subcategory</label>
+      <select id="ai-subcat">
+        <option value="">Select subcategory…</option>
+      </select>
+    </div>
+    <div id="ai-comp-wrap" style="display:none;">
+      ${renderAICompPicker()}
+    </div>
+    <div id="ai-name-wrap" class="field"><label class="lbl">Name</label>
+      <input type="text" id="ai-name" placeholder="Item name…">
     </div>
     <div class="field"><label class="lbl">Description <span style="font-weight:400;">(optional)</span></label>
       <input type="text" id="ai-desc" placeholder="Short description…">
     </div>
     <div class="grid2">
       <div class="field"><label class="lbl">Quantity</label><input type="number" id="ai-qty" value="1" min="1" step="1"></div>
-      <div class="field"><label class="lbl">Quality <span style="font-weight:400;">(optional)</span></label><input type="number" id="ai-quality" placeholder="e.g. 900" min="0" max="1000" step="1"></div>
+      <div class="field"><label class="lbl">Quality <span style="font-weight:400;">(optional, 0–1000)</span></label><input type="number" id="ai-quality" placeholder="e.g. 900" min="0" max="1000" step="1"></div>
     </div>
     <div class="grid2">
       <div class="field"><label class="lbl">System</label>
@@ -1208,31 +1373,112 @@ function openAddItemModal() {
         <select id="ai-loc"><option value="">Select system first…</option></select>
       </div>
     </div>
-    <div class="field"><label class="lbl">Held By <span style="font-weight:400;">(optional)</span></label>
-      <input type="text" id="ai-held" placeholder="Member holding this item…">
-    </div>
     <div style="display:flex;gap:10px;margin-top:8px;">
       <button class="btn btn-black" onclick="confirmAddItem()">Add Item</button>
       <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
     </div>`);
 }
 
+function renderAICompPicker() {
+  const types = [...new Set(COMPONENTS_CATALOG.map(c=>c.type))];
+  const grades = [...new Set(COMPONENTS_CATALOG.map(c=>c.grade))];
+  const sizes = [...new Set(COMPONENTS_CATALOG.map(c=>c.size))].sort((a,b)=>a-b);
+  let filtered = COMPONENTS_CATALOG;
+  if(aiCompTypeFilter!=='all') filtered=filtered.filter(c=>c.type===aiCompTypeFilter);
+  if(aiCompGradeFilter!=='all') filtered=filtered.filter(c=>c.grade===aiCompGradeFilter);
+  if(aiCompSizeFilter!=='all') filtered=filtered.filter(c=>c.size===parseInt(aiCompSizeFilter));
+  if(aiCompSearch.trim()){const q=aiCompSearch.trim().toLowerCase();filtered=filtered.filter(c=>c.name.toLowerCase().includes(q));}
+  return `
+    <div style="font-size:18px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;color:var(--fg);">Select Component</div>
+    ${aiSelectedComp?`<div style="padding:8px 12px;background:#f0f0f0;margin-bottom:10px;font-size:18px;font-weight:700;">
+      Selected: ${esc(aiSelectedComp.name)} &middot; ${COMP_TYPE_MAP[aiSelectedComp.type]||aiSelectedComp.type} &middot; ${COMP_GRADE_MAP[aiSelectedComp.grade]||aiSelectedComp.grade} &middot; S${aiSelectedComp.size} &middot; ${aiSelectedComp.tier}
+    </div>`:''}
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
+      <select id="ai-comp-type" onchange="aiCompTypeFilter=this.value;aiCompGradeFilter='all';aiCompSizeFilter='all';refreshAICompPicker()" style="margin:0;">
+        <option value="all">All Types</option>
+        ${types.map(t=>`<option value="${t}"${aiCompTypeFilter===t?' selected':''}>${COMP_TYPE_MAP[t]||t}</option>`).join('')}
+      </select>
+      <select id="ai-comp-grade" onchange="aiCompGradeFilter=this.value;refreshAICompPicker()" style="margin:0;">
+        <option value="all">All Classes</option>
+        ${grades.map(g=>`<option value="${g}"${aiCompGradeFilter===g?' selected':''}>${COMP_GRADE_MAP[g]||g}</option>`).join('')}
+      </select>
+      <select id="ai-comp-size" onchange="aiCompSizeFilter=this.value;refreshAICompPicker()" style="margin:0;">
+        <option value="all">All Sizes</option>
+        ${sizes.map(s=>`<option value="${s}"${aiCompSizeFilter==s?' selected':''}>S${s}</option>`).join('')}
+      </select>
+    </div>
+    <input type="text" id="ai-comp-search" placeholder="Search component name…" value="${esc(aiCompSearch)}"
+      oninput="aiCompSearch=this.value;refreshAICompPicker()" style="width:100%;margin-bottom:8px;">
+    <div style="max-height:200px;overflow-y:auto;border:1px solid var(--border);margin-bottom:12px;">
+      ${!filtered.length?`<div style="padding:12px;font-size:18px;color:var(--fg);">No components match.</div>`:`
+      <table style="margin:0;">
+        <tbody>${filtered.map(c=>`<tr style="cursor:pointer;${aiSelectedComp&&aiSelectedComp.name===c.name&&aiSelectedComp.type===c.type?'background:#e8e8e8;':''}" onclick="selectAIComp('${esc(c.name)}','${c.type}','${c.grade}',${c.size},'${c.tier}')">
+          <td style="font-weight:700;font-size:18px;">${esc(c.name)}</td>
+          <td style="font-size:15px;color:var(--fg);">${COMP_TYPE_MAP[c.type]||c.type}</td>
+          <td style="font-size:15px;color:var(--fg);">${COMP_GRADE_MAP[c.grade]||c.grade}</td>
+          <td style="font-size:15px;">S${c.size}</td>
+          <td style="font-size:15px;font-weight:700;">${c.tier}</td>
+        </tr>`).join('')}</tbody>
+      </table>`}
+    </div>`;
+}
+
+function refreshAICompPicker(){
+  const wrap=document.getElementById('ai-comp-wrap');
+  if(wrap) wrap.innerHTML=renderAICompPicker();
+}
+
+function selectAIComp(name, type, grade, size, tier) {
+  aiSelectedComp={name, type, grade, size:parseInt(size), tier};
+  const nameEl=document.getElementById('ai-name');
+  if(nameEl) nameEl.value=name;
+  refreshAICompPicker();
+}
+
+function onAICatChange() {
+  const cat=(document.getElementById('ai-cat')||{value:''}).value;
+  const cfg=itemCatCfg(cat);
+  const subcatWrap=document.getElementById('ai-subcat-wrap');
+  const compWrap=document.getElementById('ai-comp-wrap');
+  const nameWrap=document.getElementById('ai-name-wrap');
+  if(subcatWrap) {
+    if(cfg&&cfg.sub.length>0){
+      subcatWrap.style.display='';
+      const sel=document.getElementById('ai-subcat');
+      if(sel) sel.innerHTML=`<option value="">Select subcategory…</option>`+cfg.sub.map(s=>`<option value="${s.id}">${s.label}</option>`).join('');
+    } else {
+      subcatWrap.style.display='none';
+    }
+  }
+  if(compWrap) compWrap.style.display=(cat==='ship_component'?'':'none');
+  if(nameWrap) nameWrap.style.display=(cat==='ship_component'?'none':'');
+  if(cat==='ship_component'){
+    aiSelectedComp=null; aiCompTypeFilter='all'; aiCompGradeFilter='all'; aiCompSizeFilter='all'; aiCompSearch='';
+    if(compWrap) compWrap.innerHTML=renderAICompPicker();
+  }
+}
+
 async function confirmAddItem() {
-  const name=(document.getElementById('ai-name')||{value:''}).value.trim();
-  const category=(document.getElementById('ai-cat')||{value:'FPS'}).value;
+  const category=(document.getElementById('ai-cat')||{value:'fps_armor'}).value;
+  let name,compType,compGrade,compSize,compTier;
+  if(category==='ship_component'){
+    if(!aiSelectedComp){alert('Select a component from the list');return;}
+    name=aiSelectedComp.name; compType=aiSelectedComp.type; compGrade=aiSelectedComp.grade; compSize=aiSelectedComp.size; compTier=aiSelectedComp.tier;
+  } else {
+    name=(document.getElementById('ai-name')||{value:''}).value.trim();
+    if(!name){alert('Enter an item name');return;}
+  }
+  const subcategory=(document.getElementById('ai-subcat')||{value:''}).value||undefined;
   const description=(document.getElementById('ai-desc')||{value:''}).value.trim()||undefined;
   const quantity=parseInt((document.getElementById('ai-qty')||{value:'1'}).value)||1;
   const qualityRaw=(document.getElementById('ai-quality')||{value:''}).value;
   const quality=qualityRaw?parseInt(qualityRaw):undefined;
   const system=(document.getElementById('ai-sys')||{value:''}).value||undefined;
   const location=(document.getElementById('ai-loc')||{value:''}).value||'Unknown';
-  const heldBy=(document.getElementById('ai-held')||{value:''}).value.trim()||undefined;
-  if(!name){alert('Enter an item name');return;}
   try {
-    await convexMutation('items:create',{sessionToken:state.sessionToken,name,category,description,quantity,quality,system,location,heldBy});
-    closeModal();
-    toast('Item added');
-    await refreshAll();
+    await convexMutation('items:create',{sessionToken:state.sessionToken,name,category,subcategory,description,quantity,quality,system,location,compType,compGrade,compSize,compTier});
+    closeModal(); toast('Item added');
+    await refreshAll(); renderPage();
   } catch(e){alert(e.message);}
 }
 
@@ -1241,7 +1487,7 @@ async function deleteNavItem(itemId) {
   try {
     await convexMutation('items:remove',{sessionToken:state.sessionToken,itemId});
     toast('Item removed');
-    await refreshAll();
+    await refreshAll(); renderPage();
   } catch(e){alert(e.message);}
 }
 
@@ -1297,7 +1543,7 @@ function renderArchiveTable(openMonths){
 
 function renderMonthRows(entries){
   const admin=isAdmin(state.user);
-  const labels={user_joined:'Joined',role_approved:'Role Approved',role_denied:'Role Denied',admin_granted:'Admin Granted',member_removed:'Member Removed',task_created:'Task Created',task_closed:'Task Closed',item_added:'Item Added',item_updated:'Item Updated',item_removed:'Item Removed',lottery_opened:'Lottery Opened',lottery_drawn:'Lottery Drawn',lottery_pick:'Lottery Pick'};
+  const labels={user_joined:'Joined',role_approved:'Role Approved',role_denied:'Role Denied',admin_granted:'Admin Granted',member_removed:'Member Removed',task_created:'Task Created',task_closed:'Task Closed',item_added:'Item Added',item_removed:'Item Removed',item_handed_out:'Handed Out',item_used:'Item Used',lottery_opened:'Lottery Opened',lottery_drawn:'Lottery Drawn',lottery_pick:'Lottery Pick'};
   return `<table>
     <thead><tr><th>Date</th><th>Action</th><th>User</th><th>Details</th>${admin?'<th></th>':''}</tr></thead>
     <tbody>${entries.map(e=>`<tr>
@@ -1318,9 +1564,10 @@ function fmtArchiveDetails(e){
     case 'member_removed':   return `Removed <strong>${esc(d.targetUsername)}</strong>`;
     case 'task_created':     return `<strong>${esc(d.title)}</strong> &middot; ${esc(d.priority)}`;
     case 'task_closed':      return `Closed: <strong>${esc(d.title)}</strong>`;
-    case 'item_added':       return `<strong>${esc(d.name)}</strong> &middot; ${esc(d.category)} &middot; qty ${d.quantity}`;
-    case 'item_updated':     return `<strong>${esc(d.name)}</strong>`;
+    case 'item_added':       return `<strong>${esc(d.name)}</strong> &middot; ${itemCatLabel(d.category)} &middot; qty ${d.quantity}`;
     case 'item_removed':     return `<strong>${esc(d.name)}</strong>`;
+    case 'item_handed_out':  return `<strong>${esc(d.name)}</strong> &middot; qty ${d.handedOutQty} &middot; to <strong>${esc(d.handedOutTo)}</strong>`;
+    case 'item_used':        return `<strong>${esc(d.name)}</strong> &middot; ${esc(d.usedFor)}`;
     case 'lottery_opened':   return `<strong>${esc(d.title)}</strong> &middot; ${d.packages} package${d.packages!==1?'s':''}`;
     case 'lottery_drawn':    return `<strong>${esc(d.title)}</strong> &middot; ${d.packagesCount} package${d.packagesCount!==1?'s':''} drawn`;
     case 'lottery_pick':     return `<strong>${esc(d.lotteryTitle)}</strong> &middot; Package #${(d.pkgId||'').replace('pkg_','')} &middot; ${d.value} pts`;
@@ -1339,7 +1586,7 @@ function pageMember() {
 
   const activeRoles = (u.roles||[]).filter(r=>r!=='removed');
   const recentActivity = myLog.slice(0,10);
-  const logLabels = {user_joined:'Joined',role_approved:'Role Approved',role_denied:'Role Denied',admin_granted:'Admin Granted',member_removed:'Member Removed',task_created:'Task Created',task_closed:'Task Closed',item_added:'Item Added',item_updated:'Item Updated',item_removed:'Item Removed'};
+  const logLabels = {user_joined:'Joined',role_approved:'Role Approved',role_denied:'Role Denied',admin_granted:'Admin Granted',member_removed:'Member Removed',task_created:'Task Created',task_closed:'Task Closed',item_added:'Item Added',item_removed:'Item Removed',item_handed_out:'Handed Out',item_used:'Item Used'};
 
   return `
     <div class="page-head">

@@ -17,7 +17,8 @@ export default defineSchema({
   // Navy inventory — all items the org has
   items: defineTable({
     name: v.string(),
-    category: v.string(),         // "FPS" | "ARMA" | "Components" | ...
+    category: v.string(),           // "fps_armor" | "fps_weapon" | "ship_component" | "ship_weapon" | "wikelo"
+    subcategory: v.optional(v.string()), // fps_armor: "standard_issue" | "standard_heavy"
     description: v.optional(v.string()),
     quantity: v.number(),
     quality: v.optional(v.number()),
@@ -25,8 +26,18 @@ export default defineSchema({
     system: v.optional(v.string()),
     addedBy: v.id("users"),
     addedByName: v.string(),
-    heldBy: v.optional(v.string()), // name of member currently holding it
-    status: v.string(),             // "available" | "in_use" | "removed"
+    heldBy: v.optional(v.string()),
+    // Handout fields
+    handedOutTo: v.optional(v.string()),
+    handedOutQty: v.optional(v.number()),
+    // Wikelo used fields
+    usedFor: v.optional(v.string()),
+    // Ship component metadata
+    compType: v.optional(v.string()),   // "COOL" | "POWR" | "QDRV" | "SHLD"
+    compGrade: v.optional(v.string()),  // "Mil" | "Civ" | "Ind" | "Cmp" | "Sth"
+    compSize: v.optional(v.number()),   // 0-3
+    compTier: v.optional(v.string()),   // "A" | "B" | "C"
+    status: v.string(),                 // "available" | "handed_out" | "used" | "removed"
   }).index("by_status", ["status"]),
 
   // Projects / tasks
