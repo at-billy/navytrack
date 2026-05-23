@@ -1027,9 +1027,6 @@ function renderNav() {
     el.innerHTML=`
       <div id="nav-primary">
         <div class="nav-main active" onclick="goTo('overview')">NAVY</div>
-        <div class="nav-main" style="opacity:.25;cursor:not-allowed;" title="Members only">TASK</div>
-        <div class="nav-main" style="opacity:.25;cursor:not-allowed;" title="Members only">ITEMS</div>
-        <div class="nav-main outline" style="opacity:.25;cursor:not-allowed;" title="Members only">LOG</div>
       </div>
       <div id="nav-sub">${sub}</div>`;
     if(window._navScrollUpdate) window._navScrollUpdate();
