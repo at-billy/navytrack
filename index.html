@@ -1238,6 +1238,24 @@ function itemCatCfg(id){ return ITEM_CATEGORIES_CFG.find(c=>c.id===id)||null; }
 function itemCatLabel(id){ return itemCatCfg(id)?.label||id||'—'; }
 function itemSubcatLabel(catId, subId){ return itemCatCfg(catId)?.sub.find(s=>s.id===subId)?.label||subId||'—'; }
 
+// FPS Armor preset item names per subcategory
+const FPS_ARMOR_PRESETS = {
+  standard_issue: [
+    'Morozov-SH Helmet Brushdrift',
+    'Truedef-Pro Arms Aqua/Black',
+    'Truedef-Pro Core Aqua/Black',
+    'Truedef-Pro Legs Aqua/Black',
+  ],
+  standard_heavy: [
+    'Defiance Arms Tactical',
+    'Defiance Core Tactical',
+    'Defiance Legs Tactical',
+  ],
+};
+
+// Wikelo preset item names
+const WIKELO_PRESETS = ['DCHS-01','DCHS-02','DCHS-03','DCHS-04','DCHS-05','DCHS-06','DCHS-07'];
+
 let itemsTab       = 'inventory'; // 'inventory' | 'handed_out' | 'used'
 let itemsCatFilter = 'all';
 let itemsSubcat    = 'all';
@@ -1248,6 +1266,7 @@ let itemsSearchActive = false;
 let aiCompTypeFilter = 'all';
 let aiCompGradeFilter = 'all';
 let aiCompSizeFilter = 'all';
+let aiCompTierFilter = 'all';
 let aiCompSearch = '';
 let aiSelectedComp = null; // {name, type, typeName, grade, gradeName, size, tier}
 
@@ -1440,7 +1459,7 @@ async function confirmUsed(itemId) {
 
 // ── ADD ITEM MODAL ────────────────────────────────────────────────────────────
 function openAddItemModal() {
-  aiCompTypeFilter='all'; aiCompGradeFilter='all'; aiCompSizeFilter='all'; aiCompSearch=''; aiSelectedComp=null;
+  aiCompTypeFilter='all'; aiCompGradeFilter='all'; aiCompSizeFilter='all'; aiCompTierFilter='all'; aiCompSearch=''; aiSelectedComp=null;
   showModal(`
     <div class="modal-title">Add Item</div>
     <div class="field"><label class="lbl">Category</label>
@@ -1449,20 +1468,28 @@ function openAddItemModal() {
       </select>
     </div>
     <div id="ai-subcat-wrap" style="display:none;" class="field"><label class="lbl">Subcategory</label>
-      <select id="ai-subcat">
+      <select id="ai-subcat" onchange="onAISubcatChange()">
         <option value="">Select subcategory…</option>
       </select>
     </div>
+    <div id="ai-armor-presets" style="display:none;margin-bottom:8px;"></div>
     <div id="ai-comp-wrap" style="display:none;">
       ${renderAICompPicker()}
     </div>
-    <div id="ai-name-wrap" class="field"><label class="lbl">Name</label>
+    <div id="ai-wikelo-wrap" style="display:none;" class="field"><label class="lbl">Item</label>
+      <select id="ai-wikelo-preset" onchange="onWikeloPresetChange()">
+        <option value="">Select preset…</option>
+        ${WIKELO_PRESETS.map(p=>`<option value="${p}">${p}</option>`).join('')}
+        <option value="__custom__">Custom…</option>
+      </select>
+    </div>
+    <div id="ai-name-wrap" style="display:none;" class="field"><label class="lbl">Name</label>
       <input type="text" id="ai-name" placeholder="Item name…">
     </div>
-    <div class="field"><label class="lbl">Description <span style="font-weight:400;">(optional)</span></label>
+    <div id="ai-desc-wrap" style="display:none;" class="field"><label class="lbl">Description <span style="font-weight:400;">(optional)</span></label>
       <input type="text" id="ai-desc" placeholder="Short description…">
     </div>
-    <div class="grid2">
+    <div id="ai-qty-wrap" class="grid2">
       <div class="field"><label class="lbl">Quantity</label><input type="number" id="ai-qty" value="1" min="1" step="1"></div>
       <div class="field"><label class="lbl">Quality <span style="font-weight:400;">(optional, 0–1000)</span></label><input type="number" id="ai-quality" placeholder="e.g. 900" min="0" max="1000" step="1"></div>
     </div>
@@ -1481,24 +1508,27 @@ function openAddItemModal() {
       <button class="btn btn-black" onclick="confirmAddItem()">Add Item</button>
       <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
     </div>`);
+  onAICatChange();
 }
 
 function renderAICompPicker() {
   const types = [...new Set(COMPONENTS_CATALOG.map(c=>c.type))];
   const grades = [...new Set(COMPONENTS_CATALOG.map(c=>c.grade))];
   const sizes = [...new Set(COMPONENTS_CATALOG.map(c=>c.size))].sort((a,b)=>a-b);
+  const tiers = ['A','B','C'];
   let filtered = COMPONENTS_CATALOG;
   if(aiCompTypeFilter!=='all') filtered=filtered.filter(c=>c.type===aiCompTypeFilter);
   if(aiCompGradeFilter!=='all') filtered=filtered.filter(c=>c.grade===aiCompGradeFilter);
   if(aiCompSizeFilter!=='all') filtered=filtered.filter(c=>c.size===parseInt(aiCompSizeFilter));
+  if(aiCompTierFilter!=='all') filtered=filtered.filter(c=>c.tier===aiCompTierFilter);
   if(aiCompSearch.trim()){const q=aiCompSearch.trim().toLowerCase();filtered=filtered.filter(c=>c.name.toLowerCase().includes(q));}
   return `
     <div style="font-size:18px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;color:var(--fg);">Select Component</div>
     ${aiSelectedComp?`<div style="padding:8px 12px;background:#f0f0f0;margin-bottom:10px;font-size:18px;font-weight:700;">
-      Selected: ${esc(aiSelectedComp.name)} &middot; ${COMP_TYPE_MAP[aiSelectedComp.type]||aiSelectedComp.type} &middot; ${COMP_GRADE_MAP[aiSelectedComp.grade]||aiSelectedComp.grade} &middot; S${aiSelectedComp.size} &middot; ${aiSelectedComp.tier}
+      Selected: ${esc(aiSelectedComp.name)} &middot; ${COMP_TYPE_MAP[aiSelectedComp.type]||aiSelectedComp.type} &middot; ${COMP_GRADE_MAP[aiSelectedComp.grade]||aiSelectedComp.grade} &middot; S${aiSelectedComp.size} &middot; Grade ${aiSelectedComp.tier}
     </div>`:''}
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
-      <select id="ai-comp-type" onchange="aiCompTypeFilter=this.value;aiCompGradeFilter='all';aiCompSizeFilter='all';refreshAICompPicker()" style="margin:0;">
+      <select id="ai-comp-type" onchange="aiCompTypeFilter=this.value;aiCompGradeFilter='all';aiCompSizeFilter='all';aiCompTierFilter='all';refreshAICompPicker()" style="margin:0;">
         <option value="all">All Types</option>
         ${types.map(t=>`<option value="${t}"${aiCompTypeFilter===t?' selected':''}>${COMP_TYPE_MAP[t]||t}</option>`).join('')}
       </select>
@@ -1509,6 +1539,10 @@ function renderAICompPicker() {
       <select id="ai-comp-size" onchange="aiCompSizeFilter=this.value;refreshAICompPicker()" style="margin:0;">
         <option value="all">All Sizes</option>
         ${sizes.map(s=>`<option value="${s}"${aiCompSizeFilter==s?' selected':''}>S${s}</option>`).join('')}
+      </select>
+      <select id="ai-comp-tier" onchange="aiCompTierFilter=this.value;refreshAICompPicker()" style="margin:0;">
+        <option value="all">All Grades</option>
+        ${tiers.map(t=>`<option value="${t}"${aiCompTierFilter===t?' selected':''}>Grade ${t}</option>`).join('')}
       </select>
     </div>
     <input type="text" id="ai-comp-search" placeholder="Search component name…" value="${esc(aiCompSearch)}"
@@ -1521,7 +1555,7 @@ function renderAICompPicker() {
           <td style="font-size:15px;color:var(--fg);">${COMP_TYPE_MAP[c.type]||c.type}</td>
           <td style="font-size:15px;color:var(--fg);">${COMP_GRADE_MAP[c.grade]||c.grade}</td>
           <td style="font-size:15px;">S${c.size}</td>
-          <td style="font-size:15px;font-weight:700;">${c.tier}</td>
+          <td style="font-size:15px;font-weight:700;">Gr. ${c.tier}</td>
         </tr>`).join('')}</tbody>
       </table>`}
     </div>`;
@@ -1542,10 +1576,20 @@ function selectAIComp(name, type, grade, size, tier) {
 function onAICatChange() {
   const cat=(document.getElementById('ai-cat')||{value:''}).value;
   const cfg=itemCatCfg(cat);
-  const subcatWrap=document.getElementById('ai-subcat-wrap');
-  const compWrap=document.getElementById('ai-comp-wrap');
-  const nameWrap=document.getElementById('ai-name-wrap');
-  if(subcatWrap) {
+
+  const subcatWrap  = document.getElementById('ai-subcat-wrap');
+  const armorWrap   = document.getElementById('ai-armor-presets');
+  const compWrap    = document.getElementById('ai-comp-wrap');
+  const wikeloWrap  = document.getElementById('ai-wikelo-wrap');
+  const nameWrap    = document.getElementById('ai-name-wrap');
+  const descWrap    = document.getElementById('ai-desc-wrap');
+  const qtyWrap     = document.getElementById('ai-qty-wrap');
+
+  // Reset armor presets
+  if(armorWrap){ armorWrap.style.display='none'; armorWrap.innerHTML=''; }
+
+  // Subcategory dropdown
+  if(subcatWrap){
     if(cfg&&cfg.sub.length>0){
       subcatWrap.style.display='';
       const sel=document.getElementById('ai-subcat');
@@ -1554,36 +1598,127 @@ function onAICatChange() {
       subcatWrap.style.display='none';
     }
   }
+
+  // Ship component picker
   if(compWrap) compWrap.style.display=(cat==='ship_component'?'':'none');
-  if(nameWrap) nameWrap.style.display=(cat==='ship_component'?'none':'');
   if(cat==='ship_component'){
-    aiSelectedComp=null; aiCompTypeFilter='all'; aiCompGradeFilter='all'; aiCompSizeFilter='all'; aiCompSearch='';
+    aiSelectedComp=null; aiCompTypeFilter='all'; aiCompGradeFilter='all'; aiCompSizeFilter='all'; aiCompTierFilter='all'; aiCompSearch='';
     if(compWrap) compWrap.innerHTML=renderAICompPicker();
+  }
+
+  // Wikelo preset selector
+  if(wikeloWrap) wikeloWrap.style.display=(cat==='wikelo'?'':'none');
+
+  // Name field: shown only for fps_weapon, ship_weapon, and wikelo-custom
+  if(nameWrap) nameWrap.style.display=(cat==='fps_weapon'||cat==='ship_weapon'?'':'none');
+
+  // Description: wikelo only
+  if(descWrap) descWrap.style.display=(cat==='wikelo'?'':'none');
+
+  // Qty/quality row: hidden for fps_armor (each preset has its own qty input)
+  if(qtyWrap) qtyWrap.style.display=(cat==='fps_armor'?'none':'');
+}
+
+function onAISubcatChange() {
+  const cat=(document.getElementById('ai-cat')||{value:''}).value;
+  const subcat=(document.getElementById('ai-subcat')||{value:''}).value;
+  if(cat!=='fps_armor') return;
+  const wrap=document.getElementById('ai-armor-presets');
+  if(!wrap) return;
+  if(subcat && FPS_ARMOR_PRESETS[subcat]){
+    wrap.style.display='';
+    wrap.innerHTML=renderArmorPresets(subcat);
+  } else {
+    wrap.style.display='none';
+    wrap.innerHTML='';
+  }
+}
+
+function renderArmorPresets(subcat) {
+  const items = FPS_ARMOR_PRESETS[subcat]||[];
+  return `<div style="margin-bottom:4px;">`+items.map((name,i)=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);">
+      <input type="checkbox" id="armor-preset-${i}" value="${esc(name)}" style="width:18px;height:18px;flex-shrink:0;cursor:pointer;">
+      <label for="armor-preset-${i}" style="flex:1;font-size:18px;cursor:pointer;">${esc(name)}</label>
+      <div style="display:flex;align-items:center;gap:4px;">
+        <label style="font-size:15px;color:var(--fg);">Qty</label>
+        <input type="number" id="armor-qty-${i}" value="1" min="1" step="1" style="width:64px;">
+      </div>
+    </div>`).join('')+`</div>`;
+}
+
+function onWikeloPresetChange() {
+  const val=(document.getElementById('ai-wikelo-preset')||{value:''}).value;
+  const nameWrap=document.getElementById('ai-name-wrap');
+  const nameEl=document.getElementById('ai-name');
+  if(val==='__custom__'){
+    if(nameWrap) nameWrap.style.display='';
+    if(nameEl){ nameEl.value=''; nameEl.focus(); }
+  } else {
+    if(nameWrap) nameWrap.style.display='none';
+    if(nameEl) nameEl.value=val||'';
   }
 }
 
 async function confirmAddItem() {
   const category=(document.getElementById('ai-cat')||{value:'fps_armor'}).value;
+  const system=(document.getElementById('ai-sys')||{value:''}).value||undefined;
+  const location=(document.getElementById('ai-loc')||{value:''}).value||'Unknown';
+
+  // ── FPS Armor: bulk-add checked presets ──
+  if(category==='fps_armor'){
+    const subcat=(document.getElementById('ai-subcat')||{value:''}).value;
+    if(!subcat){alert('Select a subcategory');return;}
+    const presets=FPS_ARMOR_PRESETS[subcat]||[];
+    const toAdd=[];
+    for(let i=0;i<presets.length;i++){
+      const cb=document.getElementById(`armor-preset-${i}`);
+      if(cb&&cb.checked){
+        const qty=parseInt((document.getElementById(`armor-qty-${i}`)||{value:'1'}).value)||1;
+        toAdd.push({name:presets[i],qty});
+      }
+    }
+    if(!toAdd.length){alert('Select at least one item');return;}
+    try{
+      for(const item of toAdd){
+        await convexMutation('items:create',{sessionToken:state.sessionToken,name:item.name,category,subcategory:subcat,quantity:item.qty,location,system});
+      }
+      closeModal(); toast(`${toAdd.length} item${toAdd.length>1?'s':''} added`);
+      await refreshAll(); renderPage();
+    }catch(e){alert(e.message);}
+    return;
+  }
+
   let name,compType,compGrade,compSize,compTier;
+
   if(category==='ship_component'){
     if(!aiSelectedComp){alert('Select a component from the list');return;}
     name=aiSelectedComp.name; compType=aiSelectedComp.type; compGrade=aiSelectedComp.grade; compSize=aiSelectedComp.size; compTier=aiSelectedComp.tier;
+  } else if(category==='wikelo'){
+    const preset=(document.getElementById('ai-wikelo-preset')||{value:''}).value;
+    if(!preset){alert('Select an item or choose Custom');return;}
+    if(preset==='__custom__'){
+      name=(document.getElementById('ai-name')||{value:''}).value.trim();
+      if(!name){alert('Enter an item name');return;}
+    } else {
+      name=preset;
+    }
   } else {
+    // fps_weapon, ship_weapon
     name=(document.getElementById('ai-name')||{value:''}).value.trim();
     if(!name){alert('Enter an item name');return;}
   }
+
   const subcategory=(document.getElementById('ai-subcat')||{value:''}).value||undefined;
   const description=(document.getElementById('ai-desc')||{value:''}).value.trim()||undefined;
   const quantity=parseInt((document.getElementById('ai-qty')||{value:'1'}).value)||1;
   const qualityRaw=(document.getElementById('ai-quality')||{value:''}).value;
   const quality=qualityRaw?parseInt(qualityRaw):undefined;
-  const system=(document.getElementById('ai-sys')||{value:''}).value||undefined;
-  const location=(document.getElementById('ai-loc')||{value:''}).value||'Unknown';
-  try {
+  try{
     await convexMutation('items:create',{sessionToken:state.sessionToken,name,category,subcategory,description,quantity,quality,system,location,compType,compGrade,compSize,compTier});
     closeModal(); toast('Item added');
     await refreshAll(); renderPage();
-  } catch(e){alert(e.message);}
+  }catch(e){alert(e.message);}
 }
 
 async function deleteNavItem(itemId) {
