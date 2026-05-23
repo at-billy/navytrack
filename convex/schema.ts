@@ -102,6 +102,25 @@ export default defineSchema({
     status: v.string(),    // "pending" | "reviewed"
   }).index("by_userId", ["userId"]),
 
+  // Logistics move tasks
+  logistics: defineTable({
+    status: v.string(), // "open" | "completed"
+    createdBy: v.id("users"),
+    createdByName: v.string(),
+    destinationSystem: v.optional(v.string()),
+    destinationLocation: v.string(),
+    storedBy: v.string(), // who will store the items at destination
+    items: v.array(v.object({
+      itemId: v.id("items"),
+      name: v.string(),
+      category: v.string(),
+      fromSystem: v.optional(v.string()),
+      fromLocation: v.string(),
+    })),
+    completedBy: v.optional(v.id("users")),
+    completedByName: v.optional(v.string()),
+  }).index("by_status", ["status"]),
+
   archive: defineTable({
     type: v.string(),
     userId: v.id("users"),

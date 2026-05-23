@@ -728,7 +728,7 @@ function compDefaultValue(comp) {
 // ─── CONFIG / STATE ───────────────────────────────────────────────────────────
 let CONVEX_URL = localStorage.getItem('navytrack_url') || 'https://colorless-stoat-737.eu-west-1.convex.cloud';
 let currentPage = 'overview';
-const state = { user: null, sessionToken: null, navItems: [], archive: [], allUsers: [], tasks: [], lotteries: [], applications: [] };
+const state = { user: null, sessionToken: null, navItems: [], archive: [], allUsers: [], tasks: [], lotteries: [], applications: [], logistics: [] };
 let tasksFilter = 'open';
 let tasksSearchActive = false;
 let tasksSearch = '';
@@ -806,13 +806,14 @@ function locationOptions(system) {
 // ─── POLLING / DATA ───────────────────────────────────────────────────────────
 async function refreshAll(silent=false) {
   try {
-    const [navItems, archive, allUsers, tasks, lotteries, applications] = await Promise.all([
+    const [navItems, archive, allUsers, tasks, lotteries, applications, logistics] = await Promise.all([
       convexQuery('items:getAll'),
       convexQuery('archive:getAll'),
       convexQuery('users:getAllUsers'),
       convexQuery('tasks:getAll'),
       convexQuery('lotteries:getAll'),
       convexQuery('applications:getAll'),
+      convexQuery('logistics:getAll'),
     ]);
     state.navItems      = navItems      || [];
     state.archive       = archive       || [];
@@ -820,6 +821,7 @@ async function refreshAll(silent=false) {
     state.tasks         = tasks         || [];
     state.lotteries     = lotteries     || [];
     state.applications  = applications  || [];
+    state.logistics     = logistics     || [];
     // Sync logged-in user's roles from server
     if(state.user) {
       const fresh=state.allUsers.find(u=>u._id===state.user._id);
@@ -868,6 +870,10 @@ function updateLiveView() {
       const pw=document.getElementById('page-wrap');
       if(pw) pw.innerHTML=`<div class="page">${pageOverview()}</div>`;
     }
+  }
+  if (currentPage==='items' && itemsView==='logistics' && !logisticsDetailId) {
+    const pw=document.getElementById('page-wrap');
+    if(pw) pw.innerHTML=`<div class="page">${pageLogistics()}</div>`;
   }
   // Sync nav for role changes (e.g. crafter approved)
   renderNav();
@@ -1058,7 +1064,10 @@ function renderNav() {
       <div class="nav-sub-item${tasksFilter==='closed'&&!tasksSearchActive?' active':''}" onclick="setTasksFilter('closed')">Closed</div>
       <div class="nav-sub-item${tasksSearchActive?' active':''}" onclick="toggleTaskSearch()">Search</div>`;
   } else if(main==='items'){
-    sub=`<div class="nav-sub-item active">Items</div>`;
+    const openLogistics = state.logistics.filter(l=>l.status==='open').length;
+    sub=`
+      <div class="nav-sub-item${itemsView==='inventory'?' active':''}" onclick="setItemsView('inventory')">Inventory</div>
+      <div class="nav-sub-item${itemsView==='logistics'?' active':''}" onclick="setItemsView('logistics')">Logistics${openLogistics?` (${openLogistics})`:''}</div>`;
   } else if(main==='log'){
     const openLotteries=state.lotteries.filter(l=>l.status==='open'||l.status==='drawn').length;
     sub=`
@@ -1263,6 +1272,8 @@ const FPS_ARMOR_PRESETS = {
 // Wikelo preset item names
 const WIKELO_PRESETS = ['DCHS-01','DCHS-02','DCHS-03','DCHS-04','DCHS-05','DCHS-06','DCHS-07'];
 
+let itemsView      = 'inventory'; // 'inventory' | 'logistics'
+let logisticsDetailId = null;
 let itemsTab       = 'inventory'; // 'inventory' | 'handed_out' | 'used'
 let itemsCatFilter = 'all';
 let itemsSubcat    = 'all';
@@ -1277,7 +1288,10 @@ let aiCompTierFilter = 'all';
 let aiCompSearch = '';
 let aiSelectedComp = null; // {name, type, typeName, grade, gradeName, size, tier}
 
+function setItemsView(v){ itemsView=v; logisticsDetailId=null; renderNav(); renderPage(); }
+
 function pageItems() {
+  if(itemsView==='logistics') return pageLogistics();
   const u = state.user;
   const canAdd = u.roles.some(r=>['admin','command','core','member'].includes(r));
   const allItems = state.navItems;
@@ -1309,6 +1323,172 @@ function renderItemsContent() {
   if(itemsTab==='handed_out') return renderHandedOutList();
   if(itemsTab==='used')       return renderUsedList();
   return renderInventoryList();
+}
+
+// ── LOGISTICS PAGE ────────────────────────────────────────────────────────────
+function pageLogistics() {
+  if(logisticsDetailId) return pageLogisticsDetail(logisticsDetailId);
+  const u = state.user;
+  const canDo = u.roles.some(r=>['admin','command','core','member'].includes(r));
+  const open   = state.logistics.filter(l=>l.status==='open');
+  const closed = state.logistics.filter(l=>l.status==='completed');
+  return `
+    <div class="page-head">
+      <div class="page-head-left">
+        <div class="page-title">Logistics</div>
+        <div class="page-sub">${open.length} open &middot; ${closed.length} completed</div>
+      </div>
+      ${canDo?`<button class="btn btn-black" onclick="openNewLogisticsModal()">+ New Task</button>`:''}
+    </div>
+    ${!open.length&&!closed.length?`<div class="empty" style="margin-top:48px;">No logistics tasks yet.</div>`:''}
+    ${open.length?`
+      <div style="margin-top:32px;">
+        <div style="font-size:13px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--fg);margin-bottom:12px;">Open</div>
+        ${open.map(t=>renderLogisticsRow(t)).join('')}
+      </div>`:''}
+    ${closed.length?`
+      <div style="margin-top:32px;">
+        <div style="font-size:13px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--fg);margin-bottom:12px;">Completed</div>
+        ${closed.map(t=>renderLogisticsRow(t)).join('')}
+      </div>`:''}`;
+}
+
+function renderLogisticsRow(t) {
+  const statusDot = t.status==='open'
+    ? `<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#22c55e;margin-right:8px;"></span>`
+    : `<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#94a3b8;margin-right:8px;"></span>`;
+  return `<div onclick="logisticsDetailId='${esc(t._id)}';renderPage();" style="padding:14px 18px;border:1px solid var(--border);margin-bottom:8px;cursor:pointer;transition:background .1s;" onmouseover="this.style.background='var(--hover)'" onmouseout="this.style.background=''">
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <div style="font-size:19px;font-weight:700;">${statusDot}${esc(t.items.length)} item${t.items.length!==1?'s':''} &rarr; ${esc(t.destinationLocation)}${t.destinationSystem?` <span style="font-weight:400;font-size:15px;color:var(--fg);">(${esc(t.destinationSystem)})</span>`:''}</div>
+      <div style="font-size:14px;color:var(--fg);">${t.status==='open'?'Open':'Completed'}</div>
+    </div>
+    <div style="font-size:15px;color:var(--fg);margin-top:4px;">Created by ${esc(t.createdByName)} &middot; Stored by ${esc(t.storedBy)}${t.completedByName?` &middot; Completed by ${esc(t.completedByName)}`:''}</div>
+  </div>`;
+}
+
+function pageLogisticsDetail(id) {
+  const t = state.logistics.find(l=>l._id===id);
+  if(!t) return `<div class="page-head"><button class="btn btn-outline" onclick="logisticsDetailId=null;renderPage();">&larr; Back</button></div><div class="empty">Task not found.</div>`;
+  const u = state.user;
+  const canComplete = t.status==='open' && u.roles.some(r=>['admin','command','core','member'].includes(r));
+  const dest = t.destinationLocation+(t.destinationSystem?` (${t.destinationSystem})`:'');
+  return `
+    <div class="page-head">
+      <div class="page-head-left">
+        <button class="btn btn-outline" style="margin-bottom:8px;" onclick="logisticsDetailId=null;renderPage();">&larr; Back</button>
+        <div class="page-title" style="font-size:clamp(22px,4vw,38px);">Move Task</div>
+        <div class="page-sub">
+          ${t.status==='open'?'Open':'Completed'} &middot;
+          Created by ${esc(t.createdByName)} &middot;
+          Stored by ${esc(t.storedBy)}
+          ${t.completedByName?`&middot; Completed by ${esc(t.completedByName)}`:''}
+        </div>
+      </div>
+      ${canComplete?`<button class="btn btn-black" onclick="openCompleteLogisticsModal('${esc(t._id)}')">Complete Task</button>`:''}
+    </div>
+
+    <div style="margin-top:24px;padding:14px 18px;background:var(--hover);border:1px solid var(--border);margin-bottom:28px;">
+      <div style="font-size:13px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--fg);margin-bottom:4px;">Destination</div>
+      <div style="font-size:22px;font-weight:700;">${esc(dest)}</div>
+    </div>
+
+    <div style="font-size:13px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--fg);margin-bottom:12px;">Pick-up List</div>
+    <table>
+      <thead><tr>
+        <th>Item</th>
+        <th>Category</th>
+        <th>Pick up from</th>
+      </tr></thead>
+      <tbody>
+        ${t.items.map(it=>`<tr>
+          <td style="font-weight:700;">${esc(it.name)}</td>
+          <td style="font-size:15px;color:var(--fg);">${itemCatLabel(it.category)}</td>
+          <td style="font-size:15px;">${esc(it.fromLocation)}${it.fromSystem?` <span style="color:var(--fg);">(${esc(it.fromSystem)})</span>`:''}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+function openNewLogisticsModal() {
+  const inventory = state.navItems.filter(i=>i.status==='available');
+  if(!inventory.length){ toast('No items in inventory to move.'); return; }
+  showModal(`
+    <div class="modal-title">New Logistics Task</div>
+    <div class="field"><label class="lbl">Items to move</label>
+      <div style="max-height:220px;overflow-y:auto;border:1px solid var(--border);padding:4px 0;">
+        ${inventory.map((item,i)=>`
+          <div style="display:flex;align-items:center;gap:10px;padding:7px 12px;border-bottom:1px solid var(--border);">
+            <input type="checkbox" id="log-item-${i}" value="${esc(item._id)}" style="width:18px;height:18px;flex-shrink:0;cursor:pointer;">
+            <label for="log-item-${i}" style="flex:1;cursor:pointer;">
+              <div style="font-size:17px;font-weight:700;">${esc(item.name)}</div>
+              <div style="font-size:13px;color:var(--fg);">${itemCatLabel(item.category)} &middot; ${esc(item.location)}${item.system?` (${esc(item.system)})`:''}</div>
+            </label>
+          </div>`).join('')}
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label class="lbl">Destination System</label>
+        <select id="log-sys" onchange="document.getElementById('log-loc').innerHTML=locationOptions(this.value)">
+          <option value="">—</option>
+          ${Object.keys(SYSTEMS).map(s=>`<option value="${s}">${s}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field"><label class="lbl">Destination Location</label>
+        <select id="log-loc"><option value="">Select system first…</option></select>
+      </div>
+    </div>
+    <div class="field"><label class="lbl">Stored by <span style="font-weight:400;">(optional — defaults to you)</span></label>
+      <input type="text" id="log-storedby" placeholder="${esc(state.user.username)}">
+    </div>
+    <div style="display:flex;gap:10px;margin-top:8px;">
+      <button class="btn btn-black" onclick="confirmCreateLogisticsTask()">Create Task</button>
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+    </div>`);
+}
+
+async function confirmCreateLogisticsTask() {
+  const inventory = state.navItems.filter(i=>i.status==='available');
+  const itemIds = [];
+  inventory.forEach((item,i)=>{
+    const cb=document.getElementById(`log-item-${i}`);
+    if(cb&&cb.checked) itemIds.push(item._id);
+  });
+  if(!itemIds.length){ alert('Select at least one item'); return; }
+  const destinationSystem=(document.getElementById('log-sys')||{value:''}).value||undefined;
+  const destinationLocation=(document.getElementById('log-loc')||{value:''}).value;
+  if(!destinationLocation){ alert('Select a destination location'); return; }
+  const storedBy=(document.getElementById('log-storedby')||{value:''}).value.trim()||state.user.username;
+  try {
+    await convexMutation('logistics:create',{sessionToken:state.sessionToken,destinationSystem,destinationLocation,storedBy,itemIds});
+    closeModal(); toast('Logistics task created');
+    await refreshAll(); renderPage();
+  } catch(e){ alert(e.message); }
+}
+
+function openCompleteLogisticsModal(logisticsId) {
+  const t = state.logistics.find(l=>l._id===logisticsId);
+  if(!t) return;
+  showModal(`
+    <div class="modal-title">Complete Task</div>
+    <p style="font-size:18px;margin-bottom:16px;">
+      Mark this move task as completed. The location of all ${t.items.length} item${t.items.length!==1?'s':''} will be updated to <strong>${esc(t.destinationLocation)}</strong>.
+    </p>
+    <div class="field"><label class="lbl">Stored by <span style="font-weight:400;">(optional — leave blank to keep "${esc(t.storedBy)}")</span></label>
+      <input type="text" id="clog-storedby" placeholder="${esc(t.storedBy)}">
+    </div>
+    <div style="display:flex;gap:10px;margin-top:8px;">
+      <button class="btn btn-black" onclick="confirmCompleteLogistics('${esc(logisticsId)}')">Complete</button>
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+    </div>`);
+}
+
+async function confirmCompleteLogistics(logisticsId) {
+  const storedBy=(document.getElementById('clog-storedby')||{value:''}).value.trim()||undefined;
+  try {
+    await convexMutation('logistics:complete',{sessionToken:state.sessionToken,logisticsId,storedBy});
+    closeModal(); toast('Task completed — items updated');
+    await refreshAll(); logisticsDetailId=null; renderPage();
+  } catch(e){ alert(e.message); }
 }
 
 function renderInventoryList() {
