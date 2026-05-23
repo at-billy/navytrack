@@ -1111,7 +1111,7 @@ function pageOverview() {
   const openTasks  = state.tasks.filter(t=>t.status==='open');
   const urgentCnt  = openTasks.filter(t=>t.priority==='urgent').length;
   const memberCnt  = state.allUsers.filter(u=>!u.roles.includes('removed')).length;
-  const itemsCnt   = state.navItems.filter(i=>i.status==='available').length;
+  const itemsCnt   = state.navItems.filter(i=>i.status==='available').reduce((s,i)=>s+i.quantity,0);
   const prioOrder  = {urgent:0,high:1,normal:2,whenever:3};
   const topTasks   = openTasks.slice().sort((a,b)=>(prioOrder[a.priority]??2)-(prioOrder[b.priority]??2)).slice(0,6);
   const recentLog  = state.archive.filter(e=>!LOTTERY_LOG_TYPES.has(e.type)).slice(0,7);
@@ -1310,7 +1310,7 @@ function pageItems() {
     <div class="page-head">
       <div class="page-head-left">
         <div class="page-title">Inventory</div>
-        <div class="page-sub">${inventory.length} item${inventory.length!==1?'s':''} available</div>
+        <div class="page-sub">${inventory.reduce((s,i)=>s+i.quantity,0)} item${inventory.reduce((s,i)=>s+i.quantity,0)!==1?'s':''} available</div>
       </div>
       ${canAdd?`<button class="btn btn-black" onclick="openAddItemModal()">+ Add Item</button>`:''}
     </div>
@@ -1323,7 +1323,7 @@ function pageItemsHandedOut() {
     <div class="page-head">
       <div class="page-head-left">
         <div class="page-title">Handed Out</div>
-        <div class="page-sub">${items.length} item${items.length!==1?'s':''} handed out</div>
+        <div class="page-sub">${items.reduce((s,i)=>s+i.quantity,0)} item${items.reduce((s,i)=>s+i.quantity,0)!==1?'s':''} handed out</div>
       </div>
     </div>
     <div style="margin-top:32px;">${renderHandedOutList()}</div>`;
@@ -1335,7 +1335,7 @@ function pageItemsUsed() {
     <div class="page-head">
       <div class="page-head-left">
         <div class="page-title">Used</div>
-        <div class="page-sub">${items.length} item${items.length!==1?'s':''} used</div>
+        <div class="page-sub">${items.reduce((s,i)=>s+i.quantity,0)} item${items.reduce((s,i)=>s+i.quantity,0)!==1?'s':''} used</div>
       </div>
     </div>
     <div style="margin-top:32px;">${renderUsedList()}</div>`;
