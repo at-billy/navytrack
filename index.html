@@ -834,9 +834,9 @@ function startPolling() { refreshAll(); pollTimer=setInterval(()=>refreshAll(tru
 function stopPolling()  { if(pollTimer) clearInterval(pollTimer); }
 
 function updateLiveView() {
-  if (currentPage==='items') {
+  if (currentPage==='items' && itemsView==='inventory') {
     const el=document.getElementById('items-content');
-    if(el) el.innerHTML=renderItemsContent();
+    if(el) el.innerHTML=renderInventoryList();
   }
   if (currentPage==='archive') {
     // Re-render grouped archive; preserve open/closed state of months
@@ -1614,7 +1614,7 @@ function renderInventoryList() {
     </div>`:''}
     ${itemsSearchActive?`<div style="margin-bottom:20px;"><input type="text" id="items-search-inp" placeholder="Search items…" value="${esc(itemsSearch)}"
       style="width:100%;max-width:400px;"
-      oninput="itemsSearch=this.value;document.getElementById('items-content').innerHTML=renderItemsContent();"></div>`:''}
+      oninput="itemsSearch=this.value;document.getElementById('items-content').innerHTML=renderInventoryList();"></div>`:''}
     ${!items.length?`<div class="empty">No items${itemsCatFilter!=='all'?' in '+itemCatLabel(itemsCatFilter):''}${hasSub&&itemsSubcat!=='all'?' / '+itemSubcatLabel(itemsCatFilter,itemsSubcat):''}.</div>`:`
     <table>
       <thead><tr>
@@ -1685,9 +1685,9 @@ function itemCompDesc(i){
   return [tn,gn,s,t].filter(Boolean).join(' · ');
 }
 
-function setItemsCat(cat){ itemsCatFilter=cat; itemsSubcat='all'; document.getElementById('items-content').innerHTML=renderItemsContent(); }
-function setItemsSubcat(s){ itemsSubcat=s; document.getElementById('items-content').innerHTML=renderItemsContent(); }
-function toggleItemsSearch(){ itemsSearchActive=!itemsSearchActive; itemsSearch=''; document.getElementById('items-content').innerHTML=renderItemsContent(); setTimeout(()=>{const el=document.getElementById('items-search-inp');if(el)el.focus();},0); }
+function setItemsCat(cat){ itemsCatFilter=cat; itemsSubcat='all'; document.getElementById('items-content').innerHTML=renderInventoryList(); }
+function setItemsSubcat(s){ itemsSubcat=s; document.getElementById('items-content').innerHTML=renderInventoryList(); }
+function toggleItemsSearch(){ itemsSearchActive=!itemsSearchActive; itemsSearch=''; document.getElementById('items-content').innerHTML=renderInventoryList(); setTimeout(()=>{const el=document.getElementById('items-search-inp');if(el)el.focus();},0); }
 
 // ── HAND OUT MODAL ────────────────────────────────────────────────────────────
 function openHandOutModal(itemId) {
