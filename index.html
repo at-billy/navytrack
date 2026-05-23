@@ -1491,7 +1491,7 @@ function openAddItemModal() {
     </div>
     <div id="ai-qty-wrap" class="grid2">
       <div class="field"><label class="lbl">Quantity</label><input type="number" id="ai-qty" value="1" min="1" step="1"></div>
-      <div class="field"><label class="lbl">Quality <span style="font-weight:400;">(optional, 0–1000)</span></label><input type="number" id="ai-quality" placeholder="e.g. 900" min="0" max="1000" step="1"></div>
+      <div id="ai-quality-wrap" class="field"><label class="lbl">Quality <span style="font-weight:400;">(optional, 0–1000)</span></label><input type="number" id="ai-quality" placeholder="e.g. 900" min="0" max="1000" step="1"></div>
     </div>
     <div class="grid2">
       <div class="field"><label class="lbl">System</label>
@@ -1577,13 +1577,14 @@ function onAICatChange() {
   const cat=(document.getElementById('ai-cat')||{value:''}).value;
   const cfg=itemCatCfg(cat);
 
-  const subcatWrap  = document.getElementById('ai-subcat-wrap');
-  const armorWrap   = document.getElementById('ai-armor-presets');
-  const compWrap    = document.getElementById('ai-comp-wrap');
-  const wikeloWrap  = document.getElementById('ai-wikelo-wrap');
-  const nameWrap    = document.getElementById('ai-name-wrap');
-  const descWrap    = document.getElementById('ai-desc-wrap');
-  const qtyWrap     = document.getElementById('ai-qty-wrap');
+  const subcatWrap   = document.getElementById('ai-subcat-wrap');
+  const armorWrap    = document.getElementById('ai-armor-presets');
+  const compWrap     = document.getElementById('ai-comp-wrap');
+  const wikeloWrap   = document.getElementById('ai-wikelo-wrap');
+  const nameWrap     = document.getElementById('ai-name-wrap');
+  const descWrap     = document.getElementById('ai-desc-wrap');
+  const qtyWrap      = document.getElementById('ai-qty-wrap');
+  const qualityWrap  = document.getElementById('ai-quality-wrap');
 
   // Reset armor presets
   if(armorWrap){ armorWrap.style.display='none'; armorWrap.innerHTML=''; }
@@ -1617,6 +1618,8 @@ function onAICatChange() {
 
   // Qty/quality row: hidden for fps_armor (each preset has its own qty input)
   if(qtyWrap) qtyWrap.style.display=(cat==='fps_armor'?'none':'');
+  // Quality: not applicable for wikelo
+  if(qualityWrap) qualityWrap.style.display=(cat==='wikelo'?'none':'');
 }
 
 function onAISubcatChange() {
