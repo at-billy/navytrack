@@ -1285,6 +1285,9 @@ let itemsSearchActive = false;
 let invCompType = 'all';
 let invCompSize = 'all';
 let invCompTier = 'all';
+// Inventory sort
+let invSortCol = 'name';
+let invSortDir = 'asc';
 
 // Component picker state (for Add Item modal)
 let aiCompTypeFilter = 'all';
@@ -1653,10 +1656,24 @@ function renderInventoryList() {
     ${!items.length?`<div class="empty">No items${itemsCatFilter!=='all'?' in '+itemCatLabel(itemsCatFilter):''}.</div>`:`
     <table>
       <thead><tr>
-        <th>Item</th><th>Category</th><th>Qty</th><th>Quality</th><th>Location</th><th>Added By</th>
+        ${[['name','Item'],['category','Category'],['quantity','Qty'],['quality','Quality'],['location','Location'],['addedByName','Added By']].map(([col,label])=>`
+        <th onclick="invSortDir=(invSortCol==='${col}'&&invSortDir==='asc'?'desc':'asc');invSortCol='${col}';document.getElementById('items-content').innerHTML=renderInventoryList();"
+          style="cursor:pointer;user-select:none;white-space:nowrap;">
+          ${label}${invSortCol===col?(invSortDir==='asc'?' &uarr;':' &darr;'):''}
+        </th>`).join('')}
         <th></th>
       </tr></thead>
-      <tbody>${items.map(i=>{
+      <tbody>${(()=>{
+        const sorted=[...items].sort((a,b)=>{
+          let av=a[invSortCol],bv=b[invSortCol];
+          if(invSortCol==='category'){av=itemCatLabel(a.category);bv=itemCatLabel(b.category);}
+          if(av==null&&bv==null)return 0;
+          if(av==null)return 1;
+          if(bv==null)return -1;
+          const cmp=typeof av==='number'?av-bv:String(av).localeCompare(String(bv));
+          return invSortDir==='asc'?cmp:-cmp;
+        });
+        return sorted.map(i=>{
         const isWikelo = i.category==='wikelo';
         const compInfo = i.compType?`<div style="font-size:15px;color:var(--fg);margin-top:2px;">${itemCompDesc(i)}</div>`:'';
         const subInfo  = i.subcategory&&i.category==='fps_armor'?`<div style="font-size:15px;color:var(--fg);margin-top:2px;">${itemSubcatLabel(i.category,i.subcategory)}</div>`:'';
@@ -1675,7 +1692,7 @@ function renderInventoryList() {
             ${showDel?`<button class="btn-del" onclick="deleteNavItem('${esc(i._id)}')">&times;</button>`:''}
           </td>
         </tr>`;
-      }).join('')}</tbody>
+        }).join('');})()}</tbody>
     </table>`}`;
 }
 
