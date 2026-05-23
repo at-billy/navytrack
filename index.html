@@ -2218,7 +2218,7 @@ function pageAdmin() {
 function renderAdminContent() {
   const u=state.user;
   const MANAGEABLE=['member','core','command'];
-  const members=state.allUsers;
+  const members=state.allUsers.filter(u=>!u.roles.includes('removed'));
   const pendingApps = state.applications.filter(a=>a.status==='pending');
   const reviewedApps = state.applications.filter(a=>a.status==='reviewed');
 
