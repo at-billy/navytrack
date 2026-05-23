@@ -1064,9 +1064,12 @@ function renderNav() {
       <div class="nav-sub-item${tasksFilter==='closed'&&!tasksSearchActive?' active':''}" onclick="setTasksFilter('closed')">Closed</div>
       <div class="nav-sub-item${tasksSearchActive?' active':''}" onclick="toggleTaskSearch()">Search</div>`;
   } else if(main==='items'){
+    const openLogistics=state.logistics.filter(l=>l.status==='open').length;
     sub=`
       <div class="nav-sub-item${itemsView==='inventory'?' active':''}" onclick="setItemsView('inventory')">Inventory</div>
-      <div class="nav-sub-item${itemsView==='logistics'?' active':''}" onclick="setItemsView('logistics')">Logistics</div>`;
+      <div class="nav-sub-item${itemsView==='handed_out'?' active':''}" onclick="setItemsView('handed_out')">Handed Out</div>
+      <div class="nav-sub-item${itemsView==='used'?' active':''}" onclick="setItemsView('used')">Used</div>
+      <div class="nav-sub-item${itemsView==='logistics'?' active':''}" onclick="setItemsView('logistics')">Logistics${openLogistics?` (${openLogistics})`:''}</div>`;
   } else if(main==='log'){
     const openLotteries=state.lotteries.filter(l=>l.status==='open'||l.status==='drawn').length;
     sub=`
@@ -1273,7 +1276,6 @@ const WIKELO_PRESETS = ['DCHS-01','DCHS-02','DCHS-03','DCHS-04','DCHS-05','DCHS-
 
 let itemsView      = 'inventory'; // 'inventory' | 'logistics'
 let logisticsDetailId = null;
-let itemsTab       = 'inventory'; // 'inventory' | 'handed_out' | 'used'
 let itemsCatFilter = 'all';
 let itemsSubcat    = 'all';
 let itemsSearch    = '';
@@ -1290,38 +1292,45 @@ let aiSelectedComp = null; // {name, type, typeName, grade, gradeName, size, tie
 function setItemsView(v){ itemsView=v; logisticsDetailId=null; renderNav(); renderPage(); }
 
 function pageItems() {
-  if(itemsView==='logistics') return pageLogistics();
+  if(itemsView==='logistics')   return pageLogistics();
+  if(itemsView==='handed_out')  return pageItemsHandedOut();
+  if(itemsView==='used')        return pageItemsUsed();
   const u = state.user;
   const canAdd = u.roles.some(r=>['admin','command','core','member'].includes(r));
-  const allItems = state.navItems;
-  const inventory = allItems.filter(i=>i.status==='available');
-  const handedOut = allItems.filter(i=>i.status==='handed_out');
-  const used      = allItems.filter(i=>i.status==='used');
-
+  const inventory = state.navItems.filter(i=>i.status==='available');
   return `
     <div class="page-head">
       <div class="page-head-left">
-        <div class="page-title">Items</div>
-        <div class="page-sub">${inventory.length} in inventory &middot; ${handedOut.length} handed out &middot; ${used.length} used</div>
+        <div class="page-title">Inventory</div>
+        <div class="page-sub">${inventory.length} item${inventory.length!==1?'s':''} available</div>
       </div>
       ${canAdd?`<button class="btn btn-black" onclick="openAddItemModal()">+ Add Item</button>`:''}
     </div>
-
-    <div style="display:flex;gap:0;margin-bottom:0;border-bottom:2px solid var(--border);">
-      <div class="nav-sub-item${itemsTab==='inventory'?' active':''}" style="padding:0 20px 12px;cursor:pointer;" onclick="setItemsTab('inventory')">Inventory</div>
-      <div class="nav-sub-item${itemsTab==='handed_out'?' active':''}" style="padding:0 20px 12px;cursor:pointer;" onclick="setItemsTab('handed_out')">Handed Out</div>
-      <div class="nav-sub-item${itemsTab==='used'?' active':''}" style="padding:0 20px 12px;cursor:pointer;" onclick="setItemsTab('used')">Used</div>
-    </div>
-
-    <div id="items-content" style="margin-top:32px;">${renderItemsContent()}</div>`;
+    <div id="items-content" style="margin-top:32px;">${renderInventoryList()}</div>`;
 }
 
-function setItemsTab(tab){ itemsTab=tab; itemsCatFilter='all'; itemsSubcat='all'; itemsSearch=''; itemsSearchActive=false; renderPage(); }
+function pageItemsHandedOut() {
+  const items = state.navItems.filter(i=>i.status==='handed_out');
+  return `
+    <div class="page-head">
+      <div class="page-head-left">
+        <div class="page-title">Handed Out</div>
+        <div class="page-sub">${items.length} item${items.length!==1?'s':''} handed out</div>
+      </div>
+    </div>
+    <div style="margin-top:32px;">${renderHandedOutList()}</div>`;
+}
 
-function renderItemsContent() {
-  if(itemsTab==='handed_out') return renderHandedOutList();
-  if(itemsTab==='used')       return renderUsedList();
-  return renderInventoryList();
+function pageItemsUsed() {
+  const items = state.navItems.filter(i=>i.status==='used');
+  return `
+    <div class="page-head">
+      <div class="page-head-left">
+        <div class="page-title">Used</div>
+        <div class="page-sub">${items.length} item${items.length!==1?'s':''} used</div>
+      </div>
+    </div>
+    <div style="margin-top:32px;">${renderUsedList()}</div>`;
 }
 
 // ── LOGISTICS PAGE ────────────────────────────────────────────────────────────
