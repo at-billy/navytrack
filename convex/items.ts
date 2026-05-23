@@ -138,7 +138,7 @@ export const markUsed = mutation({
   },
   handler: async (ctx, { sessionToken, itemId, usedFor }) => {
     const user = await requireSession(ctx.db, sessionToken);
-    const canEdit = user.roles.some(r => ["admin", "command", "core", "member"].includes(r));
+    const canEdit = user.roles.some(r => ["admin", "command"].includes(r));
     if (!canEdit) throw new Error("Not authorized");
     const item = await ctx.db.get(itemId);
     if (!item) throw new Error("Item not found");

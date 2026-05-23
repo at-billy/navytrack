@@ -1355,7 +1355,7 @@ function renderInventoryList() {
           <td style="color:var(--fg);">${esc(i.addedByName)}</td>
           <td style="white-space:nowrap;">
             ${showHandOut?`<button class="btn btn-outline btn-sm" style="margin-right:4px;" onclick="openHandOutModal('${esc(i._id)}')">Hand Out</button>`:''}
-            ${isWikelo?`<button class="btn btn-outline btn-sm" style="margin-right:4px;" onclick="openUsedModal('${esc(i._id)}')">Used</button>`:''}
+            ${isWikelo&&canEditAnyItem(u)?`<button class="btn btn-outline btn-sm" style="margin-right:4px;" onclick="openUsedModal('${esc(i._id)}')">Used</button>`:''}
             ${showDel?`<button class="btn-del" onclick="deleteNavItem('${esc(i._id)}')">&times;</button>`:''}
           </td>
         </tr>`;
