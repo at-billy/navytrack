@@ -66,7 +66,7 @@ export const claimBootstrapAdmin = mutation({
     const allUsers = await ctx.db.query("users").collect();
     const hasAdmin = allUsers.some(u => u.roles.includes("admin"));
     if (hasAdmin) throw new Error("ADMIN_EXISTS");
-    const newRoles = user.roles.filter(r => r !== "crafter_pending");
+    const newRoles = [...user.roles];
     if (!newRoles.includes("admin")) newRoles.push("admin");
     await ctx.db.patch(user._id, { roles: newRoles });
     return { _id: user._id, username: user.username, roles: newRoles };

@@ -33,12 +33,11 @@ body{font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;background:#fff;col
 
 /* ── ROLE & STATUS TAGS ──────────────────────────────────────────── */
 .role-tag{font-size:18px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:2px 6px;border:1px solid #000;}
-.role-tag.crafter{border-color:var(--red);color:var(--red);}
+.role-tag.recruit{border-color:#bbb;color:#999;}
+.role-tag.member{border-color:#60a5fa;color:#2563eb;}
+.role-tag.core{border-color:#f59e0b;color:#d97706;}
+.role-tag.command{border-color:var(--red);color:var(--red);}
 .role-tag.admin{background:#000;color:#fff;}
-.role-tag.crafter_pending{border-color:#f59e0b;color:#f59e0b;}
-.role-tag.provider{border-color:#bbb;color:#999;}
-.role-tag.logistics{border-color:#0ea5e9;color:#0ea5e9;}
-.role-tag.logistics_pending{border-color:#0ea5e9;color:#0ea5e9;opacity:.6;}
 .role-tag.removed{border-color:#fca5a5;color:#ef4444;}
 .live-dot{width:6px;height:6px;border-radius:50%;background:#22c55e;display:inline-block;}
 @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
@@ -101,11 +100,9 @@ tbody tr:hover{background:#f9f9f9;}
 
 /* ── LOG BADGES ──────────────────────────────────────────────────── */
 .badge{display:inline-block;font-size:18px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:0;background:none;color:#000;}
-.badge-crafted,.badge-material_added,.badge-material_removed,.badge-item_created,
-.badge-item_deleted,.badge-material_moved,.badge-user_joined,.badge-member_removed,
-.badge-task_created,.badge-task_accepted,.badge-task_completed,.badge-crafter_approved,
-.badge-role_approved,.badge-crafter_denied,.badge-role_denied,.badge-admin_granted,
-.badge-item_handed_out{background:none;color:#000;}
+.badge-user_joined,.badge-member_removed,.badge-role_approved,.badge-role_denied,
+.badge-admin_granted,.badge-task_created,.badge-task_closed,.badge-item_added,
+.badge-item_updated,.badge-item_removed{background:none;color:#000;}
 
 /* ── INVENTORY ───────────────────────────────────────────────────── */
 .inv-quality{font-size:32px;font-weight:900;letter-spacing:-1px;line-height:1;}
@@ -130,9 +127,10 @@ tbody tr:hover{background:#f9f9f9;}
 .p-normal{background:#3b82f6;color:#fff;}
 .p-whenever{background:#e5e7eb;color:#555;}
 .role-badge{display:inline-block;padding:1px 6px;font-size:18px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border:1px solid #000;margin-right:3px;}
-.rb-provider{border-color:#bbb;color:#888;}
-.rb-crafter{border-color:var(--red);color:var(--red);}
-.rb-logistics{border-color:#0ea5e9;color:#0ea5e9;}
+.rb-recruit{border-color:#bbb;color:#888;}
+.rb-member{border-color:#60a5fa;color:#2563eb;}
+.rb-core{border-color:#f59e0b;color:#d97706;}
+.rb-command{border-color:var(--red);color:var(--red);}
 .rb-admin{background:#000;color:#fff;}
 .task-search-bar{padding:0 0 36px;margin-bottom:0;}
 
@@ -256,7 +254,7 @@ body.dark .rb-admin{background:#e0e0e0;color:#111;}
 body.dark .role-tag{border-color:#e0e0e0;color:#e0e0e0;}
 body.dark .role-tag.admin{background:#e0e0e0;color:#111;}
 body.dark .badge{color:#e0e0e0;}
-body.dark .badge-crafted,.dark .badge-material_added,.dark .badge-material_removed,.dark .badge-item_created,.dark .badge-item_deleted,.dark .badge-material_moved,.dark .badge-user_joined,.dark .badge-member_removed,.dark .badge-task_created,.dark .badge-task_accepted,.dark .badge-task_completed,.dark .badge-crafter_approved,.dark .badge-role_approved,.dark .badge-crafter_denied,.dark .badge-role_denied,.dark .badge-admin_granted,.dark .badge-item_handed_out{color:#e0e0e0;}
+body.dark .badge-user_joined,.dark .badge-member_removed,.dark .badge-role_approved,.dark .badge-role_denied,.dark .badge-admin_granted,.dark .badge-task_created,.dark .badge-task_closed,.dark .badge-item_added,.dark .badge-item_updated,.dark .badge-item_removed{color:#e0e0e0;}
 body.dark .ov-col-head{border-bottom-color:#333;}
 body.dark .ov-header{border-bottom-color:#333;}
 body.dark .ov-stats{border-bottom-color:#333;}
@@ -377,10 +375,9 @@ const SC_CATALOG = [
 ];
 
 const ITEM_CATEGORIES = [
-  { id:'fps_armour',     label:'FPS Armour' },
-  { id:'fps_weapon',     label:'FPS Weapon' },
-  { id:'ship_component', label:'Ship Component' },
-  { id:'ship_weapon',    label:'Ship Weapon' },
+  { id:'fps',        label:'FPS' },
+  { id:'arma',       label:'ARMA' },
+  { id:'components', label:'Components' },
 ];
 
 const SYSTEMS = {
@@ -731,19 +728,11 @@ function compDefaultValue(comp) {
 // ─── CONFIG / STATE ───────────────────────────────────────────────────────────
 let CONVEX_URL = localStorage.getItem('navytrack_url') || 'https://colorless-stoat-737.eu-west-1.convex.cloud';
 let currentPage = 'overview';
-const state = { user: null, sessionToken: null, stock: [], craftItems: [], archive: [], allUsers: [], inventory: [], tasks: [], lotteries: [] };
+const state = { user: null, sessionToken: null, navItems: [], archive: [], allUsers: [], tasks: [], lotteries: [] };
 let tasksFilter = 'open';
 let tasksSearchActive = false;
 let tasksSearch = '';
-let tasksRoleFilter = '';
-let craftState = { itemId: null, mode: 'best', qMin: 850, qMax: 1000, quantity: 1, plan: null };
-let itemsFilter = 'all';
-let invFilter = 'available'; // "available" | "handed_out"
-let invCatFilter = 'all';
-let invSearch = '';
-let craftSubTab = 'craft'; // 'craft' | 'items'
 let pollTimer = null;
-let pendingCraft = null; // holds craft data while user picks location
 let lotteryView = 'list'; // 'list' | 'detail'
 let lotteryDetailId = null; // id of lottery being viewed
 let lotteryCompTypeFilter = 'all'; // 'all' | 'COOL' | 'POWR' | 'QDRV' | 'SHLD'
@@ -817,20 +806,16 @@ function locationOptions(system) {
 // ─── POLLING / DATA ───────────────────────────────────────────────────────────
 async function refreshAll(silent=false) {
   try {
-    const [stock, items, archive, allUsers, inventory, tasks, lotteries] = await Promise.all([
-      convexQuery('materials:getAvailable'),
-      convexQuery('craftItems:getAll'),
+    const [navItems, archive, allUsers, tasks, lotteries] = await Promise.all([
+      convexQuery('items:getAll'),
       convexQuery('archive:getAll'),
       convexQuery('users:getAllUsers'),
-      convexQuery('inventory:getAll'),
       convexQuery('tasks:getAll'),
       convexQuery('lotteries:getAll'),
     ]);
-    state.stock      = stock     || [];
-    state.craftItems = items     || [];
+    state.navItems   = navItems  || [];
     state.archive    = archive   || [];
     state.allUsers   = allUsers  || [];
-    state.inventory  = inventory || [];
     state.tasks      = tasks     || [];
     state.lotteries  = lotteries || [];
     // Sync logged-in user's roles from server
@@ -845,24 +830,9 @@ function startPolling() { refreshAll(); pollTimer=setInterval(()=>refreshAll(tru
 function stopPolling()  { if(pollTimer) clearInterval(pollTimer); }
 
 function updateLiveView() {
-  if (currentPage==='materials') {
-    const av=state.stock.filter(m=>m.status==='available');
-    const t=document.getElementById('mat-table'); if(t) t.innerHTML=renderMatTable(av);
-    const s=document.getElementById('mat-count'); if(s) s.textContent=`${av.length} entr${av.length===1?'y':'ies'} in stock`;
-  }
-  if (currentPage==='inventory') {
-    const el=document.getElementById('inv-list'); if(el) el.innerHTML=renderInvList();
-    const avail=state.inventory.filter(i=>i.status==='available').length;
-    const s=document.getElementById('inv-count'); if(s) s.textContent=`${avail} item${avail!==1?'s':''} in stock`;
-  }
-  if (currentPage==='craft') {
-    if(craftSubTab==='items') {
-      const el=document.getElementById('items-list'); if(el) el.innerHTML=renderItemsList();
-      const s=document.getElementById('items-count'); if(s) s.textContent=`${state.craftItems.length} item${state.craftItems.length!==1?'s':''} defined`;
-    } else {
-      const sel=document.getElementById('craft-sel');
-      if(sel) { const prev=sel.value; sel.innerHTML=craftItemOptgroups(); if(prev) sel.value=prev; }
-    }
+  if (currentPage==='items') {
+    const el=document.getElementById('items-list'); if(el) el.innerHTML=renderNavItemsList();
+    const s=document.getElementById('items-count'); if(s) s.textContent=`${state.navItems.filter(i=>i.status!=='removed').length} item${state.navItems.filter(i=>i.status!=='removed').length!==1?'s':''}`;
   }
   if (currentPage==='archive') {
     // Re-render grouped archive; preserve open/closed state of months
@@ -944,9 +914,8 @@ async function saveSetup() {
   if (!url.startsWith('https://')) { showErr('setup-err','URL must start with https://'); return; }
   try {
     document.getElementById('setup-err').style.display='none';
-    await fetch(`${url}/api/query`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:'materials:getCatalog',args:{},format:'json'})});
+    await fetch(`${url}/api/query`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:'sessions:whoami',args:{token:''},format:'json'})});
     CONVEX_URL=url; localStorage.setItem('navytrack_url',url);
-    await convexMutation('materials:seedCatalog');
     showAuth();
   } catch(e) { showErr('setup-err','Could not connect. Check the URL.'); }
 }
@@ -973,17 +942,8 @@ function showAuth(tab='signin') {
         `:`
           <div class="field"><label class="lbl">Username</label><input id="su-user" type="text" placeholder="choose a username"></div>
           <div class="field"><label class="lbl">Password</label><input id="su-pass" type="password" placeholder="create a password"></div>
-          <div class="field">
-            <label class="lbl">Roles</label>
-            <label class="chk-row"><input type="checkbox" id="su-prov" checked><span>Material Provider — add &amp; manage stock</span></label>
-            <label class="chk-row"><input type="checkbox" id="su-craft" onchange="toggleCrafterNote()"><span>Crafter — use materials to craft items</span></label>
-            <div class="pending-note" id="crafter-pending-note">
-              ⏳ <strong>Approval required</strong> — Crafter access is granted by an admin. Once approved you'll gain Crafter access.
-            </div>
-            <label class="chk-row"><input type="checkbox" id="su-logi" onchange="toggleLogisticsNote()"><span>Logistics — transport and deliver materials</span></label>
-            <div class="pending-note" id="logistics-pending-note" style="display:none;">
-              ⏳ <strong>Approval required</strong> — Logistics access is granted by an admin. Once approved you'll gain Logistics access.
-            </div>
+          <div style="font-size:18px;color:var(--fg);margin-bottom:16px;padding:10px 14px;background:#f5f5f5;">
+            New accounts start as <strong>Recruit</strong>. An admin can promote your role.
           </div>
           <div class="err-msg" id="su-err"></div>
           <button class="btn btn-black" style="width:100%;justify-content:center;" onclick="doSignUp()">Create Account</button>
@@ -1009,28 +969,13 @@ async function doSignIn() {
   } catch(e){showErr('si-err',e.message);}
 }
 
-function toggleCrafterNote() {
-  const chk=(document.getElementById('su-craft')||{checked:false});
-  const note=document.getElementById('crafter-pending-note');
-  if(note) note.style.display=chk.checked?'block':'none';
-}
-function toggleLogisticsNote() {
-  const chk=(document.getElementById('su-logi')||{checked:false});
-  const note=document.getElementById('logistics-pending-note');
-  if(note) note.style.display=chk.checked?'block':'none';
-}
-
 async function doSignUp() {
   const username=(document.getElementById('su-user')||{value:''}).value.trim();
   const password=(document.getElementById('su-pass')||{value:''}).value;
-  const isProv=(document.getElementById('su-prov')||{checked:true}).checked;
-  const isCraft=(document.getElementById('su-craft')||{checked:false}).checked;
-  const isLogi=(document.getElementById('su-logi')||{checked:false}).checked;
   if(!username||!password){showErr('su-err','Fill in all fields');return;}
-  if(!isProv&&!isCraft&&!isLogi){showErr('su-err','Select at least one role');return;}
   try {
     const ph=await hashPwd(password);
-    const roles=[...(isProv?['provider']:[]),...(isCraft?['crafter_pending']:[]),...(isLogi?['logistics_pending']:[])];
+    const roles=['recruit'];
     const res=await convexMutation('users:signUp',{username,passwordHash:ph,roles});
     state.user=res; state.sessionToken=res.token;
     localStorage.setItem('navytrack_token',res.token); showApp();
@@ -1054,8 +999,8 @@ function showApp() {
   renderNav(); renderPage(); startPolling();
 }
 function roleTagHtml(role) {
-  const labels={'provider':'Provider','crafter':'Crafter','crafter_pending':'Crafter?','admin':'Admin','logistics':'Logistics','logistics_pending':'Logistics?','removed':'Removed'};
-  const cls={'crafter':' crafter','admin':' admin','crafter_pending':' crafter_pending','provider':' provider','logistics':' logistics','logistics_pending':' logistics_pending','removed':' removed'};
+  const labels={'recruit':'Recruit','member':'Member','core':'Core','command':'Command','admin':'Admin','removed':'Removed'};
+  const cls={'recruit':' recruit','member':' member','core':' core','command':' command','admin':' admin','removed':' removed'};
   return `<span class="role-tag${cls[role]||''}">${labels[role]||role}</span>`;
 }
 function isAdmin(u) { return u && (u.roles||[]).includes('admin'); }
@@ -1063,34 +1008,25 @@ function hasAdmin() { return state.allUsers.some(u=>(u.roles||[]).includes('admi
 
 function renderNav() {
   const u=state.user; if(!u) return;
-  // Map currentPage → main nav section
-  const inCraft=['craft','materials','inventory'];
   const inLog=['archive','admin','member',...(isAdmin(u)?['lottery']:[])];
 
   let main='mat';
   if(currentPage==='tasks') main='task';
-  else if(inCraft.includes(currentPage)) main='craft';
+  else if(currentPage==='items') main='items';
   else if(inLog.includes(currentPage)) main='log';
 
-  // Build sub-nav HTML
   let sub='';
   if(main==='mat'){
     const dark=document.body.classList.contains('dark');
     sub=`<div class="nav-sub-item" style="cursor:default;">Welcome back, ${esc(u.username)}</div><div class="nav-sub-item" onclick="toggleDark()">${dark?'DAYTIME':'NIGHTTIME'}</div>`;
   } else if(main==='task'){
-    const u2=state.user; const admin2=isAdmin(u2);
     const oc=state.tasks.filter(t=>t.status==='open').length;
     sub=`
       <div class="nav-sub-item${tasksFilter==='open'&&!tasksSearchActive?' active':''}" onclick="setTasksFilter('open')">Open${oc>0?` (${oc})`:''}</div>
-      <div class="nav-sub-item${tasksFilter==='accepted'&&!tasksSearchActive?' active':''}" onclick="setTasksFilter('accepted')">Accepted</div>
-      <div class="nav-sub-item${tasksFilter==='completed'&&!tasksSearchActive?' active':''}" onclick="setTasksFilter('completed')">Completed</div>
+      <div class="nav-sub-item${tasksFilter==='closed'&&!tasksSearchActive?' active':''}" onclick="setTasksFilter('closed')">Closed</div>
       <div class="nav-sub-item${tasksSearchActive?' active':''}" onclick="toggleTaskSearch()">Search</div>`;
-  } else if(main==='craft'){
-    sub=`
-      <div class="nav-sub-item${currentPage==='materials'?' active':''}" onclick="goTo('materials')">Materials</div>
-      <div class="nav-sub-item${currentPage==='craft'&&craftSubTab==='craft'?' active':''}" onclick="setCraftSubTab('craft')">Craft</div>
-      <div class="nav-sub-item${currentPage==='craft'&&craftSubTab==='items'?' active':''}" onclick="setCraftSubTab('items')">Items</div>
-      <div class="nav-sub-item${currentPage==='inventory'?' active':''}" onclick="goTo('inventory')">Inventory</div>`;
+  } else if(main==='items'){
+    sub=`<div class="nav-sub-item active">Items</div>`;
   } else if(main==='log'){
     const openLotteries=state.lotteries.filter(l=>l.status==='open'||l.status==='drawn').length;
     sub=`
@@ -1106,15 +1042,14 @@ function renderNav() {
     <div id="nav-primary">
       <div class="nav-main${main==='mat'?' active':''}" onclick="goTo('overview')">NAVY</div>
       <div class="nav-main${main==='task'?' active':''}" onclick="goTo('tasks')">TASK</div>
-      <div class="nav-main${main==='craft'?' active':''}" onclick="goTo('craft')">CRAFT</div>
+      <div class="nav-main${main==='items'?' active':''}" onclick="goTo('items')">ITEMS</div>
       <div class="nav-main outline${main==='log'?' active':''}" onclick="goTo('archive')">LOG</div>
     </div>
     ${sub?`<div id="nav-sub">${sub}</div>`:''}`;
-  /* re-sync scroll state after re-render (active class may have changed) */
   if(window._navScrollUpdate) window._navScrollUpdate();
 }
 function renderPage() {
-  const pages={overview:pageOverview,materials:pageMaterials,craft:pageCraft,inventory:pageInventory,tasks:pageTasks,archive:pageArchive,admin:pageAdmin,member:pageMember,lottery:pageLottery};
+  const pages={overview:pageOverview,items:pageItems,tasks:pageTasks,archive:pageArchive,admin:pageAdmin,member:pageMember,lottery:pageLottery};
   const pw=document.getElementById('page-wrap');
   if(pw) pw.innerHTML=`<div class="page">${(pages[currentPage]||pageOverview)()}</div>`;
 }
@@ -1124,141 +1059,64 @@ function pageOverview() {
   const u = state.user;
   const now = new Date();
   const dateStr = now.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-  const timeStr = now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
 
-  // Stats
-  const matAvail   = state.stock.filter(m=>m.status==='available');
-  const invAvail   = state.inventory.filter(i=>i.status==='available');
   const openTasks  = state.tasks.filter(t=>t.status==='open');
   const urgentCnt  = openTasks.filter(t=>t.priority==='urgent').length;
   const memberCnt  = state.allUsers.filter(u=>!u.roles.includes('removed')).length;
-  const pendingCnt = state.allUsers.filter(u=>u.roles.some(r=>r.endsWith('_pending'))).length;
+  const itemsCnt   = state.navItems.filter(i=>i.status!=='removed').length;
 
-  // Recent log (last 7)
-  const recentLog = state.archive.filter(e => !LOTTERY_LOG_TYPES.has(e.type)).slice(0,7);
+  const prioOrder  = {urgent:0,high:1,normal:2,whenever:3};
+  const topTasks   = openTasks.slice().sort((a,b)=>(prioOrder[a.priority]??2)-(prioOrder[b.priority]??2)).slice(0,6);
+  const recentLog  = state.archive.filter(e=>!LOTTERY_LOG_TYPES.has(e.type)).slice(0,7);
 
-  // Open tasks sorted by priority
-  const prioOrder = {urgent:0,high:1,normal:2,whenever:3};
-  const topTasks = openTasks.slice().sort((a,b)=>(prioOrder[a.priority]??2)-(prioOrder[b.priority]??2)).slice(0,6);
-
-  // Stock breakdown
-  const oreEntries = matAvail.filter(m=>m.category==='Ores'||m.category==='Vehicle Mining');
-  const gemEntries = matAvail.filter(m=>m.category==='FPS Mining');
-  const oreQty     = oreEntries.reduce((s,m)=>s+m.quantity,0);
-  const gemQty     = gemEntries.reduce((s,m)=>s+m.quantity,0);
-
-  // Top materials by total quantity
-  const byName = {};
-  matAvail.forEach(m=>{ byName[m.materialName]=(byName[m.materialName]||0)+m.quantity; });
-  const topMats = Object.entries(byName).sort((a,b)=>b[1]-a[1]).slice(0,5);
-
-  // Inventory breakdown
-  const recentCrafted = state.inventory.slice().sort((a,b)=>b._creationTime-a._creationTime).slice(0,5);
-
-  // Log entry formatting (compact)
-  const logLabels = {crafted:'Crafted',material_added:'Added',material_removed:'Removed',material_moved:'Moved',item_created:'Item Def.',item_deleted:'Deleted',item_handed_out:'Handed Out',user_joined:'Joined',role_approved:'Approved',role_denied:'Denied',admin_granted:'Admin',member_removed:'Removed',task_created:'Task',task_accepted:'Accepted',task_completed:'Completed'};
-  function fmtLogCompact(e) {
-    const d=e.details||{};
-    switch(e.type){
-      case 'material_added':   return `${esc(d.materialName)} &times;${d.quantity} ${esc(d.unit||'')} &middot; q${d.quality} &middot; ${esc(d.location||'')}`;
-      case 'material_removed': return `${esc(d.materialName)} &times;${d.quantity} ${esc(d.unit||'')}`;
-      case 'material_moved':   return `${esc(d.materialName)} &rarr; ${esc(d.toLocation||'')}`;
-      case 'crafted':          return `${esc(d.itemName)} &middot; avg q${d.avgQuality}`;
-      case 'item_created':     return esc(d.itemName||'');
-      case 'item_handed_out':  return `${esc(d.itemName)}${d.quantity>1?` &times;${d.quantity}`:''} &rarr; ${esc(d.handedOutTo||'')}`;
-      case 'user_joined':      return `Roles: ${(d.roles||[]).join(', ')}`;
-      case 'role_approved':    return `${esc(d.targetUsername)} &rarr; ${esc(d.role||'')}`;
-      case 'task_created':     return esc(d.title||'');
-      case 'task_accepted':    return esc(d.title||'');
-      case 'task_completed':   return esc(d.title||'');
-      default: return '';
-    }
-  }
-  function shortDate(ts) {
-    const d=new Date(ts);
-    return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
-  }
+  function shortDate(ts){const d=new Date(ts);return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});}
 
   return `<div class="ov-wrap">
 
     <div class="ov-stats">
       <div class="ov-stat" style="padding-right:28px;">
-        <div class="ov-stat-num${matAvail.length===0?' red':''}">${matAvail.length}</div>
-        <div class="ov-stat-label">Materials</div>
-        <div class="ov-stat-sub">${oreEntries.length} ore &middot; ${gemEntries.length} fps entries</div>
-      </div>
-      <div class="ov-stat" style="padding-left:28px;padding-right:28px;">
-        <div class="ov-stat-num">${invAvail.length}</div>
-        <div class="ov-stat-label">Inventory</div>
-        <div class="ov-stat-sub">${state.inventory.filter(i=>i.status==='handed_out').length} handed out</div>
-      </div>
-      <div class="ov-stat" style="padding-left:28px;padding-right:28px;">
         <div class="ov-stat-num${urgentCnt>0?' red':''}">${openTasks.length}</div>
-        <div class="ov-stat-label">Tasks Open</div>
+        <div class="ov-stat-label">Open Projects</div>
         <div class="ov-stat-sub">${urgentCnt>0?`<span style="color:var(--red);font-weight:700;">${urgentCnt} urgent</span>`:'none urgent'}</div>
+      </div>
+      <div class="ov-stat" style="padding-left:28px;padding-right:28px;">
+        <div class="ov-stat-num">${itemsCnt}</div>
+        <div class="ov-stat-label">Items</div>
+        <div class="ov-stat-sub">in inventory</div>
       </div>
       <div class="ov-stat" style="padding-left:28px;">
         <div class="ov-stat-num">${memberCnt}</div>
         <div class="ov-stat-label">Members</div>
-        <div class="ov-stat-sub">${pendingCnt>0?`<span style="color:var(--red);font-weight:700;">${pendingCnt} pending approval</span>`:'all approved'}</div>
+        <div class="ov-stat-sub">&nbsp;</div>
       </div>
     </div>
 
     <div style="border-top:2px solid var(--border);padding:60px 0;">
-      <div class="ov-col-head">Open Tasks</div>
+      <div class="ov-col-head">Open Projects</div>
       ${topTasks.length ? topTasks.map(t=>{
         const pb=TASK_PRIORITIES.find(p=>p.id===t.priority)||TASK_PRIORITIES[2];
-        const activeSlots=t.acceptees.filter(a=>a.status!=='completed').length;
         return `<div class="ov-task-row" style="display:flex;align-items:baseline;gap:28px;padding:14px 0;border-bottom:1px solid var(--border-l);">
-          <div style="flex:1;display:flex;align-items:baseline;gap:12px;">
+          <div style="flex:1;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;">
             <span class="p-badge ${pb.cls}">${pb.label}</span>
             <span class="ov-task-title" style="font-size:24px;font-weight:900;">${esc(t.title)}</span>
+            ${t.description?`<span style="font-size:18px;color:var(--fg);">${esc(t.description)}</span>`:''}
           </div>
-          <div class="ov-task-meta" style="white-space:nowrap;">${taskTypeDesc(t)}</div>
-          <div style="font-size:18px;font-weight:700;white-space:nowrap;">${activeSlots}/${t.slots} slots</div>
+          <div style="font-size:18px;white-space:nowrap;">${t.members.length} joined</div>
         </div>`;
       }).join('')
-      : `<div class="ov-empty" style="padding:40px 0;">No open tasks.</div>`}
-      ${openTasks.length>6?`<div style="padding-top:20px;"><span style="font-size:18px;cursor:pointer;text-decoration:underline;" onclick="goTo('tasks')">All tasks (${openTasks.length}) →</span></div>`:''}
+      : `<div class="ov-empty" style="padding:40px 0;">No open projects.</div>`}
+      ${openTasks.length>6?`<div style="padding-top:20px;"><span style="font-size:18px;cursor:pointer;text-decoration:underline;" onclick="goTo('tasks')">All projects (${openTasks.length}) →</span></div>`:''}
     </div>
 
     <div style="border-top:2px solid var(--border);padding:60px 0;">
-      <div class="ov-col-head">Stock</div>
-      ${matAvail.length===0 ? `<div class="ov-empty" style="padding:40px 0;">No materials in stock.</div>` : `
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:0;border-bottom:2px solid var(--border);margin-bottom:40px;">
-        <div style="padding:32px 0;">
-          <div style="font-size:clamp(42px,6vw,66px);font-weight:900;letter-spacing:-3px;line-height:1;">${oreEntries.length}</div>
-          <div style="font-size:18px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;margin-top:8px;">Ore Entries</div>
-          <div style="font-size:18px;margin-top:4px;">${Math.round(oreQty*100)/100} SCU total</div>
-        </div>
-        <div style="padding:32px 0 32px 28px;">
-          <div style="font-size:clamp(42px,6vw,66px);font-weight:900;letter-spacing:-3px;line-height:1;">${gemEntries.length}</div>
-          <div style="font-size:18px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;margin-top:8px;">Gem Entries</div>
-          <div style="font-size:18px;margin-top:4px;">${gemQty} UNIT total</div>
-        </div>
-      </div>
-      ${topMats.length?topMats.map(([name,qty])=>`
-        <div style="display:flex;justify-content:space-between;align-items:baseline;padding:14px 0;border-bottom:1px solid var(--border-l);">
-          <span style="font-size:24px;font-weight:700;">${esc(name)}</span>
-          <span style="font-size:18px;font-weight:700;">${Math.round(qty*100)/100} ${unitFor(name)}</span>
-        </div>`).join(''):''}
-      <div style="padding-top:20px;"><span style="font-size:18px;cursor:pointer;text-decoration:underline;" onclick="goTo('materials')">All materials →</span></div>`}
-    </div>
-
-    <div style="border-top:2px solid var(--border);padding:60px 0;">
-      <div class="ov-col-head">Inventory</div>
-      ${recentCrafted.length===0 ? `<div class="ov-empty" style="padding:40px 0;">Nothing crafted yet.</div>` : `
-      ${recentCrafted.map(i=>`
-        <div style="display:flex;align-items:baseline;gap:28px;padding:14px 0;border-bottom:1px solid var(--border-l);">
-          <div style="flex:1;display:flex;align-items:baseline;gap:12px;">
-            ${i.category?`<span class="item-cat-tag">${esc(itemCatLabel(i.category))}</span>`:''}
-            <span style="font-size:24px;font-weight:700;">${esc(i.itemName)}</span>
-          </div>
-          <span style="font-size:18px;font-weight:700;white-space:nowrap;">${i.status==='available'?`×${i.quantity} in stock`:'handed out'}</span>
-          <span style="font-size:18px;white-space:nowrap;">avg q${i.avgQuality} &middot; ${esc(i.craftedByName)}</span>
-          <span style="font-size:18px;white-space:nowrap;">${shortDate(i._creationTime)}</span>
-        </div>`).join('')}
-      <div style="padding-top:20px;"><span style="font-size:18px;cursor:pointer;text-decoration:underline;" onclick="goTo('inventory')">Full inventory →</span></div>`}
+      <div class="ov-col-head">Recent Activity</div>
+      ${recentLog.length?recentLog.map(e=>`
+        <div style="display:flex;align-items:baseline;gap:20px;padding:12px 0;border-bottom:1px solid var(--border-l);">
+          <span style="font-size:18px;color:var(--fg);white-space:nowrap;min-width:72px;">${shortDate(e._creationTime)}</span>
+          <span style="font-size:18px;font-weight:700;">${esc(e.userName)}</span>
+          <span style="font-size:18px;color:var(--fg);">${fmtArchiveDetails(e)}</span>
+        </div>`).join('')
+      :`<div class="ov-empty" style="padding:40px 0;">No activity yet.</div>`}
     </div>
 
   </div>`;
@@ -1271,687 +1129,123 @@ function matNameOptions(cat) {
     <option value="__new__">+ Add new type…</option>`;
 }
 
-function pageMaterials() {
-  const u=state.user;
-  const stock=state.stock.filter(m=>m.status==='available');
-  const isProv=u.roles.includes('provider')||isAdmin(u);
-  return `
+// ─── ITEMS PAGE ───────────────────────────────────────────────────────────────
+const ITEM_CATS = ['FPS','ARMA','Components'];
+
+function pageItems() {
+  const u=state.user; const admin=isAdmin(u);
+  const canAdd=u.roles.some(r=>['admin','command','core','member'].includes(r));
+  const items=state.navItems.filter(i=>i.status!=='removed');
+  const filtered=itemsCatFilter==='all'?items:items.filter(i=>i.category===itemsCatFilter);
+  const cnt=items.length;
+  return \`
     <div class="page-head">
       <div class="page-head-left">
-        <div class="page-title">Materials</div>
-        <div class="page-sub" id="mat-count">${stock.length} entr${stock.length===1?'y':'ies'} in stock</div>
+        <div class="page-title">Items</div>
+        <div class="page-sub" id="items-count">\${cnt} item\${cnt!==1?'s':''}</div>
       </div>
-      ${isProv?`<button class="btn btn-black" onclick="togglePanel('add-mat-panel')">+ Add Material</button>`:''}
+      \${canAdd?\`<button class="btn btn-black" onclick="openAddItemModal()">+ Add Item</button>\`:''}
     </div>
-
-    <div id="add-mat-panel" class="collapsible" style="margin-bottom:32px;">
-      <div class="panel">
-        <div style="font-size:18px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:20px;">Add Material to Database</div>
-        <div class="grid2">
-          <div>
-            <div class="field">
-              <label class="lbl">Category</label>
-              <select id="mat-cat-sel" onchange="onMatCatChange()">
-                <option value="Ores">Ores</option>
-                <option value="Gems">Gems</option>
-              </select>
-            </div>
-            <div class="field">
-              <label class="lbl">Material Name</label>
-              <select id="mat-name-sel" onchange="onMatNameChange()">
-                ${matNameOptions('Ores')}
-              </select>
-            </div>
-            <div id="mat-new-wrap" style="display:none;">
-              <div class="field">
-                <label class="lbl">New Material Name</label>
-                <input type="text" id="mat-new-name" placeholder="Enter name">
-              </div>
-            </div>
-            <div class="field">
-              <label class="lbl">Quality (0–1000)</label>
-              <input type="number" id="mat-quality" min="0" max="1000" placeholder="e.g. 850">
-            </div>
-          </div>
-          <div>
-            <div class="field">
-              <label class="lbl" id="mat-qty-lbl">Quantity (SCU)</label>
-              <input type="number" id="mat-qty" min="0.01" step="0.01" placeholder="e.g. 50">
-              <div style="font-size:18px;color:var(--fg);margin-top:4px;" id="mat-qty-hint">0.01 SCU increments</div>
-            </div>
-            <div style="font-size:18px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px;color:var(--fg);">System &amp; Location</div>
-            <div class="field">
-              <select id="mat-system" onchange="onSystemChange()">
-                <option value="">Select system…</option>
-                ${Object.keys(SYSTEMS).map(s=>`<option value="${s}">${s}</option>`).join('')}
-              </select>
-            </div>
-            <div class="field">
-              <select id="mat-location">
-                <option value="">Select location…</option>
-              </select>
-            </div>
-          </div>
-        </div>
-        <div style="display:flex;gap:10px;">
-          <button class="btn btn-black" onclick="addMaterial()">Add to Database</button>
-          <button class="btn btn-outline" onclick="togglePanel('add-mat-panel')">Cancel</button>
-        </div>
-      </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:36px;">
+      <button class="btn-ghost btn-sm\${itemsCatFilter==='all'?' active':''}" onclick="setItemsCatFilter('all')">All</button>
+      \${ITEM_CATS.map(c=>\`<button class="btn-ghost btn-sm\${itemsCatFilter===c?' active':''}" onclick="setItemsCatFilter('\${c}')">\${c}</button>\`).join('')}
     </div>
-
-    <div style="display:flex;gap:10px;align-items:center;margin-bottom:24px;">
-      <input type="text" id="mat-search" placeholder="Search name, location, owner…" style="max-width:260px;margin:0;" oninput="filterMaterials()">
-      <select id="mat-type-filter" onchange="filterMaterials()" style="max-width:130px;margin:0;">
-        <option value="all">All types</option>
-        <option value="Ores">Ores</option>
-        <option value="Gems">Gems</option>
-      </select>
-      <label class="chk-row" style="margin:0;white-space:nowrap;">
-        <input type="checkbox" id="mat-mine" style="width:auto;" onchange="filterMaterials()">
-        <span style="font-size:18px;">My entries only</span>
-      </label>
-    </div>
-    <div id="mat-table">${renderMatTable(stock)}</div>`;
+    <div id="items-list">\${renderNavItemsList()}</div>\`;
 }
 
-function renderMatTable(stock) {
-  if (!stock.length) return `<div class="empty">No materials in stock yet.</div>`;
+let itemsCatFilter = 'all';
+function setItemsCatFilter(cat){ itemsCatFilter=cat; renderPage(); }
+
+function renderNavItemsList() {
   const u=state.user; const admin=isAdmin(u);
-  return `<table>
-    <thead><tr><th>Material</th><th>Category</th><th>Quality</th><th>Qty</th><th>Location</th><th>Owner</th><th>Added</th><th></th></tr></thead>
-    <tbody>${stock.map(m=>`<tr>
-      <td style="font-weight:600;">${esc(m.materialName)}</td>
-      <td><span class="cat-tag">${esc(m.category)}</span></td>
-      <td><span class="q">${m.quality}</span></td>
-      <td>${m.quantity}<span class="unit-inline">${esc(m.unit)}</span></td>
-      <td class="loc-display">${sysBadge(m.system)}${esc(m.location)}</td>
-      <td style="font-size:18px;">${esc(m.ownerName)}${m.ownerId===u._id?' <span style="color:var(--fg);">(you)</span>':''}</td>
-      <td style="font-size:18px;color:var(--fg);">${fmtDate(m._creationTime)}</td>
-      <td style="white-space:nowrap;">
-        ${(m.ownerId===u._id||admin)?`<button class="btn-ghost btn-sm" style="margin-right:4px;" onclick="openMoveModal('${esc(m._id)}')">Move</button>`:''}
-        ${(m.ownerId===u._id||admin)?`<button class="${admin&&m.ownerId!==u._id?'btn-del':'btn-ghost btn-sm'}" onclick="removeMaterial('${esc(m._id)}')">${admin&&m.ownerId!==u._id?'✕':'Remove'}</button>`:''}
+  const canEdit=u.roles.some(r=>['admin','command','core'].includes(r));
+  const items=state.navItems.filter(i=>i.status!=='removed');
+  const filtered=itemsCatFilter==='all'?items:items.filter(i=>i.category===itemsCatFilter);
+  if(!filtered.length) return \`<div class="empty">No items\${itemsCatFilter!=='all'?' in '+itemsCatFilter:''}.</div>\`;
+  return \`<table>
+    <thead><tr>
+      <th>Item</th><th>Category</th><th>Qty</th><th>Quality</th><th>Location</th><th>Held By</th><th>Added By</th>
+      \${canEdit?'<th></th>':''}
+    </tr></thead>
+    <tbody>\${filtered.map(i=>\`<tr>
+      <td style="font-weight:700;">\${esc(i.name)}\${i.description?\`<div style="font-size:18px;font-weight:400;color:var(--fg);">\${esc(i.description)}</div>\`:''}
       </td>
-    </tr>`).join('')}</tbody></table>`;
+      <td><span class="item-cat-tag">\${esc(i.category)}</span></td>
+      <td style="font-weight:700;">\${i.quantity}</td>
+      <td>\${i.quality!=null?i.quality:'—'}</td>
+      <td>\${esc(i.location)}\${i.system?\` <span class="sys-badge">\${esc(i.system)}</span>\`:''}
+      </td>
+      <td>\${i.heldBy?esc(i.heldBy):'—'}</td>
+      <td style="color:var(--fg);">\${esc(i.addedByName)}</td>
+      \${canEdit?\`<td><button class="btn-del" onclick="deleteNavItem('\${esc(i._id)}')">✕</button></td>\`:''}
+    </tr>\`).join('')}
+    </tbody></table>\`;
 }
 
-function onMatCatChange() {
-  const cat=(document.getElementById('mat-cat-sel')||{value:'Ores'}).value;
-  const nameSel=document.getElementById('mat-name-sel');
-  if(nameSel) nameSel.innerHTML=matNameOptions(cat);
-  const newWrap=document.getElementById('mat-new-wrap'); if(newWrap) newWrap.style.display='none';
-  updateMatQtyUnit(cat);
-}
-function onMatNameChange() {
-  const val=(document.getElementById('mat-name-sel')||{value:''}).value;
-  const newWrap=document.getElementById('mat-new-wrap');
-  if(newWrap) newWrap.style.display=(val==='__new__'?'block':'none');
-}
-function updateMatQtyUnit(cat) {
-  const u=cat==='Gems'?'UNIT':'SCU';
-  const lbl=document.getElementById('mat-qty-lbl'); if(lbl) lbl.textContent=`Quantity (${u})`;
-  const hint=document.getElementById('mat-qty-hint');
-  if(hint) hint.textContent=u==='SCU'?'0.01 SCU increments':'Whole amounts only (1 unit minimum)';
-  const inp=document.getElementById('mat-qty');
-  if(inp){ inp.step=u==='SCU'?'0.01':'1'; inp.min=u==='SCU'?'0.01':'1'; }
-}
-function onSystemChange() {
-  const sys=(document.getElementById('mat-system')||{value:''}).value;
-  const locSel=document.getElementById('mat-location');
-  if(locSel) locSel.innerHTML=sys?locationOptions(sys):'<option value="">Select system first…</option>';
-}
-
-function filterMaterials() {
-  const q=(document.getElementById('mat-search')||{value:''}).value.toLowerCase();
-  const mine=(document.getElementById('mat-mine')||{checked:false}).checked;
-  const typeF=(document.getElementById('mat-type-filter')||{value:'all'}).value;
-  let stock=state.stock.filter(m=>m.status==='available');
-  if(mine) stock=stock.filter(m=>m.ownerId===state.user._id);
-  if(typeF!=='all') stock=stock.filter(m=>m.category===typeF);
-  if(q) stock=stock.filter(m=>
-    m.materialName.toLowerCase().includes(q)||
-    m.location.toLowerCase().includes(q)||
-    m.system.toLowerCase().includes(q)||
-    m.ownerName.toLowerCase().includes(q)||
-    m.category.toLowerCase().includes(q));
-  const el=document.getElementById('mat-table');
-  if(el) el.innerHTML=renderMatTable(stock);
-}
-
-async function addMaterial() {
-  const u=state.user;
-  const category=(document.getElementById('mat-cat-sel')||{value:'Ores'}).value;
-  let name=(document.getElementById('mat-name-sel')||{value:''}).value;
-  let unit=category==='Gems'?'UNIT':'SCU';
-  if (name==='__new__') {
-    name=(document.getElementById('mat-new-name')||{value:''}).value.trim();
-    if(!name){alert('Enter material name');return;}
-  } else if (!name) {
-    alert('Select a material'); return;
-  } else {
-    const entry=catLookup(name);
-    if(entry){ unit=entry.unit; }
-  }
-  const qual=parseInt((document.getElementById('mat-quality')||{value:''}).value);
-  const qty=parseFloat((document.getElementById('mat-qty')||{value:''}).value);
-  const system=(document.getElementById('mat-system')||{value:''}).value;
-  const location=(document.getElementById('mat-location')||{value:''}).value;
-  if(!name||isNaN(qual)||isNaN(qty)||!system||!location){alert('Fill in all fields');return;}
-  if(qual<0||qual>1000){alert('Quality must be 0–1000');return;}
-  if(qty<=0){alert('Quantity must be greater than 0');return;}
-  try {
-    if(!SC_CATALOG.find(m=>m.name===name))
-      await convexMutation('materials:addToCatalog',{name,category,unit});
-    await convexMutation('materials:add',{sessionToken:state.sessionToken,materialName:name,category,unit,quality:qual,quantity:qty,system,location});
-    toast('Material added');
-    togglePanel('add-mat-panel');
-    await refreshAll();
-  } catch(e){alert(e.message);}
-}
-
-async function removeMaterial(id) {
-  if(!confirm('Remove this material from stock?')) return;
-  try {
-    await convexMutation('materials:remove',{id,sessionToken:state.sessionToken});
-    toast('Removed');
-    await refreshAll();
-  } catch(e){alert(e.message);}
-}
-
-// ─── ITEMS PAGE ───────────────────────────────────────────────────────────────
-function pageItems() {
-  const u=state.user; const canAddItem=isAdmin(u)||u.roles.includes('crafter'); // admin already covered
-  return `
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px;">
-      <div>
-        <div class="page-title">ITEMS</div>
-        <div class="page-sub" id="items-count">${state.craftItems.length} item${state.craftItems.length!==1?'s':''} defined</div>
-      </div>
-      ${canAddItem?`<button class="btn btn-black" onclick="togglePanel('add-item-panel')">+ Add Item</button>`:''}
-    </div>
-
-    <div id="add-item-panel" class="collapsible" style="margin-bottom:32px;">
-      <div class="panel">
-        <div style="font-size:18px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:20px;">Define Craftable Item</div>
-        <div class="grid2" style="max-width:680px;">
-          <div class="field">
-            <label class="lbl">Item Name</label>
-            <input type="text" id="item-name-inp" placeholder="e.g. Quantum Drive Component…">
-          </div>
-          <div class="field">
-            <label class="lbl">Category</label>
-            <select id="item-cat-sel">
-              ${ITEM_CATEGORIES.map(c=>`<option value="${c.id}">${c.label}</option>`).join('')}
-            </select>
-          </div>
-        </div>
-        <div style="font-size:18px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin:20px 0 12px;">Required Materials</div>
-        <div id="req-rows"></div>
-        <button class="btn btn-outline btn-sm" style="margin-bottom:20px;" onclick="addReqRow()">+ Add Requirement</button>
-        <div style="display:flex;gap:10px;">
-          <button class="btn btn-black" onclick="addItem()">Save Item</button>
-          <button class="btn btn-outline" onclick="togglePanel('add-item-panel')">Cancel</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="filter-tabs">
-      <button class="filter-tab${itemsFilter==='all'?' active':''}" onclick="setItemsFilter('all')">All</button>
-      ${ITEM_CATEGORIES.map(c=>`<button class="filter-tab${itemsFilter===c.id?' active':''}" onclick="setItemsFilter('${c.id}')">${c.label}</button>`).join('')}
-    </div>
-    <div id="items-list">${renderItemsList()}</div>`;
-}
-
-function setItemsFilter(f) {
-  itemsFilter=f;
-  document.querySelectorAll('.filter-tab').forEach(btn=>{
-    const match=btn.textContent.trim();
-    const isActive=(f==='all'&&match==='All')||ITEM_CATEGORIES.some(c=>c.id===f&&c.label===match);
-    btn.classList.toggle('active',isActive);
-  });
-  const el=document.getElementById('items-list'); if(el) el.innerHTML=renderItemsList();
-}
-
-function renderItemsList() {
-  const u=state.user; const admin=isAdmin(u);
-  let items=state.craftItems;
-  if(itemsFilter!=='all') items=items.filter(i=>i.category===itemsFilter);
-  if(!items.length) return `<div class="empty">No craftable items defined${itemsFilter!=='all'?' in this category':''}.</div>`;
-  return items.map(item=>`
-    <div style="border-bottom:1px solid var(--border-m);padding:24px 0;">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-        <div>
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-            ${item.category?`<span class="item-cat-tag">${esc(itemCatLabel(item.category))}</span>`:''}
-            <span style="font-size:24px;font-weight:700;">${esc(item.name)}</span>
-          </div>
-          <div style="display:flex;flex-wrap:wrap;gap:8px;">
-            ${item.requirements.map(r=>`<span style="font-size:18px;padding:4px 12px;border:1px solid var(--border);">
-              ${esc(r.materialName)} &times; ${r.quantity}<span class="unit-inline">${esc(r.unit)}</span>
-            </span>`).join('')}
-          </div>
-        </div>
-        <div style="text-align:right;font-size:18px;color:var(--fg);flex-shrink:0;margin-left:24px;">
-          ${esc(item.createdByName)}<br>${fmtDate(item._creationTime)}
-          ${admin?`<br><div style="display:flex;gap:6px;justify-content:flex-end;margin-top:8px;">
-            <button class="btn-ghost btn-sm" onclick="openEditItemModal('${esc(item._id)}')">Edit</button>
-            <button class="btn-del" onclick="adminDeleteItem('${esc(item._id)}','${esc(item.name)}')">✕</button>
-          </div>`:''}
-        </div>
-      </div>
-    </div>`).join('');
-}
-
-function addReqRow() {
-  const container=document.getElementById('req-rows'); if(!container) return;
-  const div=document.createElement('div');
-  div.className='req-row';
-  div.style.cssText='display:flex;gap:10px;margin-bottom:8px;align-items:center;';
-  div.innerHTML=`
-    <select class="req-mat" style="flex:2;margin:0;" onchange="onReqMatChange(this)">
-      ${catalogOptgroups()}
-    </select>
-    <input type="number" class="req-qty" placeholder="Qty" min="0.01" step="0.01" style="flex:1;margin:0;">
-    <span class="req-unit unit-inline" style="min-width:32px;"></span>
-    <button class="btn-ghost btn-sm" onclick="this.parentNode.remove()">✕</button>`;
-  container.appendChild(div);
-}
-function onReqMatChange(sel) {
-  const span=sel.parentNode.querySelector('.req-unit');
-  const qtyInp=sel.parentNode.querySelector('.req-qty');
-  const u=sel.value?unitFor(sel.value):'';
-  if(span) span.textContent=u;
-  if(qtyInp&&u) { qtyInp.step=u==='SCU'?'0.01':'1'; qtyInp.min=u==='SCU'?'0.01':'1'; }
-}
-
-async function addItem() {
-  const u=state.user;
-  const name=(document.getElementById('item-name-inp')||{value:''}).value.trim();
-  const category=(document.getElementById('item-cat-sel')||{value:''}).value;
-  if(!name){alert('Enter item name');return;}
-  if(!category){alert('Select a category');return;}
-  const rows=document.querySelectorAll('.req-row');
-  const reqs=[];
-  rows.forEach(r=>{
-    const mat=r.querySelector('.req-mat')?.value;
-    const qty=parseFloat(r.querySelector('.req-qty')?.value);
-    if(mat&&!isNaN(qty)&&qty>0) reqs.push({materialName:mat,quantity:qty,unit:unitFor(mat)});
-  });
-  if(!reqs.length){alert('Add at least one requirement');return;}
-  try {
-    await convexMutation('craftItems:add',{sessionToken:state.sessionToken,name,requirements:reqs,category});
-    toast('Item saved');
-    const ep=document.getElementById('add-item-panel'); if(ep) ep.classList.remove('open');
-    await refreshAll();
-  } catch(e){alert(e.message);}
-}
-
-// ─── CRAFT PAGE ───────────────────────────────────────────────────────────────
-function craftItemOptgroups() {
-  const cs=craftState;
-  let html=`<option value="">Choose item…</option>`;
-  ITEM_CATEGORIES.forEach(cat=>{
-    const items=state.craftItems.filter(i=>i.category===cat.id);
-    if(!items.length) return;
-    html+=`<optgroup label="${cat.label}">${items.map(i=>`<option value="${esc(i._id)}"${cs.itemId===i._id?' selected':''}>${esc(i.name)}</option>`).join('')}</optgroup>`;
-  });
-  const uncategorized=state.craftItems.filter(i=>!i.category);
-  if(uncategorized.length) html+=uncategorized.map(i=>`<option value="${esc(i._id)}"${cs.itemId===i._id?' selected':''}>${esc(i.name)}</option>`).join('');
-  return html;
-}
-
-function setCraftSubTab(tab) {
-  craftSubTab = tab;
-  currentPage = 'craft';
-  renderNav();
-  renderPage();
-}
-
-function pageCraft() {
-  const u=state.user;
-  const cs=craftState;
-  const iscrafter=u.roles.includes('crafter')||isAdmin(u);
-  const isPending=u.roles.includes('crafter_pending');
-  const canAddItem=iscrafter;
-
-  const subTabs = ``; // sub-tabs now live in the nav second row
-
-  if (craftSubTab === 'items') {
-    return `
-      <div class="page-head">
-        <div class="page-head-left"><div class="page-title">Items</div></div>
-        ${canAddItem?`<button class="btn btn-black" onclick="togglePanel('add-item-panel')">+ Add Item</button>`:''}
-      </div>
-      <div id="add-item-panel" class="collapsible" style="margin-bottom:32px;">
-        <div class="panel">
-          <div style="font-size:18px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:20px;">Define Craftable Item</div>
-          <div class="grid2" style="max-width:680px;">
-            <div class="field">
-              <label class="lbl">Item Name</label>
-              <input type="text" id="item-name-inp" placeholder="e.g. Quantum Drive Component…">
-            </div>
-            <div class="field">
-              <label class="lbl">Category</label>
-              <select id="item-cat-sel">
-                ${ITEM_CATEGORIES.map(c=>`<option value="${c.id}">${c.label}</option>`).join('')}
-              </select>
-            </div>
-          </div>
-          <div style="font-size:18px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin:20px 0 12px;">Required Materials</div>
-          <div id="req-rows"></div>
-          <button class="btn btn-outline btn-sm" style="margin-bottom:20px;" onclick="addReqRow()">+ Add Requirement</button>
-          <div style="display:flex;gap:10px;">
-            <button class="btn btn-black" onclick="addItem()">Save Item</button>
-            <button class="btn btn-outline" onclick="togglePanel('add-item-panel')">Cancel</button>
-          </div>
-        </div>
-      </div>
-      <div style="margin-bottom:4px;font-size:18px;color:var(--fg);" id="items-count">${state.craftItems.length} item${state.craftItems.length!==1?'s':''} defined</div>
-      <div class="filter-tabs" style="margin:16px 0 24px;">
-        <button class="filter-tab${itemsFilter==='all'?' active':''}" onclick="setItemsFilter('all')">All</button>
-        ${ITEM_CATEGORIES.map(c=>`<button class="filter-tab${itemsFilter===c.id?' active':''}" onclick="setItemsFilter('${c.id}')">${c.label}</button>`).join('')}
-      </div>
-      <div id="items-list">${renderItemsList()}</div>`;
-  }
-
-  // ── Craft sub-tab ──
-  return `
-    <div class="page-head" style="margin-bottom:28px;">
-      <div class="page-head-left"><div class="page-title">Craft</div></div>
-    </div>
-    ${!iscrafter ? `
-    <div style="max-width:480px;">
-      ${isPending
-        ?`<div class="pending-note" style="display:block;">⏳ <strong>Crafter approval pending</strong> — An admin needs to approve your crafter application before you can craft items.</div>`
-        :`<div class="pending-note" style="display:block;background:var(--bg2);border-left-color:var(--border);color:var(--fg);">You need the Crafter role to craft items. Request access below — an admin will approve it.</div>
-        <button class="btn btn-black" style="margin-top:16px;" onclick="requestCrafter()">Request Crafter Access</button>`}
-    </div>` : `
-    <div class="page-sub" style="margin-bottom:32px;margin-top:-8px;">Select an item and configure quality preferences</div>
-    <div class="grid2" style="margin-bottom:0;">
-      <div>
-        <div class="field">
-          <label class="lbl">Item to Craft</label>
-          <select id="craft-sel" onchange="onCraftItemChange()">
-            ${craftItemOptgroups()}
-          </select>
-        </div>
-        <div class="field">
-          <label class="lbl">Quantity to Craft</label>
-          <div style="display:flex;gap:8px;align-items:stretch;">
-            <input type="number" id="craft-qty" min="1" step="1" value="${cs.quantity||1}" style="flex:1;margin:0;" oninput="onCraftQtyChange()">
-            <button class="btn-max" id="max-btn" onclick="setMaxCrafts()">↑ MAX</button>
-          </div>
-        </div>
-        <div class="field">
-          <label class="lbl">Quality Mode</label>
-          <select id="mode-sel" onchange="onModeChange()">
-            <option value="best"${cs.mode==='best'?' selected':''}>Best Available Quality</option>
-            <option value="range"${cs.mode==='range'?' selected':''}>Quality Range</option>
-          </select>
-          <div class="hint-box" id="mode-hint" style="${cs.mode!=='best'?'display:none;':''}">
-            Uses materials within 50 quality points of the best in stock per material.
-          </div>
-        </div>
-        <div id="range-wrap" style="${cs.mode==='range'?'':'display:none;'}">
-          <div class="grid2" style="gap:12px;">
-            <div class="field"><label class="lbl">Min Quality</label>
-              <input type="number" id="q-min" min="0" max="1000" placeholder="e.g. 700" value="${cs.mode==='range'?cs.qMin:''}" oninput="schedulePlan()"></div>
-            <div class="field"><label class="lbl">Max Quality</label>
-              <input type="number" id="q-max" min="0" max="1000" placeholder="e.g. 950" value="${cs.mode==='range'?cs.qMax:''}" oninput="schedulePlan()"></div>
-          </div>
-        </div>
-      </div>
-      <div id="craft-summary-area">
-        ${cs.plan?renderCraftSummary(cs.plan):`<div style="padding:32px;border:1px solid var(--border-m);text-align:center;color:var(--fg);font-size:18px;">Select an item to see crafting details.</div>`}
-      </div>
-    </div>
-    <div id="craft-detail-area" style="margin-top:32px;">${cs.plan?renderCraftDetail(cs.plan):''}</div>`}`;
-}
-
-async function requestCrafter() {
-  try {
-    await convexMutation('users:addRole',{sessionToken:state.sessionToken,role:'crafter_pending'});
-    if(!state.user.roles.includes('crafter_pending')) state.user.roles.push('crafter_pending');
-    toast('Crafter access requested — awaiting admin approval');
-    renderNav(); renderPage();
-  } catch(e){alert(e.message);}
-}
-
-function onCraftItemChange() {
-  craftState.itemId=(document.getElementById('craft-sel')||{value:''}).value||null;
-  recomputePlan();
-}
-function onCraftQtyChange() {
-  craftState.quantity=Math.max(1,parseInt((document.getElementById('craft-qty')||{value:'1'}).value)||1);
-  recomputePlan();
-}
-function onModeChange() {
-  craftState.mode=(document.getElementById('mode-sel')||{value:'best'}).value;
-  const rw=document.getElementById('range-wrap');   if(rw) rw.style.display=craftState.mode==='range'?'block':'none';
-  const hint=document.getElementById('mode-hint');  if(hint) hint.style.display=craftState.mode==='best'?'block':'none';
-  recomputePlan();
-}
-let _planTimer=null;
-function schedulePlan(){ clearTimeout(_planTimer); _planTimer=setTimeout(recomputePlan,300); }
-
-function recomputePlan() {
-  if(!craftState.itemId) return;
-  const item=state.craftItems.find(i=>i._id===craftState.itemId); if(!item) return;
-  if(craftState.mode==='range'){
-    craftState.qMin=parseInt((document.getElementById('q-min')||{value:'0'}).value)||0;
-    craftState.qMax=parseInt((document.getElementById('q-max')||{value:'1000'}).value)||1000;
-  } else {
-    craftState.qMin=0; craftState.qMax=1000; // best mode uses per-material threshold
-  }
-  const qty=Math.max(1,parseInt((document.getElementById('craft-qty')||{value:'1'}).value)||1);
-  craftState.quantity=qty;
-  craftState.plan=calcPlan(item,state.stock,craftState.mode,craftState.qMin,craftState.qMax,qty);
-  // Update MAX button with live count
-  const maxCount=calcMaxCrafts(item,state.stock,craftState.mode,craftState.qMin,craftState.qMax);
-  const maxBtn=document.getElementById('max-btn');
-  if(maxBtn) maxBtn.textContent=maxCount>0?`↑ MAX (${maxCount})`:'↑ MAX';
-  const sa=document.getElementById('craft-summary-area'); if(sa) sa.innerHTML=renderCraftSummary(craftState.plan,maxCount);
-  const da=document.getElementById('craft-detail-area'); if(da) da.innerHTML=renderCraftDetail(craftState.plan);
-}
-
-// Calculate max complete crafts available with current quality filter
-function calcMaxCrafts(item, stock, mode, qMin, qMax) {
-  if(!item.requirements.length) return 0;
-  let maxCrafts = Infinity;
-  for(const req of item.requirements){
-    let pool=stock.filter(m=>m.materialName===req.materialName&&m.status==='available');
-    if(mode==='range') {
-      pool=pool.filter(m=>m.quality>=qMin&&m.quality<=qMax);
-    } else {
-      // best mode: within 50 of the best in this pool
-      const best=pool.length>0?Math.max(...pool.map(m=>m.quality)):0;
-      pool=pool.filter(m=>m.quality>=best-50);
-    }
-    const totalAvail=pool.reduce((s,m)=>s+m.quantity,0);
-    if(req.quantity>0) maxCrafts=Math.min(maxCrafts, Math.floor(totalAvail/req.quantity));
-    else maxCrafts=0;
-  }
-  return maxCrafts===Infinity?0:Math.max(0,maxCrafts);
-}
-
-function setMaxCrafts() {
-  if(!craftState.itemId){ toast('Select an item first.'); return; }
-  const item=state.craftItems.find(i=>i._id===craftState.itemId); if(!item) return;
-  if(craftState.mode==='range'){
-    craftState.qMin=parseInt((document.getElementById('q-min')||{value:'0'}).value)||0;
-    craftState.qMax=parseInt((document.getElementById('q-max')||{value:'1000'}).value)||1000;
-  }
-  const max=calcMaxCrafts(item,state.stock,craftState.mode,craftState.qMin,craftState.qMax);
-  if(max<=0){ toast('Not enough materials for even 1 craft with current quality settings.'); return; }
-  const el=document.getElementById('craft-qty');
-  if(el) el.value=max;
-  craftState.quantity=max;
-  recomputePlan();
-}
-
-function calcPlan(item, stock, mode, qMin, qMax, quantity=1) {
-  const plan={item,quantity,canCraft:true,requirements:[],avgQuality:0,_qSum:0,_qUsed:0};
-  for(const req of item.requirements){
-    const totalNeeded=req.quantity*quantity;
-    let pool=stock.filter(m=>m.materialName===req.materialName&&m.status==='available');
-    if(mode==='range') {
-      pool=pool.filter(m=>m.quality>=qMin&&m.quality<=qMax);
-    } else {
-      // best mode: within 50 of the best in this pool
-      const best=pool.length>0?Math.max(...pool.map(m=>m.quality)):0;
-      pool=pool.filter(m=>m.quality>=best-50);
-    }
-    pool.sort((a,b)=>b.quality-a.quality);
-    let needed=totalNeeded;
-    const batches=[];
-    let qSum=0;
-    for(const b of pool){
-      if(needed<=0) break;
-      const use=Math.min(needed,b.quantity);
-      batches.push({stockId:b._id,materialName:b.materialName,unit:b.unit,quality:b.quality,quantityUse:use,quantityAvail:b.quantity,system:b.system,location:b.location,ownerName:b.ownerName,ownerId:b.ownerId});
-      qSum+=b.quality*use; needed-=use;
-    }
-    const fulfilled=totalNeeded-needed;
-    const avgQ=fulfilled>0?Math.round(qSum/fulfilled):0;
-    plan.requirements.push({materialName:req.materialName,unit:req.unit,needed:totalNeeded,fulfilled,shortfall:needed,batches,avgQuality:avgQ,ok:needed<=0.0001});
-    if(needed>0.0001) plan.canCraft=false;
-    plan._qSum+=qSum; plan._qUsed+=fulfilled;
-  }
-  plan.avgQuality=plan._qUsed>0?Math.round(plan._qSum/plan._qUsed):0;
-  return plan;
-}
-
-function qualLabel(q){if(q>=900)return'Exceptional';if(q>=750)return'High';if(q>=500)return'Standard';if(q>=250)return'Low';return'Poor';}
-
-function renderCraftSummary(plan, maxCraftable){
-  const ok=plan.canCraft;
-  const qty=plan.quantity||1;
-  const catLabel=plan.item.category?itemCatLabel(plan.item.category):'';
-  const maxStr=maxCraftable!=null?maxCraftable:calcMaxCrafts(plan.item,state.stock,craftState.mode,craftState.qMin,craftState.qMax);
-  return `<div class="craft-box${ok?'':' err'}">
-    <div style="font-size:18px;font-weight:700;margin-bottom:2px;">${esc(plan.item.name)}</div>
-    ${catLabel?`<div style="font-size:18px;color:var(--fg);margin-bottom:14px;">${esc(catLabel)}</div>`:''}
-    <div style="font-size:18px;font-weight:700;letter-spacing:.1em;color:${ok?'#000':'var(--red)'};">${ok?`CRAFTABLE &times;${qty}`:'INSUFFICIENT MATERIALS'}</div>
-    ${ok?`<div style="font-size:18px;color:var(--fg);margin-top:4px;margin-bottom:16px;">Max craftable with current stock: <strong style="color:var(--fg);">${maxStr}</strong></div>`:''}
-    <hr class="thin" style="margin:16px 0;">
-    <div style="font-size:18px;font-weight:700;letter-spacing:.1em;color:var(--fg);margin-bottom:4px;text-transform:uppercase;">Avg. Craft Quality</div>
-    <div class="q-big">${ok?plan.avgQuality:'—'}</div>
-    ${ok?`<div style="font-size:18px;color:var(--fg);margin-top:4px;">${qualLabel(plan.avgQuality)}</div>`:''}
-  </div>`;
-}
-
-function matCatTag(materialName) {
-  const entry=catLookup(materialName);
-  if(!entry) return '';
-  const label=entry.cat==='Ores'?'ORE':'GEM';
-  return `<span style="font-size:18px;font-weight:700;letter-spacing:.06em;border:1.5px solid var(--border);padding:1px 5px;margin-left:6px;">${label}</span>`;
-}
-
-function renderCraftDetail(plan){
-  const qty=plan.quantity||1;
-  let html=`<hr class="thick">
-  <div style="font-size:18px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:24px;">
-    Material Requirements &mdash; ${qty}&times; ${esc(plan.item.name).toUpperCase()}
-  </div>`;
-  for(const req of plan.requirements){
-    const clr=req.ok?'var(--fg)':'var(--red)';
-    html+=`<div style="border-bottom:1px solid var(--border-m);padding:20px 0;">
-      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;">
-        <div style="font-size:24px;font-weight:700;">${esc(req.materialName)}${matCatTag(req.materialName)}</div>
-        <div style="font-size:18px;color:${clr};">${req.ok
-          ?`${req.fulfilled}&thinsp;/&thinsp;${req.needed} ${esc(req.unit)} &nbsp;&middot;&nbsp; avg quality <strong>${req.avgQuality}</strong>`
-          :`${req.fulfilled}&thinsp;/&thinsp;${req.needed} ${esc(req.unit)} available &mdash; short <strong>${Math.round(req.shortfall*100)/100}</strong>`}</div>
-      </div>`;
-    if(req.batches.length){
-      html+=`<table style="font-size:18px;">
-        <thead><tr><th>Quality</th><th>Use</th><th>Available</th><th>System</th><th>Location</th><th>Owner</th></tr></thead>
-        <tbody>${req.batches.map(b=>`<tr>
-          <td><span class="q">${b.quality}</span></td>
-          <td style="font-weight:600;">${b.quantityUse} <span class="unit-inline">${esc(b.unit)}</span></td>
-          <td style="color:var(--fg);">${b.quantityAvail} total</td>
-          <td>${sysBadge(b.system)}</td>
-          <td style="color:var(--fg);">${esc(b.location)}</td>
-          <td>${esc(b.ownerName)}</td>
-        </tr>`).join('')}</tbody></table>`;
-    } else {
-      html+=`<div style="font-size:18px;color:var(--red);">No suitable materials found in stock.</div>`;
-    }
-    html+=`</div>`;
-  }
-  if(plan.canCraft){
-    html+=`<div style="margin-top:28px;padding-top:24px;border-top:1px solid var(--border);">
-      <button class="btn btn-red" onclick="openCraftLocationModal()">Craft${qty>1?` (${qty}×)`:''}
-      </button>
-      <div style="font-size:18px;color:var(--fg);margin-top:8px;">Next: select your crafting location, then materials will be consumed and the item added to inventory.</div>
-    </div>`;
-  }
-  return html;
-}
-
-function openCraftLocationModal() {
-  const plan=craftState.plan; if(!plan||!plan.canCraft) return;
-  const qty=plan.quantity||1;
-  showModal(`
-    <div class="modal-title">Where did you craft ${qty>1?qty+'× ':''}${esc(plan.item.name)}?</div>
-    <div class="field">
-      <label class="lbl">System</label>
-      <select id="cl-sys" onchange="onCLSysChange()">
-        <option value="">Select system…</option>
-        ${Object.keys(SYSTEMS).map(s=>`<option value="${s}">${s}</option>`).join('')}
+function openAddItemModal() {
+  showModal(\`
+    <div class="modal-title">Add Item</div>
+    <div class="field"><label class="lbl">Name</label><input type="text" id="ai-name" placeholder="Item name…"></div>
+    <div class="field"><label class="lbl">Category</label>
+      <select id="ai-cat">
+        \${ITEM_CATS.map(c=>\`<option value="\${c}">\${c}</option>\`).join('')}
       </select>
     </div>
-    <div class="field">
-      <label class="lbl">Location</label>
-      <select id="cl-loc">
-        <option value="">Select system first…</option>
-      </select>
+    <div class="field"><label class="lbl">Description <span style="font-weight:400;">(optional)</span></label>
+      <input type="text" id="ai-desc" placeholder="Short description…">
+    </div>
+    <div class="grid2">
+      <div class="field"><label class="lbl">Quantity</label><input type="number" id="ai-qty" value="1" min="1" step="1"></div>
+      <div class="field"><label class="lbl">Quality <span style="font-weight:400;">(optional)</span></label><input type="number" id="ai-quality" placeholder="e.g. 900" min="0" max="1000" step="1"></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label class="lbl">System</label>
+        <select id="ai-sys" onchange="document.getElementById('ai-loc').innerHTML=locationOptions(this.value)">
+          <option value="">—</option>
+          \${Object.keys(SYSTEMS).map(s=>\`<option value="\${s}">\${s}</option>\`).join('')}
+        </select>
+      </div>
+      <div class="field"><label class="lbl">Location</label>
+        <select id="ai-loc"><option value="">Select system first…</option></select>
+      </div>
+    </div>
+    <div class="field"><label class="lbl">Held By <span style="font-weight:400;">(optional)</span></label>
+      <input type="text" id="ai-held" placeholder="Member holding this item…">
     </div>
     <div style="display:flex;gap:10px;margin-top:8px;">
-      <button class="btn btn-red" onclick="confirmCraft()">Confirm Craft</button>
+      <button class="btn btn-black" onclick="confirmAddItem()">Add Item</button>
       <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
-    </div>`);
+    </div>\`);
 }
 
-function onCLSysChange() {
-  const sys=(document.getElementById('cl-sys')||{value:''}).value;
-  const loc=document.getElementById('cl-loc');
-  if(loc) loc.innerHTML=sys?locationOptions(sys):'<option value="">Select system first…</option>';
-}
-
-async function confirmCraft() {
-  const plan=craftState.plan; if(!plan||!plan.canCraft) return;
-  const system=(document.getElementById('cl-sys')||{value:''}).value;
-  const location=(document.getElementById('cl-loc')||{value:''}).value;
-  if(!system||!location){alert('Select a system and location');return;}
-  const qty=plan.quantity||1;
-  const u=state.user;
-  const batches=plan.requirements.flatMap(r=>r.batches.map(b=>({stockId:b.stockId,quantityUse:b.quantityUse})));
-  const materialsDetail=plan.requirements.flatMap(r=>r.batches.map(b=>({
-    materialName:b.materialName,unit:b.unit,quality:b.quality,quantityUsed:b.quantityUse,
-    system:b.system,location:b.location,ownerName:b.ownerName,
-  })));
+async function confirmAddItem() {
+  const name=(document.getElementById('ai-name')||{value:''}).value.trim();
+  const category=(document.getElementById('ai-cat')||{value:'FPS'}).value;
+  const description=(document.getElementById('ai-desc')||{value:''}).value.trim()||undefined;
+  const quantity=parseInt((document.getElementById('ai-qty')||{value:'1'}).value)||1;
+  const qualityRaw=(document.getElementById('ai-quality')||{value:''}).value;
+  const quality=qualityRaw?parseInt(qualityRaw):undefined;
+  const system=(document.getElementById('ai-sys')||{value:''}).value||undefined;
+  const location=(document.getElementById('ai-loc')||{value:''}).value||'Unknown';
+  const heldBy=(document.getElementById('ai-held')||{value:''}).value.trim()||undefined;
+  if(!name){alert('Enter an item name');return;}
   try {
+    await convexMutation('items:create',{sessionToken:state.sessionToken,name,category,description,quantity,quality,system,location,heldBy});
     closeModal();
-    await convexMutation('materials:executeCraft',{
-      sessionToken:state.sessionToken,
-      batches,itemName:plan.item.name,avgQuality:plan.avgQuality,materialsDetail,
-    });
-    await convexMutation('inventory:add',{
-      sessionToken:state.sessionToken,
-      itemName:plan.item.name,
-      itemId:plan.item._id,
-      category:plan.item.category,
-      quantity:qty,
-      avgQuality:plan.avgQuality,
-      system,
-      location,
-    });
-    craftState={itemId:null,mode:'best',qMin:850,qMax:1000,quantity:1,plan:null};
-    toast(`${qty>1?qty+'× ':''}${plan.item.name} crafted and added to inventory!`);
+    toast('Item added');
     await refreshAll();
-    goTo('inventory');
   } catch(e){alert(e.message);}
 }
+
+async function deleteNavItem(itemId) {
+  if(!confirm('Remove this item from inventory?')) return;
+  try {
+    await convexMutation('items:remove',{sessionToken:state.sessionToken,itemId});
+    toast('Item removed');
+    await refreshAll();
+  } catch(e){alert(e.message);}
+}
+
 
 // ─── ARCHIVE PAGE ─────────────────────────────────────────────────────────────
 function pageArchive(){
@@ -2004,7 +1298,7 @@ function renderArchiveTable(openMonths){
 
 function renderMonthRows(entries){
   const admin=isAdmin(state.user);
-  const labels={crafted:'Crafted',material_added:'Added',material_removed:'Removed',material_moved:'Moved',item_created:'New Item',item_deleted:'Deleted Item',item_handed_out:'Handed Out',user_joined:'Joined',role_approved:'Role Approved',role_denied:'Role Denied',crafter_approved:'Crafter Approved',crafter_denied:'Crafter Denied',admin_granted:'Admin Granted',member_removed:'Member Removed',task_created:'Task Created',task_accepted:'Task Accepted',task_completed:'Task Completed',lottery_opened:'Lottery Opened',lottery_drawn:'Lottery Drawn',lottery_pick:'Lottery Pick'};
+  const labels={user_joined:'Joined',role_approved:'Role Approved',role_denied:'Role Denied',admin_granted:'Admin Granted',member_removed:'Member Removed',task_created:'Task Created',task_closed:'Task Closed',item_added:'Item Added',item_updated:'Item Updated',item_removed:'Item Removed',lottery_opened:'Lottery Opened',lottery_drawn:'Lottery Drawn',lottery_pick:'Lottery Pick'};
   return `<table>
     <thead><tr><th>Date</th><th>Action</th><th>User</th><th>Details</th>${admin?'<th></th>':''}</tr></thead>
     <tbody>${entries.map(e=>`<tr>
@@ -2018,30 +1312,16 @@ function renderMonthRows(entries){
 function fmtArchiveDetails(e){
   const d=e.details||{};
   switch(e.type){
-    case 'material_added':
-      return `${esc(d.materialName)} &middot; ${d.quantity} ${esc(d.unit||'')} &middot; q${d.quality} &middot; ${sysBadge(d.system)}${esc(d.location)}`;
-    case 'material_removed':
-      return `${esc(d.materialName)} &middot; ${d.quantity} ${esc(d.unit||'')} &middot; ${sysBadge(d.system)}${esc(d.location)}`;
-    case 'crafted': {
-      const lines=(d.materialsUsed||[]).map(m=>`${esc(m.materialName)} &times;${m.quantityUsed}${esc(m.unit||'')} (q${m.quality}, ${esc(m.ownerName)}, ${sysBadge(m.system)}${esc(m.location)})`).join(' | ');
-      return `<strong>${esc(d.itemName)}</strong> &middot; avg q${d.avgQuality}<br><span style="font-size:18px;color:var(--fg);">${lines}</span>`; }
-    case 'item_created':
-      return `${esc(d.itemName)} &middot; ${(d.requirements||[]).map(r=>`${esc(r.materialName)}&times;${r.quantity}${esc(r.unit||'')}`).join(', ')}`;
-    case 'item_deleted':
-      return `${esc(d.itemName)}`;
-    case 'user_joined':
-      return `Roles: ${(d.roles||[]).join(', ')}`;
+    case 'user_joined':      return `Roles: ${(d.roles||[]).join(', ')}`;
     case 'role_approved':    return `Approved <strong>${esc(d.targetUsername)}</strong> as ${esc(d.role||'?')}`;
     case 'role_denied':      return `Denied <strong>${esc(d.targetUsername)}</strong> ${esc(d.role||'?')} request`;
-    case 'crafter_approved': return `Approved <strong>${esc(d.targetUsername)}</strong> as Crafter`;
-    case 'crafter_denied':   return `Denied <strong>${esc(d.targetUsername)}</strong> crafter request`;
     case 'admin_granted':    return `Granted admin to <strong>${esc(d.targetUsername)}</strong>`;
-    case 'item_handed_out':  return `${esc(d.itemName)}${d.quantity>1?` &times;${d.quantity}`:''} &middot; avg q${d.avgQuality} &middot; to <strong>${esc(d.handedOutTo)}</strong>`;
-    case 'material_moved':   return `${esc(d.materialName)} &middot; ${d.quantity} ${esc(d.unit||'')} &middot; ${sysBadge(d.fromSystem)}${esc(d.fromLocation)} &rarr; ${sysBadge(d.toSystem)}${esc(d.toLocation)}`;
     case 'member_removed':   return `Removed <strong>${esc(d.targetUsername)}</strong>`;
-    case 'task_created':     return `<strong>${esc(d.title)}</strong> &middot; ${esc(d.type)} &middot; ${esc(d.priority)}`;
-    case 'task_accepted':    return `Accepted task: <strong>${esc(d.title)}</strong>`;
-    case 'task_completed':   return `Completed task: <strong>${esc(d.title)}</strong>`;
+    case 'task_created':     return `<strong>${esc(d.title)}</strong> &middot; ${esc(d.priority)}`;
+    case 'task_closed':      return `Closed: <strong>${esc(d.title)}</strong>`;
+    case 'item_added':       return `<strong>${esc(d.name)}</strong> &middot; ${esc(d.category)} &middot; qty ${d.quantity}`;
+    case 'item_updated':     return `<strong>${esc(d.name)}</strong>`;
+    case 'item_removed':     return `<strong>${esc(d.name)}</strong>`;
     case 'lottery_opened':   return `<strong>${esc(d.title)}</strong> &middot; ${d.packages} package${d.packages!==1?'s':''}`;
     case 'lottery_drawn':    return `<strong>${esc(d.title)}</strong> &middot; ${d.packagesCount} package${d.packagesCount!==1?'s':''} drawn`;
     case 'lottery_pick':     return `<strong>${esc(d.lotteryTitle)}</strong> &middot; Package #${(d.pkgId||'').replace('pkg_','')} &middot; ${d.value} pts`;
@@ -2053,30 +1333,14 @@ function fmtArchiveDetails(e){
 function pageMember() {
   const u = state.user;
   const noAdmin = !hasAdmin();
-  // Activity from archive filtered to this user
   const myLog = state.archive.filter(e => e.userId === u._id && !LOTTERY_LOG_TYPES.has(e.type));
-  const myMatsAdded   = myLog.filter(e=>e.type==='material_added').length;
-  const myMatsRemoved = myLog.filter(e=>e.type==='material_removed').length;
-  const myCrafted     = myLog.filter(e=>e.type==='crafted').length;
-  const myTasksDone   = myLog.filter(e=>e.type==='task_completed').length;
-  const myTasksAcc    = myLog.filter(e=>e.type==='task_accepted').length;
+  const myTasksCreated = myLog.filter(e=>e.type==='task_created').length;
+  const myItemsAdded   = myLog.filter(e=>e.type==='item_added').length;
+  const myProjects     = state.tasks.filter(t=>t.members.some(m=>m.userId===u._id)).length;
 
-  // Roles the member has (non-pending, non-removed)
-  const activeRoles = (u.roles||[]).filter(r=>!r.endsWith('_pending')&&r!=='removed');
-  // Roles they could request
-  const REQUESTABLE = [
-    {id:'provider',  label:'Provider'},
-    {id:'crafter',   label:'Crafter'},
-    {id:'logistics', label:'Logistics'},
-  ];
-  const requestable = REQUESTABLE.filter(r => {
-    return !u.roles.includes(r.id) && !u.roles.includes(r.id+'_pending');
-  });
-  const pending = REQUESTABLE.filter(r => u.roles.includes(r.id+'_pending'));
-
-  // Last 10 personal log entries
+  const activeRoles = (u.roles||[]).filter(r=>r!=='removed');
   const recentActivity = myLog.slice(0,10);
-  const logLabels = {crafted:'Crafted',material_added:'Added',material_removed:'Removed',material_moved:'Moved',item_handed_out:'Handed Out',task_created:'Created Task',task_accepted:'Accepted Task',task_completed:'Completed Task',user_joined:'Joined'};
+  const logLabels = {user_joined:'Joined',role_approved:'Role Approved',role_denied:'Role Denied',admin_granted:'Admin Granted',member_removed:'Member Removed',task_created:'Task Created',task_closed:'Task Closed',item_added:'Item Added',item_updated:'Item Updated',item_removed:'Item Removed'};
 
   return `
     <div class="page-head">
@@ -2091,19 +1355,14 @@ function pageMember() {
 
     <div class="ov-stats" style="margin-bottom:40px;">
       <div class="ov-stat" style="padding-right:28px;">
-        <div class="ov-stat-num">${myMatsAdded}</div>
-        <div class="ov-stat-label">Materials Added</div>
-        <div class="ov-stat-sub">${myMatsRemoved} removed</div>
-      </div>
-      <div class="ov-stat" style="padding-left:28px;padding-right:28px;">
-        <div class="ov-stat-num">${myCrafted}</div>
-        <div class="ov-stat-label">Items Crafted</div>
+        <div class="ov-stat-num">${myProjects}</div>
+        <div class="ov-stat-label">Projects Joined</div>
         <div class="ov-stat-sub">&nbsp;</div>
       </div>
       <div class="ov-stat" style="padding-left:28px;padding-right:28px;">
-        <div class="ov-stat-num">${myTasksDone}</div>
-        <div class="ov-stat-label">Tasks Completed</div>
-        <div class="ov-stat-sub">${myTasksAcc} accepted total</div>
+        <div class="ov-stat-num">${myItemsAdded}</div>
+        <div class="ov-stat-label">Items Added</div>
+        <div class="ov-stat-sub">&nbsp;</div>
       </div>
       <div class="ov-stat" style="padding-left:28px;">
         <div class="ov-stat-num">${myLog.length}</div>
@@ -2111,19 +1370,6 @@ function pageMember() {
         <div class="ov-stat-sub">&nbsp;</div>
       </div>
     </div>
-
-    ${requestable.length||pending.length?`
-    <div style="margin-bottom:40px;">
-      <div style="font-size:18px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:14px;color:var(--fg);">Role Requests</div>
-      ${pending.length?`
-      <div style="margin-bottom:12px;font-size:18px;color:var(--fg);">
-        ${pending.map(r=>`<span style="margin-right:16px;">⏳ <strong>${r.label}</strong> — pending admin approval</span>`).join('')}
-      </div>`:''}
-      ${requestable.length?`
-      <div style="display:flex;gap:10px;flex-wrap:wrap;">
-        ${requestable.map(r=>`<button class="btn btn-outline btn-sm" onclick="requestRole('${r.id}','${r.label}')">Request ${r.label}</button>`).join('')}
-      </div>`:''}
-    </div>`:''}
 
     ${recentActivity.length?`
     <div>
@@ -2139,11 +1385,98 @@ function pageMember() {
     </div>`:`<div class="empty">No activity recorded yet.</div>`}`;
 }
 
-async function requestRole(role, label) {
-  if(!confirm(`Request ${label} role? An admin will need to approve it.`)) return;
+// ─── ADMIN PAGE ───────────────────────────────────────────────────────────────
+function pageAdmin() {
+  const u=state.user;
+  if(!isAdmin(u)) return `<div class="page-head"><div class="page-title">Admin</div></div><p style="color:var(--fg);margin-top:24px;">Access denied.</p>`;
+  return `
+    <div class="page-head">
+      <div class="page-head-left">
+        <div class="page-title">Admin</div>
+        <div class="page-sub">Manage members and roles</div>
+      </div>
+    </div>
+    <div id="admin-wrap">${renderAdminContent()}</div>`;
+}
+
+function renderAdminContent() {
+  const u=state.user;
+  const MANAGEABLE=['recruit','member','core','command'];
+  const members=state.allUsers;
+  return `
+    <div>
+      <div style="font-size:18px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--border);">All Members</div>
+      ${members.map(m=>{
+        const isMe=m._id===u._id;
+        const removed=m.roles.includes('removed');
+        return `<div style="display:flex;align-items:flex-start;gap:16px;padding:14px 0;border-bottom:1px solid var(--border-m);flex-wrap:wrap;">
+          <div style="min-width:160px;">
+            <div style="font-weight:700;font-size:18px;">${esc(m.username)}${isMe?' <span style="color:var(--fg);font-size:18px;">(you)</span>':''}</div>
+            <div style="margin-top:4px;">${m.roles.map(r=>roleTagHtml(r)).join(' ')}</div>
+          </div>
+          ${!removed?`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;flex:1;">
+            ${MANAGEABLE.map(role=>{
+              const has=m.roles.includes(role);
+              if(has) return `<button class="btn-ghost btn-sm" style="border-color:#fca5a5;color:#ef4444;" onclick="adminRevokeRole('${esc(m._id)}','${esc(m.username)}','${role}')">− ${role.charAt(0).toUpperCase()+role.slice(1)}</button>`;
+              return `<button class="btn-ghost btn-sm" onclick="adminGrantRole('${esc(m._id)}','${esc(m.username)}','${role}')">+ ${role.charAt(0).toUpperCase()+role.slice(1)}</button>`;
+            }).join('')}
+            ${!m.roles.includes('admin')&&!isMe?`<button class="btn-ghost btn-sm" onclick="adminGrantAdmin('${esc(m._id)}','${esc(m.username)}')">+ Admin</button>`:''}
+          </div>
+          <div style="margin-left:auto;">
+            ${!isMe?`<button class="btn-del" onclick="adminRemoveMember('${esc(m._id)}','${esc(m.username)}')">Remove</button>`:''}
+          </div>`:`<div style="color:#ef4444;font-size:18px;align-self:center;">Removed</div>`}
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
+async function adminGrantRole(targetId, targetName, role) {
+  const label=role.charAt(0).toUpperCase()+role.slice(1);
+  if(!confirm(`Grant ${label} role to ${targetName}?`)) return;
   try {
-    await convexMutation('users:requestRole',{sessionToken:state.sessionToken,role});
-    toast(`${label} role requested — pending admin approval`);
+    await convexMutation('users:grantRole',{sessionToken:state.sessionToken,targetUserId:targetId,role});
+    toast(`${label} role granted to ${targetName}`);
+    await refreshAll();
+    document.getElementById('admin-wrap').innerHTML=renderAdminContent();
+  } catch(e){alert(e.message);}
+}
+
+async function adminRevokeRole(targetId, targetName, role) {
+  const label=role.charAt(0).toUpperCase()+role.slice(1);
+  if(!confirm(`Revoke ${label} role from ${targetName}?`)) return;
+  try {
+    await convexMutation('users:revokeRole',{sessionToken:state.sessionToken,targetUserId:targetId,role});
+    toast(`${label} role revoked from ${targetName}`);
+    await refreshAll();
+    document.getElementById('admin-wrap').innerHTML=renderAdminContent();
+  } catch(e){alert(e.message);}
+}
+
+async function adminGrantAdmin(targetId, targetName) {
+  if(!confirm(`Grant admin role to ${targetName}? This cannot be undone.`)) return;
+  try {
+    await convexMutation('users:grantAdmin',{sessionToken:state.sessionToken,targetUserId:targetId});
+    toast(`Admin role granted to ${targetName}`);
+    await refreshAll();
+    document.getElementById('admin-wrap').innerHTML=renderAdminContent();
+  } catch(e){alert(e.message);}
+}
+
+async function adminRemoveMember(targetId, targetName) {
+  if(!confirm(`Remove ${targetName} from the org? They will be marked as removed.`)) return;
+  try {
+    await convexMutation('users:removeMember',{sessionToken:state.sessionToken,targetUserId:targetId});
+    toast(`${targetName} removed`);
+    await refreshAll();
+    document.getElementById('admin-wrap').innerHTML=renderAdminContent();
+  } catch(e){alert(e.message);}
+}
+
+async function adminDeleteLog(id) {
+  if(!confirm('Delete this log entry?')) return;
+  try {
+    await convexMutation('archive:removeLog',{id,sessionToken:state.sessionToken});
+    toast('Log entry deleted');
     await refreshAll();
   } catch(e){alert(e.message);}
 }
@@ -2151,80 +1484,9 @@ async function requestRole(role, label) {
 // ─── SHARED HELPERS ───────────────────────────────────────────────────────────
 function togglePanel(id){
   const el=document.getElementById(id); if(!el) return;
-  const wasOpen=el.classList.contains('open');
   el.classList.toggle('open');
-  if(!wasOpen&&id==='add-item-panel'){
-    const rr=document.getElementById('req-rows'); if(rr){rr.innerHTML='';addReqRow();}
-  }
 }
 
-// ─── MOVE MATERIAL ────────────────────────────────────────────────────────────
-function openMoveModal(matId) {
-  const m = state.stock.find(s => s._id === matId);
-  if (!m) return;
-  const isGem = m.unit === 'UNIT';
-  showModal(`
-    <div class="modal-title">Move: ${esc(m.materialName)}</div>
-    <div style="font-size:18px;color:var(--fg);margin-bottom:20px;">
-      Currently at: ${sysBadge(m.system)}${esc(m.location)} &middot; ${m.quantity} ${esc(m.unit)} &middot; <span class="q" style="font-size:18px;">${m.quality}</span>
-    </div>
-    <div style="font-size:18px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px;color:var(--fg);">New Location</div>
-    <div class="field">
-      <label class="lbl">System</label>
-      <select id="mv-sys" onchange="onMVSysChange()">
-        <option value="">Select system…</option>
-        ${Object.keys(SYSTEMS).map(s=>`<option value="${s}">${s}</option>`).join('')}
-      </select>
-    </div>
-    <div class="field">
-      <label class="lbl">Location</label>
-      <select id="mv-loc"><option value="">Select system first…</option></select>
-    </div>
-    <div class="field" style="margin-top:12px;">
-      <label class="chk-row" style="margin-bottom:8px;">
-        <input type="checkbox" id="mv-partial" style="width:auto;" onchange="toggleMVPartial(${esc(String(m.quantity))}, '${esc(m.unit)}')">
-        <span style="font-size:18px;">Move partial quantity (default: all ${m.quantity} ${esc(m.unit)})</span>
-      </label>
-      <div id="mv-partial-wrap" style="display:none;">
-        <input type="number" id="mv-qty" value="${m.quantity}" min="${isGem?1:0.01}" max="${m.quantity}" step="${isGem?1:0.01}" style="max-width:160px;">
-        <div style="font-size:18px;color:var(--fg);margin-top:4px;">Max: ${m.quantity} ${esc(m.unit)}</div>
-      </div>
-    </div>
-    <div style="display:flex;gap:10px;margin-top:8px;">
-      <button class="btn btn-black" onclick="confirmMove('${esc(matId)}')">Confirm Move</button>
-      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
-    </div>`);
-}
-
-function onMVSysChange() {
-  const sys=(document.getElementById('mv-sys')||{value:''}).value;
-  const loc=document.getElementById('mv-loc');
-  if(loc) loc.innerHTML=sys?locationOptions(sys):'<option value="">Select system first…</option>';
-}
-
-function toggleMVPartial(maxQty, unit) {
-  const checked=(document.getElementById('mv-partial')||{checked:false}).checked;
-  const wrap=document.getElementById('mv-partial-wrap');
-  if(wrap) wrap.style.display=checked?'block':'none';
-}
-
-async function confirmMove(matId) {
-  const toSystem=(document.getElementById('mv-sys')||{value:''}).value;
-  const toLocation=(document.getElementById('mv-loc')||{value:''}).value;
-  if(!toSystem||!toLocation){alert('Select a destination system and location');return;}
-  const isPartial=(document.getElementById('mv-partial')||{checked:false}).checked;
-  let partialQty=undefined;
-  if(isPartial){
-    partialQty=parseFloat((document.getElementById('mv-qty')||{value:''}).value);
-    if(isNaN(partialQty)||partialQty<=0){alert('Enter a valid quantity');return;}
-  }
-  try {
-    await convexMutation('materials:move',{id:matId,sessionToken:state.sessionToken,toSystem,toLocation,...(partialQty?{partialQty}:{})});
-    closeModal();
-    toast('Material moved');
-    await refreshAll();
-  } catch(e){alert(e.message);}
-}
 
 // ─── MODAL UTILS ─────────────────────────────────────────────────────────────
 function showModal(html) {
@@ -2242,746 +1504,152 @@ function modalOverlayClick(e) {
 }
 
 // ─── INVENTORY PAGE ───────────────────────────────────────────────────────────
-function pageInventory() {
-  const u=state.user;
-  const avail=state.inventory.filter(i=>i.status==='available');
-  const handedOut=state.inventory.filter(i=>i.status==='handed_out');
-  return `
-    <div class="page-head">
-      <div class="page-head-left">
-        <div class="page-title">Inventory</div>
-        <div class="page-sub" id="inv-count">${avail.length} item${avail.length!==1?'s':''} in stock</div>
-      </div>
-    </div>
-    <div class="filter-tabs">
-      <button class="filter-tab${invFilter==='available'?' active':''}" onclick="setInvFilter('available')">In Stock (${avail.length})</button>
-      <button class="filter-tab${invFilter==='handed_out'?' active':''}" onclick="setInvFilter('handed_out')">Handed Out (${handedOut.length})</button>
-    </div>
-    <div class="filter-tabs" id="inv-cat-tabs" style="margin-bottom:20px;">
-      <button class="filter-tab${invCatFilter==='all'?' active':''}" onclick="setInvCatFilter('all')">All</button>
-      ${ITEM_CATEGORIES.map(c=>`<button class="filter-tab${invCatFilter===c.id?' active':''}" onclick="setInvCatFilter('${c.id}')">${c.label}</button>`).join('')}
-    </div>
-    <div style="margin-bottom:36px;">
-      <input type="text" id="inv-search-inp" placeholder="Search inventory…" value="${esc(invSearch)}" style="max-width:420px;"
-        oninput="invSearch=this.value;document.getElementById('inv-list').innerHTML=renderInvList();">
-    </div>
-    <div id="inv-list">${renderInvList()}</div>`;
-}
 
-function setInvFilter(f) {
-  invFilter=f;
-  renderPage();
-}
-
-function setInvCatFilter(f) {
-  invCatFilter=f;
-  const tabs=document.getElementById('inv-cat-tabs');
-  if(tabs) tabs.querySelectorAll('.filter-tab').forEach(btn=>{
-    const isAll=f==='all'&&btn.textContent.trim()==='All';
-    const isCat=ITEM_CATEGORIES.some(c=>c.id===f&&c.label===btn.textContent.trim());
-    btn.classList.toggle('active',isAll||isCat);
-  });
-  const el=document.getElementById('inv-list'); if(el) el.innerHTML=renderInvList();
-}
-
-function renderInvList() {
-  const u=state.user;
-  const admin=isAdmin(u);
-  const canHandOut=u.roles.includes('crafter')||u.roles.includes('logistics')||admin;
-  let items=state.inventory.filter(i=>i.status===invFilter);
-  if(invCatFilter!=='all') items=items.filter(i=>i.category===invCatFilter);
-  if(invSearch.trim()) {
-    const q=invSearch.trim().toLowerCase();
-    items=items.filter(i=>(i.itemName||'').toLowerCase().includes(q)||(i.craftedByName||'').toLowerCase().includes(q)||(i.handedOutTo||'').toLowerCase().includes(q));
-  }
-  items=items.slice().sort((a,b)=>b._creationTime-a._creationTime);
-  if(!items.length) return `<div class="empty">${invFilter==='available'?'No crafted items in stock yet.':'No items have been handed out yet.'}</div>`;
-
-  if(invFilter==='available') {
-    return items.map(item=>`
-      <div class="inv-row" style="display:flex;gap:24px;align-items:flex-start;">
-        <div style="flex:1;">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
-            ${item.category?`<span class="item-cat-tag">${esc(itemCatLabel(item.category))}</span>`:''}
-            <span style="font-size:24px;font-weight:700;">${esc(item.itemName)}</span>
-            <span style="font-size:18px;font-weight:700;color:var(--fg);">&times;${item.quantity}</span>
-          </div>
-          <div style="display:flex;gap:20px;font-size:18px;color:var(--fg);flex-wrap:wrap;">
-            <span>Avg quality: <strong style="color:var(--fg);">${item.avgQuality}</strong> <span style="color:var(--fg);">${qualLabel(item.avgQuality)}</span></span>
-            <span>Crafted by: <strong style="color:var(--fg);">${esc(item.craftedByName)}</strong></span>
-            <span>${sysBadge(item.system)}${esc(item.location)}</span>
-            <span style="color:var(--fg);">${fmtDate(item._creationTime)}</span>
-          </div>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">
-          ${canHandOut?`<button class="btn btn-black btn-sm" onclick="openHandOutModal('${esc(item._id)}')">Hand Out</button>`:''}
-          ${admin?`<button class="btn-del" onclick="adminDeleteInventory('${esc(item._id)}')">✕</button>`:''}
-        </div>
-      </div>`).join('');
-  } else {
-    // Handed out archive
-    return `<table>
-      <thead><tr><th>Item</th><th>Qty</th><th>Avg Quality</th><th>Crafted By</th><th>Handed To</th><th>By</th><th>Date</th>${admin?'<th></th>':''}</tr></thead>
-      <tbody>${items.map(item=>`<tr>
-        <td>
-          ${item.category?`<span class="item-cat-tag" style="font-size:9px;">${esc(itemCatLabel(item.category))}</span> `:''}
-          <strong>${esc(item.itemName)}</strong>
-        </td>
-        <td style="font-weight:700;">&times;${item.quantity}</td>
-        <td><span class="q">${item.avgQuality}</span></td>
-        <td style="font-size:18px;">${esc(item.craftedByName)}</td>
-        <td style="font-weight:600;">${esc(item.handedOutTo||'—')}</td>
-        <td style="font-size:18px;">${esc(item.handedOutByName||'—')}</td>
-        <td style="font-size:18px;color:var(--fg);white-space:nowrap;">${fmtDate(item._creationTime)}</td>
-        ${admin?`<td><button class="btn-del" onclick="adminDeleteInventory('${esc(item._id)}')">✕</button></td>`:''}
-      </tr>`).join('')}</tbody></table>`;
-  }
-}
-
-function openHandOutModal(invId) {
-  const item=state.inventory.find(i=>i._id===invId);
-  if(!item) return;
-  const memberOptions=state.allUsers
-    .filter(u=>u._id!==state.user._id)
-    .map(u=>`<option value="${esc(u.username)}">${esc(u.username)}</option>`).join('');
-  showModal(`
-    <div class="modal-title">Hand Out: ${esc(item.itemName)}</div>
-    <div style="font-size:18px;color:var(--fg);margin-bottom:20px;">
-      ${item.category?`<span class="item-cat-tag" style="font-size:9px;margin-right:6px;">${esc(itemCatLabel(item.category))}</span>`:''}
-      ${item.quantity} available &middot; avg quality ${item.avgQuality}
-    </div>
-    <div class="field">
-      <label class="lbl">Quantity to Hand Out</label>
-      <input type="number" id="ho-qty" min="1" max="${item.quantity}" step="1" value="${item.quantity}" style="max-width:140px;">
-      <div style="font-size:18px;color:var(--fg);margin-top:4px;">Max: ${item.quantity}</div>
-    </div>
-    <div class="field">
-      <label class="lbl">Hand Out To</label>
-      <select id="ho-member-sel" onchange="onHOMemberChange()">
-        <option value="">Select member…</option>
-        ${memberOptions}
-        <option value="__custom__">+ Other (type name)</option>
-      </select>
-    </div>
-    <div id="ho-custom-wrap" style="display:none;">
-      <div class="field">
-        <label class="lbl">Member Name</label>
-        <input type="text" id="ho-custom-name" placeholder="Enter member name">
-      </div>
-    </div>
-    <div style="display:flex;gap:10px;margin-top:8px;">
-      <button class="btn btn-black" onclick="confirmHandOut('${esc(invId)}')">Confirm Handout</button>
-      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
-    </div>`);
-}
-
-function onHOMemberChange() {
-  const val=(document.getElementById('ho-member-sel')||{value:''}).value;
-  const wrap=document.getElementById('ho-custom-wrap');
-  if(wrap) wrap.style.display=val==='__custom__'?'block':'none';
-}
-
-async function confirmHandOut(invId) {
-  const qty=parseInt((document.getElementById('ho-qty')||{value:'1'}).value)||0;
-  const selVal=(document.getElementById('ho-member-sel')||{value:''}).value;
-  let recipient='';
-  if(selVal==='__custom__') recipient=(document.getElementById('ho-custom-name')||{value:''}).value.trim();
-  else recipient=selVal;
-  if(!recipient){alert('Select or enter a recipient');return;}
-  if(qty<1){alert('Quantity must be at least 1');return;}
-  const u=state.user;
-  try {
-    await convexMutation('inventory:handOut',{
-      sessionToken:state.sessionToken,
-      id:invId,
-      quantity:qty,
-      handedOutTo:recipient,
-    });
-    closeModal();
-    toast(`Handed out to ${recipient}`);
-    invFilter='handed_out';
-    await refreshAll();
-    goTo('inventory');
-  } catch(e){alert(e.message);}
-}
-
-async function adminDeleteInventory(id) {
-  if(!confirm('Delete this inventory entry?')) return;
-  try {
-    await convexMutation('inventory:remove',{id,sessionToken:state.sessionToken});
-    toast('Entry deleted');
-    await refreshAll();
-  } catch(e){alert(e.message);}
-}
-
-// ─── ADMIN PAGE ──────────────────────────────────────────────────────────────
-function pageAdmin() {
-  const u=state.user;
-  if(!isAdmin(u)) return `<div class="page-head"><div class="page-title">Admin</div></div><p style="color:var(--fg);margin-top:24px;">Access denied.</p>`;
-  return `
-    <div class="page-head">
-      <div class="page-head-left">
-        <div class="page-title">Admin</div>
-        <div class="page-sub">Manage members and role applications</div>
-      </div>
-    </div>
-    <div id="admin-wrap">${renderAdminContent()}</div>`;
-}
-
-function renderAdminContent() {
-  const u=state.user;
-  const PENDING_ROLES=[{pending:'crafter_pending',full:'crafter',label:'Crafter'},{pending:'logistics_pending',full:'logistics',label:'Logistics'}];
-  const pending=state.allUsers.filter(m=>PENDING_ROLES.some(r=>m.roles.includes(r.pending)));
-  const members=state.allUsers.filter(m=>m._id!==u._id);
-  return `
-    ${pending.length?`
-    <div style="margin-bottom:40px;">
-      <div style="font-size:18px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--border);">
-        Pending Crafter Applications <span style="background:var(--red);color:#fff;padding:1px 8px;font-size:18px;margin-left:8px;">${pending.length}</span>
-      </div>
-      ${pending.map(m=>{
-        const pendingRoles=PENDING_ROLES.filter(r=>m.roles.includes(r.pending));
-        return pendingRoles.map(pr=>`
-        <div style="display:flex;align-items:center;gap:16px;padding:16px 0;border-bottom:1px solid var(--border-m);">
-          <div style="font-weight:700;font-size:18px;flex:1;">${esc(m.username)}</div>
-          <div style="font-size:18px;color:var(--fg);">requesting <strong>${pr.label}</strong> role</div>
-          <div style="font-size:18px;color:var(--fg);">${m.roles.filter(r=>r!==pr.pending).join(', ')||'—'}</div>
-          <button class="btn btn-black btn-sm" onclick="adminApproveRole('${esc(m._id)}','${esc(m.username)}','${pr.pending}','${pr.full}')">✓ Approve</button>
-          <button class="btn btn-outline btn-sm" onclick="adminDenyRole('${esc(m._id)}','${esc(m.username)}','${pr.pending}')">✕ Deny</button>
-        </div>`).join('');
-      }).join('')}
-    </div>`:''}
-
-    <div>
-      <div style="font-size:18px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--border);">All Members</div>
-      ${state.allUsers.map(m=>{
-        const isMe = m._id===u._id;
-        const removed = m.roles.includes('removed');
-        const MANAGEABLE = ['provider','crafter','logistics'];
-        return `<div style="display:flex;align-items:flex-start;gap:16px;padding:14px 0;border-bottom:1px solid var(--border-m);flex-wrap:wrap;">
-          <div style="min-width:140px;">
-            <div style="font-weight:700;font-size:18px;">${esc(m.username)}${isMe?' <span style="color:var(--fg);font-size:18px;">(you)</span>':''}</div>
-            <div style="margin-top:4px;">${m.roles.map(r=>roleTagHtml(r)).join(' ')}</div>
-          </div>
-          ${!removed?`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;flex:1;">
-            ${MANAGEABLE.map(role=>{
-              const has = m.roles.includes(role);
-              const pending = m.roles.includes(role+'_pending');
-              if(has) return `<button class="btn-ghost btn-sm" style="border-color:#fca5a5;color:#ef4444;" onclick="adminRevokeRole('${esc(m._id)}','${esc(m.username)}','${role}')">− ${role.charAt(0).toUpperCase()+role.slice(1)}</button>`;
-              if(pending) return `<button class="btn btn-black btn-sm" onclick="adminApproveRole('${esc(m._id)}','${esc(m.username)}','${role}_pending','${role}')">✓ ${role.charAt(0).toUpperCase()+role.slice(1)}?</button>`;
-              return `<button class="btn-ghost btn-sm" onclick="adminDirectGrantRole('${esc(m._id)}','${esc(m.username)}','${role}')">+ ${role.charAt(0).toUpperCase()+role.slice(1)}</button>`;
-            }).join('')}
-            ${!m.roles.includes('admin')&&!isMe?`<button class="btn-ghost btn-sm" onclick="adminGrantAdmin('${esc(m._id)}','${esc(m.username)}')">+ Admin</button>`:''}
-          </div>
-          <div style="margin-left:auto;">
-            ${!isMe?`<button class="btn-del" onclick="adminRemoveMember('${esc(m._id)}','${esc(m.username)}')">Remove</button>`:''}
-          </div>`:`<div style="color:#ef4444;font-size:18px;align-self:center;">Removed</div>`}
-        </div>`;
-      }).join('')}
-    </div>`;
-}
-
-async function adminApproveRole(targetId, targetName, pendingRole, fullRole) {
-  const label=fullRole.charAt(0).toUpperCase()+fullRole.slice(1);
-  if(!confirm(`Approve ${targetName} as ${label}?`)) return;
-  try {
-    await convexMutation('users:approveRole',{sessionToken:state.sessionToken,targetUserId:targetId,pendingRole,fullRole});
-    toast(`${targetName} approved as ${label}`);
-    await refreshAll();
-  } catch(e){alert(e.message);}
-}
-
-async function adminDenyRole(targetId, targetName, pendingRole) {
-  if(!confirm(`Deny ${targetName}'s ${pendingRole.replace('_pending','')} application?`)) return;
-  try {
-    await convexMutation('users:denyRole',{sessionToken:state.sessionToken,targetUserId:targetId,pendingRole});
-    toast(`${targetName}'s application denied`);
-    await refreshAll();
-  } catch(e){alert(e.message);}
-}
-
-async function adminDirectGrantRole(targetId, targetName, role) {
-  const label = role.charAt(0).toUpperCase()+role.slice(1);
-  if(!confirm(`Grant ${label} role to ${targetName}?`)) return;
-  try {
-    await convexMutation('users:grantRole',{sessionToken:state.sessionToken,targetUserId:targetId,role});
-    toast(`${label} role granted to ${targetName}`);
-    await refreshAll();
-  } catch(e){alert(e.message);}
-}
-
-async function adminRevokeRole(targetId, targetName, role) {
-  const label = role.charAt(0).toUpperCase()+role.slice(1);
-  if(!confirm(`Revoke ${label} role from ${targetName}?`)) return;
-  try {
-    await convexMutation('users:revokeRole',{sessionToken:state.sessionToken,targetUserId:targetId,role});
-    toast(`${label} role revoked from ${targetName}`);
-    await refreshAll();
-  } catch(e){alert(e.message);}
-}
-
-async function adminGrantAdmin(targetId, targetName) {
-  if(!confirm(`Grant admin role to ${targetName}? This cannot be undone.`)) return;
-  try {
-    await convexMutation('users:grantAdmin',{sessionToken:state.sessionToken,targetUserId:targetId});
-    toast(`Admin role granted to ${targetName}`);
-    await refreshAll();
-  } catch(e){alert(e.message);}
-}
-
-async function adminDeleteItem(id, name) {
-  if(!confirm(`Delete item "${name}"? This cannot be undone.`)) return;
-  try {
-    await convexMutation('craftItems:remove',{id,sessionToken:state.sessionToken});
-    toast('Item deleted');
-    await refreshAll();
-  } catch(e){alert(e.message);}
-}
-
-function openEditItemModal(itemId) {
-  const item=state.craftItems.find(i=>i._id===itemId);
-  if(!item) return;
-  showModal(`
-    <div class="modal-title">Edit Item</div>
-    <div class="field">
-      <label class="lbl">Item Name</label>
-      <input type="text" id="ei-name" value="${esc(item.name)}">
-    </div>
-    <div class="field">
-      <label class="lbl">Category</label>
-      <select id="ei-cat">
-        ${ITEM_CATEGORIES.map(c=>`<option value="${c.id}"${item.category===c.id?' selected':''}>${c.label}</option>`).join('')}
-      </select>
-    </div>
-    <div style="font-size:18px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin:20px 0 12px;">Required Materials</div>
-    <div id="ei-req-rows">
-      ${item.requirements.map(r=>`
-        <div class="req-row" style="display:flex;gap:10px;margin-bottom:8px;align-items:center;">
-          <select class="req-mat" style="flex:2;margin:0;" onchange="onReqMatChange(this)">
-            ${catalogOptgroups(r.materialName)}
-          </select>
-          <input type="number" class="req-qty" placeholder="Qty" min="0.01" step="0.01" style="flex:1;margin:0;" value="${r.quantity}">
-          <span class="req-unit unit-inline" style="min-width:32px;">${esc(r.unit)}</span>
-          <button class="btn-ghost btn-sm" onclick="this.parentNode.remove()">✕</button>
-        </div>`).join('')}
-    </div>
-    <button class="btn btn-outline btn-sm" style="margin-bottom:20px;" onclick="addEditReqRow()">+ Add Requirement</button>
-    <div style="display:flex;gap:10px;">
-      <button class="btn btn-black" onclick="confirmEditItem('${esc(itemId)}')">Save</button>
-      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
-    </div>`);
-}
-
-function addEditReqRow() {
-  const container=document.getElementById('ei-req-rows'); if(!container) return;
-  const div=document.createElement('div');
-  div.className='req-row';
-  div.style.cssText='display:flex;gap:10px;margin-bottom:8px;align-items:center;';
-  div.innerHTML=`
-    <select class="req-mat" style="flex:2;margin:0;" onchange="onReqMatChange(this)">${catalogOptgroups()}</select>
-    <input type="number" class="req-qty" placeholder="Qty" min="0.01" step="0.01" style="flex:1;margin:0;">
-    <span class="req-unit unit-inline" style="min-width:32px;"></span>
-    <button class="btn-ghost btn-sm" onclick="this.parentNode.remove()">✕</button>`;
-  container.appendChild(div);
-  // trigger unit display for first option
-  const sel=div.querySelector('.req-mat'); if(sel) onReqMatChange(sel);
-}
-
-async function confirmEditItem(itemId) {
-  const name=(document.getElementById('ei-name')||{value:''}).value.trim();
-  const category=(document.getElementById('ei-cat')||{value:''}).value;
-  if(!name){alert('Enter item name');return;}
-  const rows=document.querySelectorAll('#ei-req-rows .req-row');
-  const requirements=[];
-  rows.forEach(r=>{
-    const mat=r.querySelector('.req-mat')?.value;
-    const qty=parseFloat(r.querySelector('.req-qty')?.value);
-    if(mat&&!isNaN(qty)&&qty>0) requirements.push({materialName:mat,quantity:qty,unit:unitFor(mat)});
-  });
-  if(!requirements.length){alert('Add at least one requirement');return;}
-  try {
-    await convexMutation('craftItems:update',{id:itemId,sessionToken:state.sessionToken,name,category,requirements});
-    toast('Item updated');
-    closeModal();
-    await refreshAll();
-  } catch(e){alert(e.message);}
-}
-
-async function adminDeleteLog(id) {
-  if(!confirm('Delete this log entry?')) return;
-  try {
-    await convexMutation('archive:removeLog',{id,sessionToken:state.sessionToken});
-    toast('Log entry deleted');
-    await refreshAll();
-  } catch(e){alert(e.message);}
-}
-
-async function adminRemoveMember(targetId, targetName) {
-  if(!confirm(`Remove member "${targetName}"?\n\nThey will no longer be able to log in. This cannot be undone.`)) return;
-  try {
-    await convexMutation('users:removeMember',{sessionToken:state.sessionToken,targetUserId:targetId});
-    toast(`${targetName} has been removed`);
-    await refreshAll();
-  } catch(e){alert(e.message);}
-}
-
-// ─── TASKS PAGE ───────────────────────────────────────────────────────────────
+// ─── TASKS / PROJECTS PAGE ────────────────────────────────────────────────────
 const TASK_PRIORITIES = [
   {id:'urgent',  label:'Urgent',   cls:'p-urgent'},
   {id:'high',    label:'High',     cls:'p-high'},
   {id:'normal',  label:'Normal',   cls:'p-normal'},
   {id:'whenever',label:'Whenever', cls:'p-whenever'},
 ];
-const TASK_TYPES = [
-  {id:'gather',  label:'Gather Material'},
-  {id:'craft',   label:'Craft Item'},
-  {id:'deliver', label:'Deliver'},
-  {id:'other',   label:'Other / Custom'},
-];
-const TASK_TARGET_ROLES = [
-  {id:'provider',  label:'Provider'},
-  {id:'crafter',   label:'Crafter'},
-  {id:'logistics', label:'Logistics'},
+const NAVY_ROLES = [
+  {id:'recruit', label:'Recruit'},
+  {id:'member',  label:'Member'},
+  {id:'core',    label:'Core'},
+  {id:'command', label:'Command'},
+  {id:'admin',   label:'Admin'},
 ];
 
 function pageTasks() {
   const u=state.user; const admin=isAdmin(u);
+  const canCreate=u.roles.some(r=>['admin','command','core'].includes(r));
   const openCount=state.tasks.filter(t=>t.status==='open').length;
   return `
     <div class="page-head">
       <div class="page-head-left">
-        <div class="page-title">Tasks</div>
-        <div class="page-sub">${openCount} open task${openCount!==1?'s':''}</div>
+        <div class="page-title">Projects</div>
+        <div class="page-sub">${openCount} open</div>
       </div>
-      ${admin||u.roles.includes('crafter')?`<button class="btn btn-black" onclick="openCreateTaskModal()">+ Create Task</button>`:''}
+      ${canCreate?`<button class="btn btn-black" onclick="openCreateTaskModal()">+ Create Project</button>`:''}
     </div>
-    ${!tasksSearchActive?`<div style="display:flex;gap:8px;align-items:center;margin-bottom:20px;flex-wrap:wrap;">
-      <span style="font-size:18px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--fg);">Role:</span>
-      <button class="btn-ghost btn-sm${tasksRoleFilter===''?' active':''}" onclick="setTasksRoleFilter('')">All</button>
-      <button class="btn-ghost btn-sm${tasksRoleFilter==='provider'?' active':''}" onclick="setTasksRoleFilter('provider')">Provider</button>
-      <button class="btn-ghost btn-sm${tasksRoleFilter==='crafter'?' active':''}" onclick="setTasksRoleFilter('crafter')">Crafter</button>
-      <button class="btn-ghost btn-sm${tasksRoleFilter==='logistics'?' active':''}" onclick="setTasksRoleFilter('logistics')">Logistics</button>
-    </div>`:''}
     <div id="task-search-bar" class="task-search-bar" style="${tasksSearchActive?'':'display:none;'}">
-      <input type="text" id="task-search-inp" placeholder="Search tasks by title…" value="${esc(tasksSearch)}" style="max-width:420px;"
+      <input type="text" id="task-search-inp" placeholder="Search projects…" value="${esc(tasksSearch)}"
         oninput="tasksSearch=this.value;document.getElementById('tasks-list').innerHTML=renderTasksList();">
     </div>
     <div id="tasks-list" class="task-list">${renderTasksList()}</div>`;
-}
-
-function setTasksFilter(f) {
-  tasksFilter=f;
-  tasksSearchActive=false;
-  tasksSearch='';
-  renderNav();
-  renderPage();
-}
-function setTasksRoleFilter(role) {
-  tasksRoleFilter=role;
-  renderPage();
-}
-function toggleTaskSearch() {
-  tasksSearchActive=!tasksSearchActive;
-  if(!tasksSearchActive) tasksSearch='';
-  renderNav();
-  renderPage();
-  if(tasksSearchActive) setTimeout(()=>{const inp=document.getElementById('task-search-inp');if(inp)inp.focus();},50);
-}
-
-function taskRoleBadge(role) {
-  const map={provider:'rb-provider',crafter:'rb-crafter',logistics:'rb-logistics',admin:'rb-admin'};
-  const labels={provider:'Provider',crafter:'Crafter',logistics:'Logistics',admin:'Admin'};
-  return `<span class="role-badge ${map[role]||''}">${labels[role]||role}</span>`;
-}
-
-function taskTypeDesc(t) {
-  switch(t.type) {
-    case 'gather':  {
-      let s=`Gather <strong>${esc(t.materialName||'?')}</strong>`;
-      if(t.quantity) s+=` &times;${t.quantity}${t.unit?` ${esc(t.unit)}`:''}`;
-      if(t.qualityMin||t.qualityMax) s+=` &middot; quality ${t.qualityMin||0}–${t.qualityMax||1000}`;
-      return s; }
-    case 'craft':   {
-      let s=`Craft <strong>${esc(t.itemName||'?')}</strong>`;
-      if(t.quantity) s+=` &times;${t.quantity}`;
-      if(t.qualityMin||t.qualityMax) s+=` &middot; quality ${t.qualityMin||0}–${t.qualityMax||1000}`;
-      return s; }
-    case 'deliver': {
-      let s=`Deliver`;
-      if(t.materialName) s+=` <strong>${esc(t.materialName)}</strong>`;
-      if(t.quantity) s+=` &times;${t.quantity}${t.unit?` ${esc(t.unit)}`:''}`;
-      if(t.fromSystem) s+=` &mdash; from ${sysBadge(t.fromSystem)}${esc(t.fromLocation||'')}`;
-      if(t.toSystem) s+=` to ${sysBadge(t.toSystem)}${esc(t.toLocation||'')}`;
-      return s; }
-    default: return esc(t.description||'');
-  }
 }
 
 function renderTasksList() {
   const u=state.user; const admin=isAdmin(u);
   let tasks;
   if(tasksSearchActive) {
-    // Search across all statuses
     tasks=state.tasks;
-    if(!admin) tasks=tasks.filter(t=>t.targetRoles.some(r=>u.roles.includes(r)));
-    if(tasksSearch.trim()) {
-      const q=tasksSearch.trim().toLowerCase();
-      tasks=tasks.filter(t=>t.title.toLowerCase().includes(q)||(t.materialName||'').toLowerCase().includes(q)||(t.itemName||'').toLowerCase().includes(q));
-    }
-    if(!tasks.length) return `<div class="empty">No tasks match "${esc(tasksSearch)}".</div>`;
-  } else if(tasksFilter==='accepted') {
-    // Any open task with at least one active acceptee; non-admins only see tasks they personally accepted
-    tasks=state.tasks.filter(t=>t.status==='open'&&t.acceptees.some(a=>a.status!=='completed'));
-    if(!admin) tasks=tasks.filter(t=>t.acceptees.some(a=>a.userId===u._id&&a.status!=='completed'));
-    if(!tasks.length) return `<div class="empty">No accepted tasks yet.</div>`;
+    if(tasksSearch.trim()){const q=tasksSearch.trim().toLowerCase();tasks=tasks.filter(t=>t.title.toLowerCase().includes(q)||(t.description||'').toLowerCase().includes(q));}
+    if(!tasks.length) return `<div class="empty">No projects match "${esc(tasksSearch)}".</div>`;
   } else {
     tasks=state.tasks.filter(t=>t.status===tasksFilter);
-    // Open tab: only show tasks that still have at least one available slot
-    if(tasksFilter==='open') tasks=tasks.filter(t=>t.acceptees.filter(a=>a.status!=='completed').length<t.slots);
-    if(!admin) tasks=tasks.filter(t=>t.targetRoles.some(r=>u.roles.includes(r)));
-    if(tasksRoleFilter) tasks=tasks.filter(t=>t.targetRoles.includes(tasksRoleFilter));
-    if(!tasks.length) return `<div class="empty">No ${tasksFilter} tasks${tasksRoleFilter?' for '+tasksRoleFilter:(!admin?' for your role':'')} yet.</div>`;
+    if(!tasks.length) return `<div class="empty">No ${tasksFilter} projects yet.</div>`;
   }
   tasks=tasks.slice().sort((a,b)=>{
     const po={urgent:0,high:1,normal:2,whenever:3};
     return (po[a.priority]??2)-(po[b.priority]??2)||b._creationTime-a._creationTime;
   });
   return tasks.map(t=>{
-    const myAcceptee=t.acceptees.find(a=>a.userId===u._id);
-    const activeSlots=t.acceptees.filter(a=>a.status!=='completed').length;
-    const slotsLeft=t.slots-activeSlots;
-    const isFull=slotsLeft<=0;
+    const isMember=t.members.some(m=>m.userId===u._id);
     const pb=TASK_PRIORITIES.find(p=>p.id===t.priority)||TASK_PRIORITIES[2];
+    const canManage=u.roles.some(r=>['admin','command','core'].includes(r));
     return `<div class="task-card ${t.priority} ${t.status}">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:20px;">
         <div style="flex:1;min-width:0;">
           <div style="display:flex;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:8px;">
             <span class="p-badge ${pb.cls}">${pb.label}</span>
             <span class="task-card-title">${esc(t.title)}</span>
-            ${t.targetRoles.map(r=>taskRoleBadge(r)).join('')}
           </div>
-          <div style="font-size:18px;color:var(--fg);margin-bottom:10px;line-height:1.5;">${taskTypeDesc(t)}</div>
-          <div style="font-size:18px;color:var(--fg);display:flex;gap:16px;flex-wrap:wrap;">
-            <span>${activeSlots}/${t.slots} slots</span>
-            <span>${t.acceptees.length?t.acceptees.map(a=>`<strong style="color:${a.status==='completed'?'var(--red)':'#000'};font-size:18px;">${a.status==='completed'?`completed ${esc(a.userName)}`:`accepted by ${esc(a.userName)}`}</strong>`).join(', '):'no acceptees'}</span>
+          ${t.description?`<div style="font-size:18px;color:var(--fg);margin-bottom:8px;">${esc(t.description)}</div>`:''}
+          ${t.goal?`<div style="font-size:18px;color:var(--fg);margin-bottom:8px;"><strong>Goal:</strong> ${esc(t.goal)}</div>`:''}
+          <div style="font-size:18px;color:var(--fg);display:flex;gap:16px;flex-wrap:wrap;margin-top:4px;">
+            <span>${t.members.length} member${t.members.length!==1?'s':''} joined${t.members.length?': '+t.members.map(m=>esc(m.userName)).join(', '):''}
+            </span>
             <span style="color:var(--fg);">by ${esc(t.createdByName)}</span>
           </div>
         </div>
         <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;flex-shrink:0;padding-top:2px;">
-          ${t.status==='open'&&!myAcceptee&&!isFull?`<button class="btn btn-black btn-sm" onclick="acceptTask('${esc(t._id)}')">Accept</button>`:''}
-          ${t.status==='open'&&myAcceptee&&myAcceptee.status!=='completed'?`<button class="btn btn-outline btn-sm" onclick="completeTask('${esc(t._id)}')">Mark Done</button>`:''}
-          ${t.status==='open'&&myAcceptee&&myAcceptee.status!=='completed'?`<button class="btn-ghost btn-sm" onclick="unacceptTask('${esc(t._id)}')">Withdraw</button>`:''}
-
-          ${admin&&t.status==='open'?`<button class="btn-ghost btn-sm" onclick="adminCancelTask('${esc(t._id)}')">Cancel</button>`:''}
-          ${admin?`<button class="btn-del" onclick="adminDeleteTask('${esc(t._id)}')">✕</button>`:''}
+          ${t.status==='open'&&!isMember?`<button class="btn btn-black btn-sm" onclick="joinTask('${esc(t._id)}')">Join</button>`:''}
+          ${t.status==='open'&&isMember?`<button class="btn btn-outline btn-sm" onclick="leaveTask('${esc(t._id)}')">Leave</button>`:''}
+          ${canManage&&t.status==='open'?`<button class="btn-ghost btn-sm" onclick="closeTask('${esc(t._id)}')">Close</button>`:''}
+          ${canManage&&t.status==='closed'?`<button class="btn-ghost btn-sm" onclick="reopenTask('${esc(t._id)}')">Reopen</button>`:''}
+          ${admin?`<button class="btn-del" onclick="deleteTask('${esc(t._id)}')">✕</button>`:''}
         </div>
       </div>
     </div>`;
   }).join('');
 }
 
-async function acceptTask(taskId) {
-  try {
-    await convexMutation('tasks:accept',{taskId,sessionToken:state.sessionToken});
-    toast('Task accepted');
-    await refreshAll();
-  } catch(e){alert(e.message);}
+async function joinTask(taskId) {
+  try { await convexMutation('tasks:join',{taskId,sessionToken:state.sessionToken}); toast('Joined'); await refreshAll(); } catch(e){alert(e.message);}
 }
-async function completeTask(taskId) {
-  try {
-    await convexMutation('tasks:complete',{taskId,sessionToken:state.sessionToken});
-    toast('Marked as done');
-    await refreshAll();
-  } catch(e){alert(e.message);}
+async function leaveTask(taskId) {
+  if(!confirm('Leave this project?')) return;
+  try { await convexMutation('tasks:leave',{taskId,sessionToken:state.sessionToken}); toast('Left project'); await refreshAll(); } catch(e){alert(e.message);}
 }
-async function unacceptTask(taskId) {
-  if(!confirm('Withdraw from this task?')) return;
-  try {
-    await convexMutation('tasks:unaccept',{taskId,sessionToken:state.sessionToken});
-    toast('Withdrawn');
-    await refreshAll();
-  } catch(e){alert(e.message);}
+async function closeTask(taskId) {
+  if(!confirm('Close this project?')) return;
+  try { await convexMutation('tasks:close',{taskId,sessionToken:state.sessionToken}); toast('Project closed'); await refreshAll(); } catch(e){alert(e.message);}
 }
-async function adminCompleteTask(taskId) {
-  if(!confirm('Mark this entire task as completed?')) return;
-  try {
-    await convexMutation('tasks:complete',{taskId,sessionToken:state.sessionToken});
-    toast('Task completed');
-    await refreshAll();
-  } catch(e){alert(e.message);}
+async function reopenTask(taskId) {
+  try { await convexMutation('tasks:reopen',{taskId,sessionToken:state.sessionToken}); toast('Project reopened'); await refreshAll(); } catch(e){alert(e.message);}
 }
-async function adminCancelTask(taskId) {
-  if(!confirm('Cancel this task?')) return;
-  try {
-    await convexMutation('tasks:cancel',{taskId,sessionToken:state.sessionToken});
-    toast('Task cancelled');
-    await refreshAll();
-  } catch(e){alert(e.message);}
-}
-async function adminDeleteTask(taskId) {
-  if(!confirm('Delete this task permanently?')) return;
-  try {
-    await convexMutation('tasks:remove',{taskId,sessionToken:state.sessionToken});
-    toast('Task deleted');
-    await refreshAll();
-  } catch(e){alert(e.message);}
+async function deleteTask(taskId) {
+  if(!confirm('Delete this project permanently?')) return;
+  try { await convexMutation('tasks:remove',{taskId,sessionToken:state.sessionToken}); toast('Deleted'); await refreshAll(); } catch(e){alert(e.message);}
 }
 
 function openCreateTaskModal() {
   showModal(`
-    <div class="modal-title">Create Task</div>
-    <div class="field">
-      <label class="lbl">Title</label>
-      <input type="text" id="ct-title" placeholder="Short task title…">
+    <div class="modal-title">Create Project</div>
+    <div class="field"><label class="lbl">Title</label>
+      <input type="text" id="ct-title" placeholder="Project title…">
     </div>
-    <div class="field">
-      <label class="lbl">Type</label>
-      <select id="ct-type" onchange="onCTTypeChange()">
-        ${TASK_TYPES.map(t=>`<option value="${t.id}">${t.label}</option>`).join('')}
-      </select>
+    <div class="field"><label class="lbl">Description <span style="font-weight:400;">(optional)</span></label>
+      <input type="text" id="ct-desc" placeholder="Brief description…">
     </div>
-    <div id="ct-type-fields">${renderCTTypeFields('gather')}</div>
-    <div class="field">
-      <label class="lbl">Priority</label>
+    <div class="field"><label class="lbl">Goal <span style="font-weight:400;">(optional)</span></label>
+      <input type="text" id="ct-goal" placeholder="What is the end goal?">
+    </div>
+    <div class="field"><label class="lbl">Priority</label>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
         ${TASK_PRIORITIES.map((p,i)=>`<label style="display:flex;align-items:center;gap:4px;cursor:pointer;">
           <input type="radio" name="ct-priority" value="${p.id}"${i===2?' checked':''}> <span class="p-badge ${p.cls}">${p.label}</span>
         </label>`).join('')}
       </div>
     </div>
-    <div class="field">
-      <label class="lbl">Visible to (roles)</label>
+    <div class="field"><label class="lbl">Visible to (roles)</label>
       <div style="display:flex;gap:12px;margin-top:4px;flex-wrap:wrap;">
-        ${TASK_TARGET_ROLES.map(r=>`<label class="chk-row" style="margin:0;"><input type="checkbox" class="ct-role" value="${r.id}" style="width:auto;"> <span style="font-size:18px;">${r.label}</span></label>`).join('')}
+        ${NAVY_ROLES.map(r=>`<label class="chk-row" style="margin:0;"><input type="checkbox" class="ct-role" value="${r.id}" style="width:auto;" checked> <span style="font-size:18px;">${r.label}</span></label>`).join('')}
       </div>
     </div>
-    <div class="field">
-      <label class="lbl">Available Slots <span style="font-weight:400;color:var(--fg);">(how many members can accept)</span></label>
-      <input type="number" id="ct-slots" value="1" min="1" step="1" style="max-width:100px;">
-    </div>
     <div style="display:flex;gap:10px;margin-top:8px;">
-      <button class="btn btn-black" onclick="confirmCreateTask()">Create Task</button>
+      <button class="btn btn-black" onclick="confirmCreateTask()">Create</button>
       <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
     </div>`);
 }
 
-function renderCTTypeFields(type) {
-  switch(type) {
-    case 'gather': return `
-      <div class="field"><label class="lbl">Material</label>
-        <select id="ct-material"><option value="">Select material…</option>
-          ${SC_CATALOG.map(m=>`<option value="${esc(m.name)}">${esc(m.name)}</option>`).join('')}
-          <option value="__custom__">Other…</option>
-        </select>
-      </div>
-      <div id="ct-mat-custom" style="display:none;" class="field"><input type="text" id="ct-material-custom" placeholder="Material name"></div>
-      <div class="grid2" style="gap:12px;">
-        <div class="field"><label class="lbl">Quantity</label><input type="number" id="ct-qty" min="0.01" step="0.01" placeholder="e.g. 100"></div>
-        <div class="field"><label class="lbl">Unit</label><select id="ct-unit"><option value="SCU">SCU</option><option value="UNIT">UNIT</option></select></div>
-      </div>
-      <div class="grid2" style="gap:12px;">
-        <div class="field"><label class="lbl">Min Quality (opt)</label><input type="number" id="ct-qmin" min="0" max="1000" placeholder="0"></div>
-        <div class="field"><label class="lbl">Max Quality (opt)</label><input type="number" id="ct-qmax" min="0" max="1000" placeholder="1000"></div>
-      </div>`;
-    case 'craft': return `
-      <div class="field"><label class="lbl">Item to Craft</label>
-        <select id="ct-item"><option value="">Select item…</option>
-          ${state.craftItems.map(i=>`<option value="${esc(i.name)}">${esc(i.name)}</option>`).join('')}
-        </select>
-      </div>
-      <div class="field"><label class="lbl">Quantity</label><input type="number" id="ct-qty" min="1" step="1" placeholder="e.g. 5" style="max-width:120px;"></div>
-      <div class="grid2" style="gap:12px;">
-        <div class="field"><label class="lbl">Min Quality (opt)</label><input type="number" id="ct-qmin" min="0" max="1000" placeholder="0"></div>
-        <div class="field"><label class="lbl">Max Quality (opt)</label><input type="number" id="ct-qmax" min="0" max="1000" placeholder="1000"></div>
-      </div>`;
-    case 'deliver': return `
-      <div class="field"><label class="lbl">What (material/item name)</label><input type="text" id="ct-deliver-what" placeholder="e.g. Iron, P6-LR Sniper Rifle"></div>
-      <div class="grid2" style="gap:12px;">
-        <div class="field"><label class="lbl">Quantity</label><input type="number" id="ct-qty" min="0.01" step="0.01" placeholder="e.g. 50"></div>
-        <div class="field"><label class="lbl">Unit</label><select id="ct-unit"><option value="SCU">SCU</option><option value="UNIT">UNIT</option></select></div>
-      </div>
-      <div style="font-size:18px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin:12px 0 8px;color:var(--fg);">From</div>
-      <div class="grid2" style="gap:12px;">
-        <div class="field"><select id="ct-from-sys" onchange="onCTFromSysChange()"><option value="">System…</option>${Object.keys(SYSTEMS).map(s=>`<option value="${s}">${s}</option>`).join('')}</select></div>
-        <div class="field"><select id="ct-from-loc"><option value="">Location…</option></select></div>
-      </div>
-      <div style="font-size:18px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin:12px 0 8px;color:var(--fg);">To</div>
-      <div class="grid2" style="gap:12px;">
-        <div class="field"><select id="ct-to-sys" onchange="onCTToSysChange()"><option value="">System…</option>${Object.keys(SYSTEMS).map(s=>`<option value="${s}">${s}</option>`).join('')}</select></div>
-        <div class="field"><select id="ct-to-loc"><option value="">Location…</option></select></div>
-      </div>`;
-    default: return `
-      <div class="field"><label class="lbl">Description</label>
-        <textarea id="ct-desc" rows="3" style="width:100%;border:1.5px solid var(--border);padding:9px 12px;font-size:18px;font-family:inherit;resize:vertical;" placeholder="Describe the task…"></textarea>
-      </div>`;
-  }
-}
-
-function onCTTypeChange() {
-  const type=(document.getElementById('ct-type')||{value:'gather'}).value;
-  const wrap=document.getElementById('ct-type-fields');
-  if(wrap) wrap.innerHTML=renderCTTypeFields(type);
-}
-function onCTFromSysChange() {
-  const s=(document.getElementById('ct-from-sys')||{value:''}).value;
-  const l=document.getElementById('ct-from-loc'); if(l) l.innerHTML=s?locationOptions(s):'<option value="">Location…</option>';
-}
-function onCTToSysChange() {
-  const s=(document.getElementById('ct-to-sys')||{value:''}).value;
-  const l=document.getElementById('ct-to-loc'); if(l) l.innerHTML=s?locationOptions(s):'<option value="">Location…</option>';
-}
-
 async function confirmCreateTask() {
   const title=(document.getElementById('ct-title')||{value:''}).value.trim();
-  const type=(document.getElementById('ct-type')||{value:'gather'}).value;
+  const description=(document.getElementById('ct-desc')||{value:''}).value.trim()||undefined;
+  const goal=(document.getElementById('ct-goal')||{value:''}).value.trim()||undefined;
   const priorityEl=document.querySelector('input[name="ct-priority"]:checked');
   const priority=priorityEl?priorityEl.value:'normal';
   const targetRoles=[...document.querySelectorAll('.ct-role:checked')].map(c=>c.value);
-  const slots=parseInt((document.getElementById('ct-slots')||{value:'1'}).value)||1;
-  if(!title){alert('Enter a task title');return;}
-  if(!targetRoles.length){alert('Select at least one target role');return;}
-  const args={sessionToken:state.sessionToken,title,type,priority,targetRoles,slots};
-  // Type-specific fields
-  if(type==='gather'){
-    let matSel=(document.getElementById('ct-material')||{value:''}).value;
-    if(matSel==='__custom__') matSel=(document.getElementById('ct-material-custom')||{value:''}).value.trim();
-    if(!matSel){alert('Select a material');return;}
-    args.materialName=matSel;
-    const q=parseFloat((document.getElementById('ct-qty')||{value:''}).value);
-    if(!isNaN(q)&&q>0){args.quantity=q;args.unit=(document.getElementById('ct-unit')||{value:'SCU'}).value;}
-    const qmin=parseInt((document.getElementById('ct-qmin')||{value:''}).value);
-    const qmax=parseInt((document.getElementById('ct-qmax')||{value:''}).value);
-    if(!isNaN(qmin)&&qmin>0) args.qualityMin=qmin;
-    if(!isNaN(qmax)&&qmax>0) args.qualityMax=qmax;
-  } else if(type==='craft'){
-    args.itemName=(document.getElementById('ct-item')||{value:''}).value;
-    if(!args.itemName){alert('Select an item');return;}
-    const q=parseInt((document.getElementById('ct-qty')||{value:''}).value);
-    if(!isNaN(q)&&q>0) args.quantity=q;
-    const qmin=parseInt((document.getElementById('ct-qmin')||{value:''}).value);
-    const qmax=parseInt((document.getElementById('ct-qmax')||{value:''}).value);
-    if(!isNaN(qmin)&&qmin>0) args.qualityMin=qmin;
-    if(!isNaN(qmax)&&qmax>0) args.qualityMax=qmax;
-  } else if(type==='deliver'){
-    args.materialName=(document.getElementById('ct-deliver-what')||{value:''}).value.trim();
-    const q=parseFloat((document.getElementById('ct-qty')||{value:''}).value);
-    if(!isNaN(q)&&q>0){args.quantity=q;args.unit=(document.getElementById('ct-unit')||{value:'SCU'}).value;}
-    args.fromSystem=(document.getElementById('ct-from-sys')||{value:''}).value||undefined;
-    args.fromLocation=(document.getElementById('ct-from-loc')||{value:''}).value||undefined;
-    args.toSystem=(document.getElementById('ct-to-sys')||{value:''}).value||undefined;
-    args.toLocation=(document.getElementById('ct-to-loc')||{value:''}).value||undefined;
-  } else {
-    args.description=(document.getElementById('ct-desc')||{value:''}).value.trim();
-  }
+  if(!title){alert('Enter a project title');return;}
+  if(!targetRoles.length){alert('Select at least one role');return;}
   try {
-    await convexMutation('tasks:create',args);
-    closeModal();
-    toast('Task created');
-    tasksFilter='open';
-    await refreshAll();
-    goTo('tasks');
+    await convexMutation('tasks:create',{sessionToken:state.sessionToken,title,description,goal,priority,targetRoles});
+    closeModal(); toast('Project created'); tasksFilter='open';
+    await refreshAll(); goTo('tasks');
   } catch(e){alert(e.message);}
 }
+
 
 // ─── LOTTERY PAGE ─────────────────────────────────────────────────────────────
 function pageLottery() {
