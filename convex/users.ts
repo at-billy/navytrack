@@ -149,7 +149,8 @@ export const grantRole = mutation({
     const target = await ctx.db.get(targetUserId);
     if (!target) throw new Error("User not found");
     const pendingRole = role + "_pending";
-    const newRoles = target.roles.filter(r => r !== pendingRole && r !== role);
+    // Always strip recruit when any real role is granted — recruits become members
+    const newRoles = target.roles.filter(r => r !== pendingRole && r !== role && r !== "recruit");
     newRoles.push(role);
     await ctx.db.patch(targetUserId, { roles: newRoles });
     await ctx.db.insert("archive", {
