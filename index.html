@@ -1862,17 +1862,8 @@ function renderAICompPicker() {
   const grades = [...new Set(COMPONENTS_CATALOG.map(c=>c.grade))];
   const sizes = [...new Set(COMPONENTS_CATALOG.map(c=>c.size))].sort((a,b)=>a-b);
   const tiers = ['A','B','C'];
-  let filtered = COMPONENTS_CATALOG;
-  if(aiCompTypeFilter!=='all') filtered=filtered.filter(c=>c.type===aiCompTypeFilter);
-  if(aiCompGradeFilter!=='all') filtered=filtered.filter(c=>c.grade===aiCompGradeFilter);
-  if(aiCompSizeFilter!=='all') filtered=filtered.filter(c=>c.size===parseInt(aiCompSizeFilter));
-  if(aiCompTierFilter!=='all') filtered=filtered.filter(c=>c.tier===aiCompTierFilter);
-  if(aiCompSearch.trim()){const q=aiCompSearch.trim().toLowerCase();filtered=filtered.filter(c=>c.name.toLowerCase().includes(q));}
   return `
     <div style="font-size:18px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;color:var(--fg);">Select Component</div>
-    ${aiSelectedComp?`<div style="padding:8px 12px;background:#f0f0f0;margin-bottom:10px;font-size:18px;font-weight:700;">
-      Selected: ${esc(aiSelectedComp.name)} &middot; ${COMP_TYPE_MAP[aiSelectedComp.type]||aiSelectedComp.type} &middot; ${COMP_GRADE_MAP[aiSelectedComp.grade]||aiSelectedComp.grade} &middot; S${aiSelectedComp.size} &middot; Grade ${aiSelectedComp.tier}
-    </div>`:''}
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
       <select id="ai-comp-type" onchange="aiCompTypeFilter=this.value;aiCompGradeFilter='all';aiCompSizeFilter='all';aiCompTierFilter='all';refreshAICompPicker()" style="margin:0;">
         <option value="all">All Types</option>
@@ -1893,6 +1884,20 @@ function renderAICompPicker() {
     </div>
     <input type="text" id="ai-comp-search" placeholder="Search component name…" value="${esc(aiCompSearch)}"
       oninput="aiCompSearch=this.value;refreshAICompPicker()" style="width:100%;margin-bottom:8px;">
+    <div id="ai-comp-results"></div>`;
+}
+
+function renderAICompResults() {
+  let filtered = COMPONENTS_CATALOG;
+  if(aiCompTypeFilter!=='all') filtered=filtered.filter(c=>c.type===aiCompTypeFilter);
+  if(aiCompGradeFilter!=='all') filtered=filtered.filter(c=>c.grade===aiCompGradeFilter);
+  if(aiCompSizeFilter!=='all') filtered=filtered.filter(c=>c.size===parseInt(aiCompSizeFilter));
+  if(aiCompTierFilter!=='all') filtered=filtered.filter(c=>c.tier===aiCompTierFilter);
+  if(aiCompSearch.trim()){const q=aiCompSearch.trim().toLowerCase();filtered=filtered.filter(c=>c.name.toLowerCase().includes(q));}
+  return `
+    ${aiSelectedComp?`<div style="padding:8px 12px;background:#f0f0f0;margin-bottom:10px;font-size:18px;font-weight:700;">
+      Selected: ${esc(aiSelectedComp.name)} &middot; ${COMP_TYPE_MAP[aiSelectedComp.type]||aiSelectedComp.type} &middot; ${COMP_GRADE_MAP[aiSelectedComp.grade]||aiSelectedComp.grade} &middot; S${aiSelectedComp.size} &middot; Grade ${aiSelectedComp.tier}
+    </div>`:''}
     <div style="max-height:200px;overflow-y:auto;border:1px solid var(--border);margin-bottom:12px;">
       ${!filtered.length?`<div style="padding:12px;font-size:18px;color:var(--fg);">No components match.</div>`:`
       <table style="margin:0;">
@@ -1908,8 +1913,11 @@ function renderAICompPicker() {
 }
 
 function refreshAICompPicker(){
+  const results=document.getElementById('ai-comp-results');
+  if(results) { results.innerHTML=renderAICompResults(); return; }
+  // First render: build full shell then populate results
   const wrap=document.getElementById('ai-comp-wrap');
-  if(wrap) wrap.innerHTML=renderAICompPicker();
+  if(wrap){ wrap.innerHTML=renderAICompPicker(); document.getElementById('ai-comp-results').innerHTML=renderAICompResults(); }
 }
 
 function selectAIComp(name, type, grade, size, tier) {
@@ -1951,7 +1959,7 @@ function onAICatChange() {
   if(compWrap) compWrap.style.display=(cat==='ship_component'?'':'none');
   if(cat==='ship_component'){
     aiSelectedComp=null; aiCompTypeFilter='all'; aiCompGradeFilter='all'; aiCompSizeFilter='all'; aiCompTierFilter='all'; aiCompSearch='';
-    if(compWrap) compWrap.innerHTML=renderAICompPicker();
+    if(compWrap){ compWrap.innerHTML=renderAICompPicker(); document.getElementById('ai-comp-results').innerHTML=renderAICompResults(); }
   }
 
   // Wikelo preset selector
