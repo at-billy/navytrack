@@ -1,6 +1,9 @@
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalAction } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { requireSession } from "./_helpers";
+
+const SHEETS_WEBHOOK = "https://script.google.com/macros/s/AKfycbzmYzKKq8iiGn_8WY5i0mnnHjMjhmbeaC4hOAOY7MnkY64Mk3BxinOqPnQWKfG99ugJzQ/exec";
 
 export const getAll = query({
   args: {},
@@ -19,7 +22,6 @@ export const submit = mutation({
   handler: async (ctx, { sessionToken, handles, whyJoin, role }) => {
     const user = await requireSession(ctx.db, sessionToken);
     if (!user.roles.includes("recruit")) throw new Error("Only recruits can submit applications");
-    // Check for existing application
     const existing = await ctx.db
       .query("applications")
       .withIndex("by_userId", q => q.eq("userId", user._id))
@@ -36,6 +38,33 @@ export const submit = mutation({
       role: role.trim(),
       status: "pending",
     });
+    // Fire-and-forget sync to Google Sheets
+    await ctx.scheduler.runAfter(0, internal.applications.syncToSheets, {
+      username: user.username,
+      handles: handles.trim(),
+      whyJoin: whyJoin.trim(),
+      role: role.trim(),
+    });
+  },
+});
+
+export const syncToSheets = internalAction({
+  args: {
+    username: v.string(),
+    handles: v.string(),
+    whyJoin: v.string(),
+    role: v.string(),
+  },
+  handler: async (_ctx, args) => {
+    try {
+      await fetch(SHEETS_WEBHOOK, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(args),
+      });
+    } catch (e) {
+      console.error("Google Sheets sync failed:", e);
+    }
   },
 });
 
