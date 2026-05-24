@@ -846,7 +846,12 @@ function updateLiveView() {
     const s=document.getElementById('archive-count'); if(s) s.textContent=`${state.archive.length} action${state.archive.length!==1?'s':''} recorded`;
   }
   if (currentPage==='admin') {
-    const el=document.getElementById('admin-wrap'); if(el) el.innerHTML=renderAdminContent();
+    const el=document.getElementById('admin-wrap');
+    if(el) {
+      const openIds=new Set([...el.querySelectorAll('details[open]')].map(d=>d.dataset.id));
+      el.innerHTML=renderAdminContent();
+      el.querySelectorAll('details[data-id]').forEach(d=>{ if(openIds.has(d.dataset.id)) d.open=true; });
+    }
   }
   if (currentPage==='tasks') {
     const el=document.getElementById('tasks-list'); if(el) el.innerHTML=renderTasksList();
@@ -2283,7 +2288,7 @@ function renderAdminContent() {
         Reviewed Applications (${reviewedApps.length})
       </summary>
       <div style="margin-top:16px;">
-        ${reviewedApps.map(app=>`<details style="border-bottom:1px solid var(--border-m);">
+        ${reviewedApps.map(app=>`<details data-id="${esc(app._id)}" style="border-bottom:1px solid var(--border-m);">
           <summary style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;cursor:pointer;list-style:none;">
             <span style="font-size:18px;font-weight:700;">${esc(app.userName)}</span>
             <span style="font-size:18px;color:var(--fg);">${fmtDate(app._creationTime)}</span>
