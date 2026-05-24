@@ -2283,10 +2283,26 @@ function renderAdminContent() {
         Reviewed Applications (${reviewedApps.length})
       </summary>
       <div style="margin-top:16px;">
-        ${reviewedApps.map(app=>`<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border-m);">
-          <span style="font-size:18px;font-weight:700;">${esc(app.userName)}</span>
-          <span style="font-size:18px;color:var(--fg);">${fmtDate(app._creationTime)}</span>
-        </div>`).join('')}
+        ${reviewedApps.map(app=>`<details style="border-bottom:1px solid var(--border-m);">
+          <summary style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;cursor:pointer;list-style:none;">
+            <span style="font-size:18px;font-weight:700;">${esc(app.userName)}</span>
+            <span style="font-size:18px;color:var(--fg);">${fmtDate(app._creationTime)}</span>
+          </summary>
+          <div style="display:grid;gap:12px;padding:12px 0 16px 0;">
+            <div>
+              <div style="font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--fg);margin-bottom:3px;">Discord &amp; SC Handles</div>
+              <div style="font-size:16px;white-space:pre-wrap;">${esc(app.handles)}</div>
+            </div>
+            <div>
+              <div style="font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--fg);margin-bottom:3px;">Why they want to join</div>
+              <div style="font-size:16px;white-space:pre-wrap;">${esc(app.whyJoin)}</div>
+            </div>
+            <div>
+              <div style="font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--fg);margin-bottom:3px;">Desired role</div>
+              <div style="font-size:16px;white-space:pre-wrap;">${esc(app.role)}</div>
+            </div>
+          </div>
+        </details>`).join('')}
       </div>
     </details>`:''}
 

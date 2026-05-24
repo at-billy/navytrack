@@ -3,7 +3,7 @@ import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { requireSession } from "./_helpers";
 
-const SHEETS_WEBHOOK = "https://script.google.com/macros/s/AKfycbzmYzKKq8iiGn_8WY5i0mnnHjMjhmbeaC4hOAOY7MnkY64Mk3BxinOqPnQWKfG99ugJzQ/exec";
+const SHEETS_WEBHOOK = "https://script.google.com/macros/s/AKfycbyZeqjMZVYfoqlfOEljh9xN03Bd79GQojGvXqaNYmvH4owbZrzESTi_kXyryLM4l7WUFA/exec";
 
 export const getAll = query({
   args: {},
