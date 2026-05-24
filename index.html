@@ -834,7 +834,14 @@ function startPolling() { refreshAll(); pollTimer=setInterval(()=>refreshAll(tru
 function stopPolling()  { if(pollTimer) clearInterval(pollTimer); }
 
 function updateLiveView(silent=false) {
-  if (silent) { renderNav(); return; }
+  if (silent) {
+    // Skip all DOM updates if a modal is open and the user is typing inside it
+    const modalOpen = document.getElementById('modal-overlay')?.classList.contains('open');
+    const active = document.activeElement;
+    const typingInModal = modalOpen && active && (active.tagName==='INPUT'||active.tagName==='TEXTAREA'||active.isContentEditable);
+    if (!typingInModal) renderNav();
+    return;
+  }
   if (currentPage==='items' && itemsView==='inventory') {
     const el=document.getElementById('items-content');
     if(el) el.innerHTML=renderInventoryList();
