@@ -68,6 +68,15 @@ export const syncToSheets = internalAction({
   },
 });
 
+export const remove = mutation({
+  args: { sessionToken: v.string(), applicationId: v.id("applications") },
+  handler: async (ctx, { sessionToken, applicationId }) => {
+    const admin = await requireSession(ctx.db, sessionToken);
+    if (!admin.roles.includes("admin")) throw new Error("Not authorized");
+    await ctx.db.delete(applicationId);
+  },
+});
+
 export const markReviewed = mutation({
   args: { sessionToken: v.string(), applicationId: v.id("applications") },
   handler: async (ctx, { sessionToken, applicationId }) => {

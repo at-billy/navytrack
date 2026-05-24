@@ -2287,7 +2287,10 @@ function renderAdminContent() {
         ${reviewedApps.map(app=>`<details data-id="${esc(app._id)}" style="border-bottom:1px solid var(--border-m);">
           <summary style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;cursor:pointer;list-style:none;">
             <span style="font-size:18px;font-weight:700;">${esc(app.userName)}</span>
-            <span style="font-size:18px;color:var(--fg);">${fmtDate(app._creationTime)}</span>
+            <div style="display:flex;align-items:center;gap:12px;">
+              <span style="font-size:18px;color:var(--fg);">${fmtDate(app._creationTime)}</span>
+              <button class="btn-del" onclick="event.stopPropagation();adminRemoveApp('${esc(app._id)}','${esc(app.userName)}')">Delete</button>
+            </div>
           </summary>
           <div style="display:grid;gap:12px;padding:12px 0 16px 0;">
             <div>
@@ -2340,6 +2343,16 @@ async function adminAcceptRecruit(appId, targetId, targetName) {
     await convexMutation('users:revokeRole',{sessionToken:state.sessionToken,targetUserId:targetId,role:'recruit'});
     await convexMutation('applications:markReviewed',{sessionToken:state.sessionToken,applicationId:appId});
     toast(`${targetName} accepted as Member`);
+    await refreshAll();
+    document.getElementById('admin-wrap').innerHTML=renderAdminContent();
+  } catch(e){alert(e.message);}
+}
+
+async function adminRemoveApp(appId, userName) {
+  if(!confirm(`Delete ${userName}'s application? This cannot be undone.`)) return;
+  try {
+    await convexMutation('applications:remove',{sessionToken:state.sessionToken,applicationId:appId});
+    toast('Application deleted');
     await refreshAll();
     document.getElementById('admin-wrap').innerHTML=renderAdminContent();
   } catch(e){alert(e.message);}
