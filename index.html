@@ -827,34 +827,33 @@ async function refreshAll(silent=false) {
       const fresh=state.allUsers.find(u=>u._id===state.user._id);
       if(fresh) state.user=fresh;
     }
-    updateLiveView();
+    updateLiveView(silent);
   } catch(e) { if(!silent) console.warn('Refresh:', e.message); }
 }
 function startPolling() { refreshAll(); pollTimer=setInterval(()=>refreshAll(true),5000); }
 function stopPolling()  { if(pollTimer) clearInterval(pollTimer); }
 
-function updateLiveView() {
+function updateLiveView(silent=false) {
+  if (silent) { renderNav(); return; }
   if (currentPage==='items' && itemsView==='inventory') {
     const el=document.getElementById('items-content');
     if(el) el.innerHTML=renderInventoryList();
   }
   if (currentPage==='archive') {
-    // Re-render grouped archive; preserve open/closed state of months
     const openMonths=new Set([...document.querySelectorAll('details.log-month[open]')].map(d=>d.dataset.key));
     const el=document.getElementById('archive-table');
     if(el) el.innerHTML=renderArchiveTable(openMonths);
     const s=document.getElementById('archive-count'); if(s) s.textContent=`${state.archive.length} action${state.archive.length!==1?'s':''} recorded`;
   }
-  if (currentPage==='admin' && !silent) {
+  if (currentPage==='admin') {
     const el=document.getElementById('admin-wrap');
     if(el) el.innerHTML=renderAdminContent();
   }
   if (currentPage==='tasks') {
     const el=document.getElementById('tasks-list'); if(el) el.innerHTML=renderTasksList();
-    renderNav(); // keep sub-nav counts updated
+    renderNav();
   }
   if (currentPage==='lottery') {
-    // Don't blast the DOM if user is typing
     const active = document.activeElement;
     const typing = active && (active.tagName==='INPUT'||active.tagName==='TEXTAREA') && document.getElementById('page-wrap')?.contains(active);
     if (!typing) {
@@ -864,7 +863,6 @@ function updateLiveView() {
     }
   }
   if (currentPage==='overview') {
-    // Don't clobber the page if the user is actively typing in a form field
     const active = document.activeElement;
     const typing = active && (active.tagName==='INPUT'||active.tagName==='TEXTAREA') && document.getElementById('page-wrap')?.contains(active);
     if(!typing) {
@@ -876,7 +874,6 @@ function updateLiveView() {
     const pw=document.getElementById('page-wrap');
     if(pw) pw.innerHTML=`<div class="page">${pageLogistics()}</div>`;
   }
-  // Sync nav for role changes (e.g. crafter approved)
   renderNav();
 }
 
