@@ -845,13 +845,9 @@ function updateLiveView() {
     if(el) el.innerHTML=renderArchiveTable(openMonths);
     const s=document.getElementById('archive-count'); if(s) s.textContent=`${state.archive.length} action${state.archive.length!==1?'s':''} recorded`;
   }
-  if (currentPage==='admin') {
+  if (currentPage==='admin' && !silent) {
     const el=document.getElementById('admin-wrap');
-    if(el) {
-      const openIds=new Set([...el.querySelectorAll('details[open]')].map(d=>d.dataset.id));
-      el.innerHTML=renderAdminContent();
-      el.querySelectorAll('details[data-id]').forEach(d=>{ if(openIds.has(d.dataset.id)) d.open=true; });
-    }
+    if(el) el.innerHTML=renderAdminContent();
   }
   if (currentPage==='tasks') {
     const el=document.getElementById('tasks-list'); if(el) el.innerHTML=renderTasksList();
