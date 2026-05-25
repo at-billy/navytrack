@@ -2679,17 +2679,40 @@ function renderCtItemResults() {
   const listEl    = document.getElementById('ct-required-list');
   if (!resultsEl) return;
 
-  // Build unique available item types
+  // Build catalog: all Wikelo presets + any "other" items in inventory
   const seen = new Set();
   const types = [];
-  for (const item of state.navItems) {
-    if (item.status !== 'available') continue;
-    const key = `${item.name}||${item.category}`;
+
+  // 1. Fixed Wikelo presets (always available to select, even if 0 in stock)
+  for (const name of WIKELO_PRESETS) {
+    if (name === 'Custom') continue; // skip the custom placeholder
+    const key = `${name}||wikelo`;
     if (seen.has(key)) continue;
     seen.add(key);
-    const inStock = state.navItems.filter(i=>i.status==='available'&&i.name===item.name&&i.category===item.category).reduce((s,i)=>s+i.quantity,0);
-    types.push({ name: item.name, category: item.category, inStock });
+    const inStock = state.navItems.filter(i=>i.status==='available'&&i.name===name&&i.category==='wikelo').reduce((s,i)=>s+i.quantity,0);
+    types.push({ name, category: 'wikelo', inStock });
   }
+
+  // 2. Any wikelo items in inventory not already in presets
+  for (const item of state.navItems) {
+    if (item.category !== 'wikelo') continue;
+    const key = `${item.name}||wikelo`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const inStock = state.navItems.filter(i=>i.status==='available'&&i.name===item.name&&i.category==='wikelo').reduce((s,i)=>s+i.quantity,0);
+    types.push({ name: item.name, category: 'wikelo', inStock });
+  }
+
+  // 3. Any "other" category items in inventory
+  for (const item of state.navItems) {
+    if (item.category !== 'other') continue;
+    const key = `${item.name}||other`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const inStock = state.navItems.filter(i=>i.status==='available'&&i.name===item.name&&i.category==='other').reduce((s,i)=>s+i.quantity,0);
+    types.push({ name: item.name, category: 'other', inStock });
+  }
+
   types.sort((a,b)=>a.name.localeCompare(b.name));
 
   // Filter by search, exclude already-added
@@ -2706,13 +2729,13 @@ function renderCtItemResults() {
           ${ctFilteredTypes.map((t,i)=>`<tr>
             <td style="font-size:16px;font-weight:700;">${esc(t.name)}</td>
             <td style="font-size:14px;color:var(--fg);">${esc(itemCatLabel(t.category))}</td>
-            <td style="font-size:14px;color:var(--fg);">${t.inStock} in stock</td>
+            <td style="font-size:14px;color:${t.inStock>0?'#16a34a':'var(--fg)'};">${t.inStock > 0 ? `${t.inStock} in stock` : 'not in stock'}</td>
             <td style="padding:4px 2px;"><input type="number" id="ctqty${i}" min="1" value="1" style="width:56px;margin:0;"></td>
             <td style="padding:4px 2px;"><button class="btn btn-black btn-sm" onclick="ctAddRequired(${i})">Add</button></td>
           </tr>`).join('')}
         </tbody>
       </table>
-    </div>` : `<div style="padding:8px;color:var(--fg);font-size:16px;">${q?'No items match.':'No items in inventory.'}</div>`;
+    </div>` : `<div style="padding:8px;color:var(--fg);font-size:16px;">${q?'No items match.':'No Wikelo or Other items found.'}</div>`;
 
   if (listEl) {
     listEl.innerHTML = ctRequiredItems.length ? `
