@@ -732,6 +732,11 @@ const state = { user: null, sessionToken: null, navItems: [], archive: [], allUs
 let tasksFilter = 'open';
 let tasksSearchActive = false;
 let tasksSearch = '';
+// Create-project modal: required items state
+let ctNeedsItems = false;
+let ctRequiredItems = [];
+let ctItemSearch = '';
+let ctFilteredTypes = [];
 let pollTimer = null;
 let lotteryView = 'list'; // 'list' | 'detail'
 let lotteryDetailId = null; // id of lottery being viewed
@@ -1785,10 +1790,25 @@ async function confirmHandOut(itemId, maxQty) {
 function openUsedModal(itemId) {
   const item = state.navItems.find(i=>i._id===itemId);
   if(!item) return;
+  const openProjects = state.tasks.filter(t=>t.status==='open');
+  // Highlight projects that require this item
+  const matchingProjects = openProjects.filter(t=>t.requiredItems?.some(r=>r.name===item.name&&r.category===item.category));
+  const otherProjects = openProjects.filter(t=>!matchingProjects.includes(t));
+  const projectOptions = [
+    ...matchingProjects.map(t=>`<option value="${esc(t.title)}" style="font-weight:700;">★ ${esc(t.title)}</option>`),
+    ...otherProjects.map(t=>`<option value="${esc(t.title)}">${esc(t.title)}</option>`),
+  ].join('');
   showModal(`
     <div class="modal-title">Mark as Used: ${esc(item.name)}</div>
-    <div class="field"><label class="lbl">Used for</label>
-      <input type="text" id="used-for" placeholder="Brief description of what it was used for…" autofocus>
+    ${openProjects.length ? `
+    <div class="field"><label class="lbl">Use for project</label>
+      <select id="used-project" onchange="document.getElementById('used-for').value=this.value" style="margin-bottom:4px;">
+        <option value="">— select project or type below —</option>
+        ${projectOptions}
+      </select>
+    </div>` : ''}
+    <div class="field"><label class="lbl">${openProjects.length ? 'Or custom description' : 'Used for'}</label>
+      <input type="text" id="used-for" placeholder="What it was used for…" autofocus>
     </div>
     <div style="display:flex;gap:10px;margin-top:8px;">
       <button class="btn btn-black" onclick="confirmUsed('${esc(itemId)}')">Confirm</button>
@@ -2146,7 +2166,7 @@ function renderArchiveTable(openMonths){
 
 function renderMonthRows(entries){
   const admin=isAdmin(state.user);
-  const labels={user_joined:'Joined',role_approved:'Role Approved',role_denied:'Role Denied',admin_granted:'Admin Granted',member_removed:'Member Removed',task_created:'Task Created',task_closed:'Task Closed',item_added:'Item Added',item_removed:'Item Removed',item_handed_out:'Handed Out',item_used:'Item Used',lottery_opened:'Lottery Opened',lottery_drawn:'Lottery Drawn',lottery_pick:'Lottery Pick'};
+  const labels={user_joined:'Joined',role_approved:'Role Approved',role_denied:'Role Denied',admin_granted:'Admin Granted',member_removed:'Member Removed',task_created:'Task Created',task_closed:'Task Closed',item_added:'Item Added',item_removed:'Item Removed',item_handed_out:'Handed Out',item_used:'Item Used',items_used_for_project:'Items Used',lottery_opened:'Lottery Opened',lottery_drawn:'Lottery Drawn',lottery_pick:'Lottery Pick'};
   return `<table>
     <thead><tr><th>Date</th><th>Action</th><th>User</th><th>Details</th>${admin?'<th></th>':''}</tr></thead>
     <tbody>${entries.map(e=>`<tr>
@@ -2170,10 +2190,11 @@ function fmtArchiveDetails(e){
     case 'item_added':       return `<strong>${esc(d.name)}</strong> &middot; ${itemCatLabel(d.category)} &middot; qty ${d.quantity}`;
     case 'item_removed':     return `<strong>${esc(d.name)}</strong>`;
     case 'item_handed_out':  return `<strong>${esc(d.name)}</strong> &middot; qty ${d.handedOutQty} &middot; to <strong>${esc(d.handedOutTo)}</strong>`;
-    case 'item_used':        return `<strong>${esc(d.name)}</strong> &middot; ${esc(d.usedFor)}`;
-    case 'lottery_opened':   return `<strong>${esc(d.title)}</strong> &middot; ${d.packages} package${d.packages!==1?'s':''}`;
-    case 'lottery_drawn':    return `<strong>${esc(d.title)}</strong> &middot; ${d.packagesCount} package${d.packagesCount!==1?'s':''} drawn`;
-    case 'lottery_pick':     return `<strong>${esc(d.lotteryTitle)}</strong> &middot; Package #${(d.pkgId||'').replace('pkg_','')} &middot; ${d.value} pts`;
+    case 'item_used':               return `<strong>${esc(d.name)}</strong> &middot; ${esc(d.usedFor)}`;
+    case 'items_used_for_project':  return `For <strong>${esc(d.taskTitle)}</strong> &middot; ${(d.items||[]).map(i=>`${esc(i.name)} ×${i.quantity}`).join(', ')}`;
+    case 'lottery_opened':          return `<strong>${esc(d.title)}</strong> &middot; ${d.packages} package${d.packages!==1?'s':''}`;
+    case 'lottery_drawn':           return `<strong>${esc(d.title)}</strong> &middot; ${d.packagesCount} package${d.packagesCount!==1?'s':''} drawn`;
+    case 'lottery_pick':            return `<strong>${esc(d.lotteryTitle)}</strong> &middot; Package #${(d.pkgId||'').replace('pkg_','')} &middot; ${d.value} pts`;
     default: return JSON.stringify(d);
   }
 }
@@ -2521,6 +2542,7 @@ function renderTasksList() {
           </div>
           ${t.description?`<div style="font-size:18px;color:var(--fg);margin-bottom:8px;">${esc(t.description)}</div>`:''}
           ${t.goal?`<div style="font-size:18px;color:var(--fg);margin-bottom:8px;"><strong>Goal:</strong> ${esc(t.goal)}</div>`:''}
+          ${renderTaskRequiredItems(t)}
           <div style="font-size:18px;color:var(--fg);display:flex;gap:16px;flex-wrap:wrap;margin-top:4px;">
             <span>${t.members.length} member${t.members.length!==1?'s':''} joined${t.members.length?': '+t.members.map(m=>esc(m.userName)).join(', '):''}
             </span>
@@ -2530,6 +2552,7 @@ function renderTasksList() {
         <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;flex-shrink:0;padding-top:2px;">
           ${t.status==='open'&&!isMember?`<button class="btn btn-black btn-sm" onclick="joinTask('${esc(t._id)}')">Join</button>`:''}
           ${t.status==='open'&&isMember?`<button class="btn btn-outline btn-sm" onclick="leaveTask('${esc(t._id)}')">Leave</button>`:''}
+          ${(()=>{if(!canManage||t.status!=='open'||!t.requiredItems?.length)return'';const hasAvail=t.requiredItems.some(req=>state.navItems.some(i=>i.status==='available'&&i.name===req.name&&i.category===req.category));return hasAvail?`<button class="btn btn-black btn-sm" onclick="useItemsForProject('${esc(t._id)}','${esc(t.title)}')">Use items</button>`:'';})()}
           ${canManage&&t.status==='open'?`<button class="btn-ghost btn-sm" onclick="closeTask('${esc(t._id)}')">Close</button>`:''}
           ${canManage&&t.status==='closed'?`<button class="btn-ghost btn-sm" onclick="reopenTask('${esc(t._id)}')">Reopen</button>`:''}
           ${admin?`<button class="btn-del" onclick="deleteTask('${esc(t._id)}')">&times;</button>`:''}
@@ -2537,6 +2560,31 @@ function renderTasksList() {
       </div>
     </div>`;
   }).join('');
+}
+
+function renderTaskRequiredItems(task) {
+  if (!task.requiredItems?.length) return '';
+  const rows = task.requiredItems.map(req => {
+    const inStock = state.navItems.filter(i=>i.status==='available'&&i.name===req.name&&i.category===req.category).reduce((s,i)=>s+i.quantity,0);
+    const collected = Math.min(inStock, req.quantityNeeded);
+    const done = collected >= req.quantityNeeded;
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;">
+      <span style="font-size:16px;">${esc(req.name)} <span style="font-size:14px;color:var(--fg);">(${esc(itemCatLabel(req.category))})</span></span>
+      <span style="font-size:16px;font-weight:700;color:${done?'#16a34a':'inherit'};">${collected}/${req.quantityNeeded}</span>
+    </div>`;
+  });
+  return `<div style="margin:8px 0;padding:8px 10px;background:var(--bg);border:1px solid var(--border-m);">
+    <div style="font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--fg);margin-bottom:4px;">Required Items</div>
+    ${rows.join('')}
+  </div>`;
+}
+
+async function useItemsForProject(taskId, taskTitle) {
+  if (!confirm(`Use available items from inventory for "${taskTitle}"? Matching items will be marked as used.`)) return;
+  try {
+    await convexMutation('tasks:useItems',{sessionToken:state.sessionToken,taskId});
+    toast('Items used for project'); await refreshAll(); renderPage();
+  } catch(e){alert(e.message);}
 }
 
 async function joinTask(taskId) {
@@ -2559,6 +2607,7 @@ async function deleteTask(taskId) {
 }
 
 function openCreateTaskModal() {
+  ctNeedsItems=false; ctRequiredItems=[]; ctItemSearch=''; ctFilteredTypes=[];
   showModal(`
     <div class="modal-title">Create Project</div>
     <div class="field"><label class="lbl">Title</label>
@@ -2582,6 +2631,18 @@ function openCreateTaskModal() {
         ${NAVY_ROLES.map(r=>`<label class="chk-row" style="margin:0;"><input type="checkbox" class="ct-role" value="${r.id}" style="width:auto;" checked> <span style="font-size:18px;">${r.label}</span></label>`).join('')}
       </div>
     </div>
+    <div class="field">
+      <label class="chk-row" style="margin:0;"><input type="checkbox" id="ct-needs-items" style="width:auto;" onchange="ctNeedsItems=this.checked;renderCtItemsSection()"> <span style="font-size:18px;font-weight:700;">Needs items to complete</span></label>
+    </div>
+    <div id="ct-items-wrap" style="display:none;">
+      <div class="field" style="margin-top:0;">
+        <label class="lbl">Add required items</label>
+        <input type="text" id="ct-item-search" placeholder="Search items in inventory…"
+          oninput="ctItemSearch=this.value;renderCtItemResults()" style="margin-bottom:6px;">
+        <div id="ct-item-results"></div>
+      </div>
+      <div id="ct-required-list"></div>
+    </div>
     <div style="display:flex;gap:10px;margin-top:8px;">
       <button class="btn btn-black" onclick="confirmCreateTask()">Create</button>
       <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
@@ -2598,12 +2659,87 @@ async function confirmCreateTask() {
   if(!title){alert('Enter a project title');return;}
   if(!targetRoles.length){alert('Select at least one role');return;}
   try {
-    await convexMutation('tasks:create',{sessionToken:state.sessionToken,title,description,goal,priority,targetRoles});
+    const requiredItems = ctNeedsItems && ctRequiredItems.length ? ctRequiredItems : undefined;
+    await convexMutation('tasks:create',{sessionToken:state.sessionToken,title,description,goal,priority,targetRoles,requiredItems});
     closeModal(); toast('Project created'); tasksFilter='open';
     await refreshAll(); goTo('tasks');
   } catch(e){alert(e.message);}
 }
 
+
+function renderCtItemsSection() {
+  const wrap = document.getElementById('ct-items-wrap');
+  if (!wrap) return;
+  wrap.style.display = ctNeedsItems ? '' : 'none';
+  if (ctNeedsItems) renderCtItemResults();
+}
+
+function renderCtItemResults() {
+  const resultsEl = document.getElementById('ct-item-results');
+  const listEl    = document.getElementById('ct-required-list');
+  if (!resultsEl) return;
+
+  // Build unique available item types
+  const seen = new Set();
+  const types = [];
+  for (const item of state.navItems) {
+    if (item.status !== 'available') continue;
+    const key = `${item.name}||${item.category}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const inStock = state.navItems.filter(i=>i.status==='available'&&i.name===item.name&&i.category===item.category).reduce((s,i)=>s+i.quantity,0);
+    types.push({ name: item.name, category: item.category, inStock });
+  }
+  types.sort((a,b)=>a.name.localeCompare(b.name));
+
+  // Filter by search, exclude already-added
+  const q = ctItemSearch.trim().toLowerCase();
+  ctFilteredTypes = types.filter(t =>
+    (!q || t.name.toLowerCase().includes(q) || itemCatLabel(t.category).toLowerCase().includes(q)) &&
+    !ctRequiredItems.some(r=>r.name===t.name&&r.category===t.category)
+  );
+
+  resultsEl.innerHTML = ctFilteredTypes.length ? `
+    <div style="max-height:160px;overflow-y:auto;border:1px solid var(--border);">
+      <table style="margin:0;width:100%;">
+        <tbody>
+          ${ctFilteredTypes.map((t,i)=>`<tr>
+            <td style="font-size:16px;font-weight:700;">${esc(t.name)}</td>
+            <td style="font-size:14px;color:var(--fg);">${esc(itemCatLabel(t.category))}</td>
+            <td style="font-size:14px;color:var(--fg);">${t.inStock} in stock</td>
+            <td style="padding:4px 2px;"><input type="number" id="ctqty${i}" min="1" value="1" style="width:56px;margin:0;"></td>
+            <td style="padding:4px 2px;"><button class="btn btn-black btn-sm" onclick="ctAddRequired(${i})">Add</button></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>` : `<div style="padding:8px;color:var(--fg);font-size:16px;">${q?'No items match.':'No items in inventory.'}</div>`;
+
+  if (listEl) {
+    listEl.innerHTML = ctRequiredItems.length ? `
+      <div style="margin-top:10px;">
+        <div style="font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--fg);margin-bottom:6px;">Required for this project:</div>
+        ${ctRequiredItems.map((r,i)=>`
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border-m);">
+            <span style="font-size:16px;">${esc(r.name)} <span style="color:var(--fg);font-size:14px;">(${esc(itemCatLabel(r.category))})</span> &times; ${r.quantityNeeded}</span>
+            <button class="btn-del" onclick="ctRemoveRequired(${i})" style="padding:2px 8px;">&times;</button>
+          </div>`).join('')}
+      </div>` : '';
+  }
+}
+
+function ctAddRequired(idx) {
+  const t = ctFilteredTypes[idx];
+  if (!t) return;
+  const qty = parseInt((document.getElementById(`ctqty${idx}`)||{value:'1'}).value);
+  if (!qty || qty < 1) { alert('Enter a valid quantity'); return; }
+  ctRequiredItems.push({ name: t.name, category: t.category, quantityNeeded: qty });
+  renderCtItemResults();
+}
+
+function ctRemoveRequired(idx) {
+  ctRequiredItems.splice(idx, 1);
+  renderCtItemResults();
+}
 
 // ─── LOTTERY PAGE ─────────────────────────────────────────────────────────────
 function pageLottery() {

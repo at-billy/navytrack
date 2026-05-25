@@ -171,7 +171,7 @@ export const markUsed = mutation({
     if (!canEdit) throw new ConvexError("Not authorized");
     const item = await ctx.db.get(itemId);
     if (!item) throw new ConvexError("Item not found");
-    if (item.category !== "wikelo") throw new ConvexError("Only Wikelo items can be marked as used");
+    if (!["wikelo", "other"].includes(item.category)) throw new ConvexError("Only Wikelo and Other items can be marked as used");
     await ctx.db.patch(itemId, { status: "used", usedFor });
     await ctx.db.insert("archive", {
       type: "item_used",

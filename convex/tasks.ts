@@ -17,6 +17,11 @@ export const create = mutation({
     goal: v.optional(v.string()),
     priority: v.string(),
     targetRoles: v.array(v.string()),
+    requiredItems: v.optional(v.array(v.object({
+      name: v.string(),
+      category: v.string(),
+      quantityNeeded: v.number(),
+    }))),
   },
   handler: async (ctx, { sessionToken, ...rest }) => {
     const user = await requireSession(ctx.db, sessionToken);
@@ -110,5 +115,54 @@ export const remove = mutation({
     const user = await requireSession(ctx.db, sessionToken);
     if (!user.roles.includes("admin")) throw new ConvexError("Not authorized");
     await ctx.db.delete(taskId);
+  },
+});
+
+export const useItems = mutation({
+  args: { sessionToken: v.string(), taskId: v.id("tasks") },
+  handler: async (ctx, { sessionToken, taskId }) => {
+    const user = await requireSession(ctx.db, sessionToken);
+    if (!user.roles.some(r => ["admin", "command"].includes(r))) throw new ConvexError("Not authorized");
+    const task = await ctx.db.get(taskId);
+    if (!task) throw new ConvexError("Project not found");
+    if (task.status !== "open") throw new ConvexError("Project is not open");
+    if (!task.requiredItems?.length) throw new ConvexError("No required items on this project");
+
+    const available = await ctx.db.query("items").withIndex("by_status", q => q.eq("status", "available")).collect();
+    const usedLog: { name: string; quantity: number }[] = [];
+
+    for (const req of task.requiredItems) {
+      const matching = available.filter(i => i.name === req.name && i.category === req.category);
+      let needed = req.quantityNeeded;
+      for (const item of matching) {
+        if (needed <= 0) break;
+        if (item.quantity <= needed) {
+          await ctx.db.patch(item._id, { status: "used", usedFor: task.title });
+          usedLog.push({ name: item.name, quantity: item.quantity });
+          needed -= item.quantity;
+        } else {
+          await ctx.db.patch(item._id, { quantity: item.quantity - needed });
+          await ctx.db.insert("items", {
+            name: item.name, category: item.category,
+            subcategory: item.subcategory, description: item.description,
+            quantity: needed, quality: item.quality, location: item.location,
+            system: item.system, addedBy: item.addedBy, addedByName: item.addedByName,
+            heldBy: item.heldBy, compType: item.compType, compGrade: item.compGrade,
+            compSize: item.compSize, compTier: item.compTier,
+            status: "used", usedFor: task.title,
+          });
+          usedLog.push({ name: item.name, quantity: needed });
+          needed = 0;
+        }
+      }
+    }
+
+    if (!usedLog.length) throw new ConvexError("No matching items found in inventory");
+    await ctx.db.insert("archive", {
+      type: "items_used_for_project",
+      userId: user._id,
+      userName: user.username,
+      details: { taskTitle: task.title, items: usedLog },
+    });
   },
 });

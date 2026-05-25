@@ -54,6 +54,11 @@ export default defineSchema({
       userId: v.id("users"),
       userName: v.string(),
     })),
+    requiredItems: v.optional(v.array(v.object({
+      name: v.string(),
+      category: v.string(),
+      quantityNeeded: v.number(),
+    }))),
   }).index("by_status", ["status"]),
 
   lotteries: defineTable({
