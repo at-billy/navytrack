@@ -2640,6 +2640,11 @@ function openCreateTaskModal() {
         <input type="text" id="ct-item-search" placeholder="Search items in inventory…"
           oninput="ctItemSearch=this.value;renderCtItemResults()" style="margin-bottom:6px;">
         <div id="ct-item-results"></div>
+        <div style="display:flex;gap:6px;align-items:center;margin-top:8px;padding-top:8px;border-top:1px solid var(--border-m);">
+          <input type="text" id="ct-custom-name" placeholder="Custom item name…" style="flex:1;margin:0;">
+          <input type="number" id="ct-custom-qty" min="1" value="1" style="width:60px;margin:0;">
+          <button class="btn btn-outline btn-sm" onclick="ctAddCustom()">Add</button>
+        </div>
       </div>
       <div id="ct-required-list"></div>
     </div>
@@ -2761,6 +2766,18 @@ function ctAddRequired(idx) {
 
 function ctRemoveRequired(idx) {
   ctRequiredItems.splice(idx, 1);
+  renderCtItemResults();
+}
+
+function ctAddCustom() {
+  const name = (document.getElementById('ct-custom-name')||{value:''}).value.trim();
+  const qty  = parseInt((document.getElementById('ct-custom-qty')||{value:'1'}).value);
+  if (!name) { alert('Enter an item name'); return; }
+  if (!qty || qty < 1) { alert('Enter a valid quantity'); return; }
+  if (ctRequiredItems.some(r=>r.name===name)) { alert('Already added'); return; }
+  ctRequiredItems.push({ name, category: 'other', quantityNeeded: qty });
+  document.getElementById('ct-custom-name').value = '';
+  document.getElementById('ct-custom-qty').value = '1';
   renderCtItemResults();
 }
 
