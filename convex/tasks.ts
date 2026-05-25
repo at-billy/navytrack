@@ -1,5 +1,5 @@
 import { mutation, query } from "./_generated/server";
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { requireSession } from "./_helpers";
 
 export const getAll = query({
@@ -21,7 +21,7 @@ export const create = mutation({
   handler: async (ctx, { sessionToken, ...rest }) => {
     const user = await requireSession(ctx.db, sessionToken);
     const canCreate = user.roles.some(r => ["admin", "command"].includes(r));
-    if (!canCreate) throw new Error("Not authorized");
+    if (!canCreate) throw new ConvexError("Not authorized");
     const id = await ctx.db.insert("tasks", {
       ...rest,
       status: "open",
@@ -44,9 +44,9 @@ export const join = mutation({
   handler: async (ctx, { sessionToken, taskId }) => {
     const user = await requireSession(ctx.db, sessionToken);
     const task = await ctx.db.get(taskId);
-    if (!task) throw new Error("Project not found");
-    if (task.status !== "open") throw new Error("Project is not open");
-    if (task.members.some(m => m.userId === user._id)) throw new Error("Already joined");
+    if (!task) throw new ConvexError("Project not found");
+    if (task.status !== "open") throw new ConvexError("Project is not open");
+    if (task.members.some(m => m.userId === user._id)) throw new ConvexError("Already joined");
     await ctx.db.patch(taskId, {
       members: [...task.members, { userId: user._id, userName: user.username }],
     });
@@ -58,7 +58,7 @@ export const leave = mutation({
   handler: async (ctx, { sessionToken, taskId }) => {
     const user = await requireSession(ctx.db, sessionToken);
     const task = await ctx.db.get(taskId);
-    if (!task) throw new Error("Project not found");
+    if (!task) throw new ConvexError("Project not found");
     await ctx.db.patch(taskId, {
       members: task.members.filter(m => m.userId !== user._id),
     });
@@ -70,9 +70,9 @@ export const close = mutation({
   handler: async (ctx, { sessionToken, taskId }) => {
     const user = await requireSession(ctx.db, sessionToken);
     const canClose = user.roles.some(r => ["admin", "command"].includes(r));
-    if (!canClose) throw new Error("Not authorized");
+    if (!canClose) throw new ConvexError("Not authorized");
     const task = await ctx.db.get(taskId);
-    if (!task) throw new Error("Project not found");
+    if (!task) throw new ConvexError("Project not found");
     await ctx.db.patch(taskId, { status: "closed" });
     await ctx.db.insert("archive", {
       type: "task_closed",
@@ -88,9 +88,9 @@ export const reopen = mutation({
   handler: async (ctx, { sessionToken, taskId }) => {
     const user = await requireSession(ctx.db, sessionToken);
     const canEdit = user.roles.some(r => ["admin", "command"].includes(r));
-    if (!canEdit) throw new Error("Not authorized");
+    if (!canEdit) throw new ConvexError("Not authorized");
     const task = await ctx.db.get(taskId);
-    if (!task) throw new Error("Project not found");
+    if (!task) throw new ConvexError("Project not found");
     await ctx.db.patch(taskId, { status: "open" });
   },
 });
@@ -99,7 +99,7 @@ export const cancel = mutation({
   args: { sessionToken: v.string(), taskId: v.id("tasks") },
   handler: async (ctx, { sessionToken, taskId }) => {
     const user = await requireSession(ctx.db, sessionToken);
-    if (!user.roles.includes("admin")) throw new Error("Not authorized");
+    if (!user.roles.includes("admin")) throw new ConvexError("Not authorized");
     await ctx.db.patch(taskId, { status: "cancelled" });
   },
 });
@@ -108,7 +108,7 @@ export const remove = mutation({
   args: { sessionToken: v.string(), taskId: v.id("tasks") },
   handler: async (ctx, { sessionToken, taskId }) => {
     const user = await requireSession(ctx.db, sessionToken);
-    if (!user.roles.includes("admin")) throw new Error("Not authorized");
+    if (!user.roles.includes("admin")) throw new ConvexError("Not authorized");
     await ctx.db.delete(taskId);
   },
 });

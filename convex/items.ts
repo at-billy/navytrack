@@ -1,5 +1,5 @@
 import { mutation, query } from "./_generated/server";
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { requireSession } from "./_helpers";
 
 export const getAll = query({
@@ -29,7 +29,7 @@ export const create = mutation({
   handler: async (ctx, { sessionToken, ...rest }) => {
     const user = await requireSession(ctx.db, sessionToken);
     const canAdd = user.roles.some(r => ["admin", "command", "core", "member"].includes(r));
-    if (!canAdd) throw new Error("Not authorized");
+    if (!canAdd) throw new ConvexError("Not authorized");
 
     // Auto-stack: find an identical available item and increment its quantity
     const all = await ctx.db.query("items").withIndex("by_status", q => q.eq("status", "available")).collect();
@@ -94,11 +94,11 @@ export const update = mutation({
     const user = await requireSession(ctx.db, sessionToken);
     const canEditAny = user.roles.some(r => ["admin", "command"].includes(r));
     const canEditOwn = user.roles.some(r => ["core", "member"].includes(r));
-    if (!canEditAny && !canEditOwn) throw new Error("Not authorized");
+    if (!canEditAny && !canEditOwn) throw new ConvexError("Not authorized");
     if (!canEditAny) {
       const item = await ctx.db.get(itemId);
-      if (!item) throw new Error("Item not found");
-      if (item.addedBy !== user._id) throw new Error("Not authorized — you can only edit items you added");
+      if (!item) throw new ConvexError("Item not found");
+      if (item.addedBy !== user._id) throw new ConvexError("Not authorized — you can only edit items you added");
     }
     const patch: Record<string, any> = {};
     for (const [k, v] of Object.entries(rest)) {
@@ -118,10 +118,10 @@ export const handOut = mutation({
   handler: async (ctx, { sessionToken, itemId, handedOutTo, handedOutQty }) => {
     const user = await requireSession(ctx.db, sessionToken);
     const canEdit = user.roles.some(r => ["admin", "command", "core"].includes(r));
-    if (!canEdit) throw new Error("Not authorized");
+    if (!canEdit) throw new ConvexError("Not authorized");
     const item = await ctx.db.get(itemId);
-    if (!item) throw new Error("Item not found");
-    if (handedOutQty <= 0 || handedOutQty > item.quantity) throw new Error("Invalid quantity");
+    if (!item) throw new ConvexError("Item not found");
+    if (handedOutQty <= 0 || handedOutQty > item.quantity) throw new ConvexError("Invalid quantity");
 
     if (handedOutQty === item.quantity) {
       // Hand out entire item
@@ -168,10 +168,10 @@ export const markUsed = mutation({
   handler: async (ctx, { sessionToken, itemId, usedFor }) => {
     const user = await requireSession(ctx.db, sessionToken);
     const canEdit = user.roles.some(r => ["admin", "command"].includes(r));
-    if (!canEdit) throw new Error("Not authorized");
+    if (!canEdit) throw new ConvexError("Not authorized");
     const item = await ctx.db.get(itemId);
-    if (!item) throw new Error("Item not found");
-    if (item.category !== "wikelo") throw new Error("Only Wikelo items can be marked as used");
+    if (!item) throw new ConvexError("Item not found");
+    if (item.category !== "wikelo") throw new ConvexError("Only Wikelo items can be marked as used");
     await ctx.db.patch(itemId, { status: "used", usedFor });
     await ctx.db.insert("archive", {
       type: "item_used",
@@ -188,10 +188,10 @@ export const remove = mutation({
     const user = await requireSession(ctx.db, sessionToken);
     const canDeleteAny = user.roles.some(r => ["admin", "command"].includes(r));
     const canDeleteOwn = user.roles.some(r => ["core", "member"].includes(r));
-    if (!canDeleteAny && !canDeleteOwn) throw new Error("Not authorized");
+    if (!canDeleteAny && !canDeleteOwn) throw new ConvexError("Not authorized");
     const item = await ctx.db.get(itemId);
-    if (!item) throw new Error("Item not found");
-    if (!canDeleteAny && item.addedBy !== user._id) throw new Error("Not authorized — you can only remove items you added");
+    if (!item) throw new ConvexError("Item not found");
+    if (!canDeleteAny && item.addedBy !== user._id) throw new ConvexError("Not authorized — you can only remove items you added");
     await ctx.db.delete(itemId);
     await ctx.db.insert("archive", {
       type: "item_removed",

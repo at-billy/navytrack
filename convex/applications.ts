@@ -1,6 +1,6 @@
 import { mutation, query, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { requireSession } from "./_helpers";
 
 const SHEETS_WEBHOOK = "https://script.google.com/macros/s/AKfycbyZeqjMZVYfoqlfOEljh9xN03Bd79GQojGvXqaNYmvH4owbZrzESTi_kXyryLM4l7WUFA/exec";
@@ -21,15 +21,15 @@ export const submit = mutation({
   },
   handler: async (ctx, { sessionToken, handles, whyJoin, role }) => {
     const user = await requireSession(ctx.db, sessionToken);
-    if (!user.roles.includes("recruit")) throw new Error("Only recruits can submit applications");
+    if (!user.roles.includes("recruit")) throw new ConvexError("Only recruits can submit applications");
     const existing = await ctx.db
       .query("applications")
       .withIndex("by_userId", q => q.eq("userId", user._id))
       .first();
-    if (existing) throw new Error("You have already submitted an application");
-    if (!handles.trim()) throw new Error("Please fill in your handles");
-    if (!whyJoin.trim()) throw new Error("Please fill in why you want to join");
-    if (!role.trim()) throw new Error("Please fill in what you want to do");
+    if (existing) throw new ConvexError("You have already submitted an application");
+    if (!handles.trim()) throw new ConvexError("Please fill in your handles");
+    if (!whyJoin.trim()) throw new ConvexError("Please fill in why you want to join");
+    if (!role.trim()) throw new ConvexError("Please fill in what you want to do");
     await ctx.db.insert("applications", {
       userId: user._id,
       userName: user.username,
@@ -72,7 +72,7 @@ export const remove = mutation({
   args: { sessionToken: v.string(), applicationId: v.id("applications") },
   handler: async (ctx, { sessionToken, applicationId }) => {
     const admin = await requireSession(ctx.db, sessionToken);
-    if (!admin.roles.includes("admin")) throw new Error("Not authorized");
+    if (!admin.roles.includes("admin")) throw new ConvexError("Not authorized");
     await ctx.db.delete(applicationId);
   },
 });
@@ -81,7 +81,7 @@ export const markReviewed = mutation({
   args: { sessionToken: v.string(), applicationId: v.id("applications") },
   handler: async (ctx, { sessionToken, applicationId }) => {
     const admin = await requireSession(ctx.db, sessionToken);
-    if (!admin.roles.includes("admin")) throw new Error("Not authorized");
+    if (!admin.roles.includes("admin")) throw new ConvexError("Not authorized");
     await ctx.db.patch(applicationId, { status: "reviewed" });
   },
 });

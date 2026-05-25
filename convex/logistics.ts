@@ -1,5 +1,5 @@
 import { mutation, query } from "./_generated/server";
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { requireSession } from "./_helpers";
 
 export const getAll = query({
@@ -20,15 +20,15 @@ export const create = mutation({
   handler: async (ctx, { sessionToken, destinationSystem, destinationLocation, storedBy, itemIds }) => {
     const user = await requireSession(ctx.db, sessionToken);
     const canDo = user.roles.some(r => ["admin", "command", "core", "member"].includes(r));
-    if (!canDo) throw new Error("Not authorized");
-    if (!itemIds.length) throw new Error("Select at least one item");
-    if (!destinationLocation.trim()) throw new Error("Select a destination location");
+    if (!canDo) throw new ConvexError("Not authorized");
+    if (!itemIds.length) throw new ConvexError("Select at least one item");
+    if (!destinationLocation.trim()) throw new ConvexError("Select a destination location");
 
     const items = [];
     for (const itemId of itemIds) {
       const item = await ctx.db.get(itemId);
-      if (!item) throw new Error("Item not found");
-      if (item.status !== "available") throw new Error(`${item.name} is not in inventory`);
+      if (!item) throw new ConvexError("Item not found");
+      if (item.status !== "available") throw new ConvexError(`${item.name} is not in inventory`);
       items.push({
         itemId: item._id,
         name: item.name,
@@ -54,9 +54,9 @@ export const deleteTask = mutation({
   args: { sessionToken: v.string(), logisticsId: v.id("logistics") },
   handler: async (ctx, { sessionToken, logisticsId }) => {
     const user = await requireSession(ctx.db, sessionToken);
-    if (!user.roles.some(r => ["admin", "command"].includes(r))) throw new Error("Not authorized");
+    if (!user.roles.some(r => ["admin", "command"].includes(r))) throw new ConvexError("Not authorized");
     const task = await ctx.db.get(logisticsId);
-    if (!task) throw new Error("Task not found");
+    if (!task) throw new ConvexError("Task not found");
     await ctx.db.delete(logisticsId);
   },
 });
@@ -73,18 +73,18 @@ export const update = mutation({
   handler: async (ctx, { sessionToken, logisticsId, destinationSystem, destinationLocation, storedBy, itemIds }) => {
     const user = await requireSession(ctx.db, sessionToken);
     const task = await ctx.db.get(logisticsId);
-    if (!task) throw new Error("Task not found");
-    if (task.status !== "open") throw new Error("Cannot edit a completed task");
+    if (!task) throw new ConvexError("Task not found");
+    if (task.status !== "open") throw new ConvexError("Cannot edit a completed task");
     const canEditAny = user.roles.some(r => ["admin", "command"].includes(r));
-    if (!canEditAny && task.createdBy !== user._id) throw new Error("Not authorized");
-    if (!itemIds.length) throw new Error("Select at least one item");
-    if (!destinationLocation.trim()) throw new Error("Select a destination location");
+    if (!canEditAny && task.createdBy !== user._id) throw new ConvexError("Not authorized");
+    if (!itemIds.length) throw new ConvexError("Select at least one item");
+    if (!destinationLocation.trim()) throw new ConvexError("Select a destination location");
 
     const items = [];
     for (const itemId of itemIds) {
       const item = await ctx.db.get(itemId);
-      if (!item) throw new Error("Item not found");
-      if (item.status !== "available") throw new Error(`${item.name} is not in inventory`);
+      if (!item) throw new ConvexError("Item not found");
+      if (item.status !== "available") throw new ConvexError(`${item.name} is not in inventory`);
       items.push({
         itemId: item._id,
         name: item.name,
@@ -112,11 +112,11 @@ export const complete = mutation({
   handler: async (ctx, { sessionToken, logisticsId, storedBy }) => {
     const user = await requireSession(ctx.db, sessionToken);
     const canDo = user.roles.some(r => ["admin", "command", "core", "member"].includes(r));
-    if (!canDo) throw new Error("Not authorized");
+    if (!canDo) throw new ConvexError("Not authorized");
 
     const task = await ctx.db.get(logisticsId);
-    if (!task) throw new Error("Logistics task not found");
-    if (task.status !== "open") throw new Error("Task is already completed");
+    if (!task) throw new ConvexError("Logistics task not found");
+    if (task.status !== "open") throw new ConvexError("Task is already completed");
 
     const finalStoredBy = (storedBy && storedBy.trim()) ? storedBy.trim() : task.storedBy;
 

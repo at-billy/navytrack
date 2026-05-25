@@ -768,7 +768,10 @@ async function convexMutation(path, args = {}) {
     body: JSON.stringify({ path, args, format:'json' }),
   });
   const d = await r.json();
-  if (d.status !== 'success') throw new Error(d.errorMessage || 'Mutation failed');
+  if (d.status !== 'success') {
+    const msg = (typeof d.errorData === 'string' ? d.errorData : null) || d.errorMessage || 'Server error';
+    throw new Error(msg);
+  }
   return d.value;
 }
 
