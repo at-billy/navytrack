@@ -109,6 +109,36 @@ export const cancel = mutation({
   },
 });
 
+export const update = mutation({
+  args: {
+    sessionToken: v.string(),
+    taskId: v.id("tasks"),
+    title: v.optional(v.string()),
+    description: v.optional(v.string()),
+    goal: v.optional(v.string()),
+    priority: v.optional(v.string()),
+    targetRoles: v.optional(v.array(v.string())),
+    requiredItems: v.optional(v.array(v.object({
+      name: v.string(),
+      category: v.string(),
+      quantityNeeded: v.number(),
+    }))),
+  },
+  handler: async (ctx, { sessionToken, taskId, ...fields }) => {
+    const user = await requireSession(ctx.db, sessionToken);
+    const task = await ctx.db.get(taskId);
+    if (!task) throw new ConvexError("Project not found");
+    const isAdmin = user.roles.some(r => ["admin", "command"].includes(r));
+    const isCreator = task.createdBy === user._id;
+    if (!isAdmin && !isCreator) throw new ConvexError("Not authorized");
+    const patch: Record<string, any> = {};
+    for (const [k, v] of Object.entries(fields)) {
+      if (v !== undefined) patch[k] = v;
+    }
+    await ctx.db.patch(taskId, patch);
+  },
+});
+
 export const remove = mutation({
   args: { sessionToken: v.string(), taskId: v.id("tasks") },
   handler: async (ctx, { sessionToken, taskId }) => {

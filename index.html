@@ -2553,6 +2553,7 @@ function renderTasksList() {
           ${t.status==='open'&&!isMember?`<button class="btn btn-black btn-sm" onclick="joinTask('${esc(t._id)}')">Join</button>`:''}
           ${t.status==='open'&&isMember?`<button class="btn btn-outline btn-sm" onclick="leaveTask('${esc(t._id)}')">Leave</button>`:''}
           ${(()=>{if(!canManage||t.status!=='open'||!t.requiredItems?.length)return'';const hasAvail=t.requiredItems.some(req=>state.navItems.some(i=>i.status==='available'&&i.name===req.name&&i.category===req.category));return hasAvail?`<button class="btn btn-black btn-sm" onclick="useItemsForProject('${esc(t._id)}','${esc(t.title)}')">Use items</button>`:'';})()}
+          ${(canManage||t.createdBy===u._id)?`<button class="btn-ghost btn-sm" onclick="openEditTaskModal('${esc(t._id)}')">Edit</button>`:''}
           ${canManage&&t.status==='open'?`<button class="btn-ghost btn-sm" onclick="closeTask('${esc(t._id)}')">Close</button>`:''}
           ${canManage&&t.status==='closed'?`<button class="btn-ghost btn-sm" onclick="reopenTask('${esc(t._id)}')">Reopen</button>`:''}
           ${admin?`<button class="btn-del" onclick="deleteTask('${esc(t._id)}')">&times;</button>`:''}
@@ -2560,6 +2561,76 @@ function renderTasksList() {
       </div>
     </div>`;
   }).join('');
+}
+
+function openEditTaskModal(taskId) {
+  const t = state.tasks.find(x=>x._id===taskId);
+  if (!t) return;
+  ctNeedsItems = !!(t.requiredItems?.length);
+  ctRequiredItems = t.requiredItems ? t.requiredItems.map(r=>({...r})) : [];
+  ctItemSearch = ''; ctFilteredTypes = [];
+  showModal(`
+    <div class="modal-title">Edit Project</div>
+    <div class="field"><label class="lbl">Title</label>
+      <input type="text" id="et-title" value="${esc(t.title)}">
+    </div>
+    <div class="field"><label class="lbl">Description <span style="font-weight:400;">(optional)</span></label>
+      <input type="text" id="et-desc" value="${esc(t.description||'')}">
+    </div>
+    <div class="field"><label class="lbl">Goal <span style="font-weight:400;">(optional)</span></label>
+      <input type="text" id="et-goal" value="${esc(t.goal||'')}">
+    </div>
+    <div class="field"><label class="lbl">Priority</label>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
+        ${TASK_PRIORITIES.map(p=>`<label style="display:flex;align-items:center;gap:4px;cursor:pointer;">
+          <input type="radio" name="et-priority" value="${p.id}"${t.priority===p.id?' checked':''}> <span class="p-badge ${p.cls}">${p.label}</span>
+        </label>`).join('')}
+      </div>
+    </div>
+    <div class="field"><label class="lbl">Visible to (roles)</label>
+      <div style="display:flex;gap:12px;margin-top:4px;flex-wrap:wrap;">
+        ${NAVY_ROLES.map(r=>`<label class="chk-row" style="margin:0;"><input type="checkbox" class="et-role" value="${r.id}" style="width:auto;"${t.targetRoles.includes(r.id)?' checked':''}> <span style="font-size:18px;">${r.label}</span></label>`).join('')}
+      </div>
+    </div>
+    <div class="field">
+      <label class="chk-row" style="margin:0;"><input type="checkbox" id="ct-needs-items" style="width:auto;"${ctNeedsItems?' checked':''} onchange="ctNeedsItems=this.checked;renderCtItemsSection()"> <span style="font-size:18px;font-weight:700;">Needs items to complete</span></label>
+    </div>
+    <div id="ct-items-wrap" style="display:${ctNeedsItems?'':'none'};">
+      <div class="field" style="margin-top:0;">
+        <label class="lbl">Add required items</label>
+        <input type="text" id="ct-item-search" placeholder="Search items in inventory…"
+          oninput="ctItemSearch=this.value;renderCtItemResults()" style="margin-bottom:6px;">
+        <div id="ct-item-results"></div>
+        <div style="display:flex;gap:6px;align-items:center;margin-top:8px;padding-top:8px;border-top:1px solid var(--border-m);">
+          <input type="text" id="ct-custom-name" placeholder="Custom item name…" style="flex:1;margin:0;">
+          <input type="number" id="ct-custom-qty" min="1" value="1" style="width:72px;margin:0;">
+          <button class="btn btn-outline btn-sm" onclick="ctAddCustom()">Add</button>
+        </div>
+      </div>
+      <div id="ct-required-list"></div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:8px;">
+      <button class="btn btn-black" onclick="confirmEditTask('${esc(taskId)}')">Save</button>
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+    </div>`);
+  if (ctNeedsItems) renderCtItemResults();
+}
+
+async function confirmEditTask(taskId) {
+  const title=(document.getElementById('et-title')||{value:''}).value.trim();
+  const description=(document.getElementById('et-desc')||{value:''}).value.trim()||undefined;
+  const goal=(document.getElementById('et-goal')||{value:''}).value.trim()||undefined;
+  const priorityEl=document.querySelector('input[name="et-priority"]:checked');
+  const priority=priorityEl?priorityEl.value:'normal';
+  const targetRoles=[...document.querySelectorAll('.et-role:checked')].map(c=>c.value);
+  if(!title){alert('Enter a project title');return;}
+  if(!targetRoles.length){alert('Select at least one role');return;}
+  const requiredItems = ctNeedsItems && ctRequiredItems.length ? ctRequiredItems : [];
+  try {
+    await convexMutation('tasks:update',{sessionToken:state.sessionToken,taskId,title,description,goal,priority,targetRoles,requiredItems});
+    closeModal(); toast('Project updated');
+    await refreshAll(); renderPage();
+  } catch(e){alert(e.message);}
 }
 
 function renderTaskRequiredItems(task) {
@@ -2642,7 +2713,7 @@ function openCreateTaskModal() {
         <div id="ct-item-results"></div>
         <div style="display:flex;gap:6px;align-items:center;margin-top:8px;padding-top:8px;border-top:1px solid var(--border-m);">
           <input type="text" id="ct-custom-name" placeholder="Custom item name…" style="flex:1;margin:0;">
-          <input type="number" id="ct-custom-qty" min="1" value="1" style="width:60px;margin:0;">
+          <input type="number" id="ct-custom-qty" min="1" value="1" style="width:72px;margin:0;">
           <button class="btn btn-outline btn-sm" onclick="ctAddCustom()">Add</button>
         </div>
       </div>
@@ -2735,7 +2806,7 @@ function renderCtItemResults() {
             <td style="font-size:16px;font-weight:700;">${esc(t.name)}</td>
             <td style="font-size:14px;color:var(--fg);">${esc(itemCatLabel(t.category))}</td>
             <td style="font-size:14px;color:${t.inStock>0?'#16a34a':'var(--fg)'};">${t.inStock > 0 ? `${t.inStock} in stock` : 'not in stock'}</td>
-            <td style="padding:4px 2px;"><input type="number" id="ctqty${i}" min="1" value="1" style="width:56px;margin:0;"></td>
+            <td style="padding:4px 2px;"><input type="number" id="ctqty${i}" min="1" value="1" style="width:72px;margin:0;"></td>
             <td style="padding:4px 2px;"><button class="btn btn-black btn-sm" onclick="ctAddRequired(${i})">Add</button></td>
           </tr>`).join('')}
         </tbody>
