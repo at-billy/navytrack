@@ -2239,7 +2239,6 @@ function renderAdminContent() {
   const MANAGEABLE=['member','core','command'];
   const members=state.allUsers.filter(u=>!u.roles.includes('removed'));
   const pendingApps = state.applications.filter(a=>a.status==='pending');
-  const reviewedApps = state.applications.filter(a=>a.status==='reviewed');
 
   return `
     ${pendingApps.length?`
@@ -2258,7 +2257,6 @@ function renderAdminContent() {
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
               ${member&&!member.roles.includes('member')?`<button class="btn btn-black btn-sm" onclick="adminAcceptRecruit('${esc(app._id)}','${esc(app.userId)}','${esc(app.userName)}')">Accept as Member</button>`:''}
-              <button class="btn btn-outline btn-sm" onclick="adminMarkAppReviewed('${esc(app._id)}')">Mark Reviewed</button>
             </div>
           </div>
           <div style="display:grid;gap:14px;">
@@ -2279,37 +2277,6 @@ function renderAdminContent() {
       }).join('')}
     </div>`:''}
 
-    ${reviewedApps.length?`
-    <details style="margin-bottom:40px;">
-      <summary style="font-size:18px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;padding-bottom:8px;border-bottom:1px solid var(--border);">
-        Reviewed Applications (${reviewedApps.length})
-      </summary>
-      <div style="margin-top:16px;">
-        ${reviewedApps.map(app=>`<details data-id="${esc(app._id)}" style="border-bottom:1px solid var(--border-m);">
-          <summary style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;cursor:pointer;list-style:none;">
-            <span style="font-size:18px;font-weight:700;">${esc(app.userName)}</span>
-            <div style="display:flex;align-items:center;gap:12px;">
-              <span style="font-size:18px;color:var(--fg);">${fmtDate(app._creationTime)}</span>
-              <button class="btn-del" onclick="event.stopPropagation();adminRemoveApp('${esc(app._id)}','${esc(app.userName)}')">Delete</button>
-            </div>
-          </summary>
-          <div style="display:grid;gap:12px;padding:12px 0 16px 0;">
-            <div>
-              <div style="font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--fg);margin-bottom:3px;">Discord &amp; SC Handles</div>
-              <div style="font-size:16px;white-space:pre-wrap;">${esc(app.handles)}</div>
-            </div>
-            <div>
-              <div style="font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--fg);margin-bottom:3px;">Why they want to join</div>
-              <div style="font-size:16px;white-space:pre-wrap;">${esc(app.whyJoin)}</div>
-            </div>
-            <div>
-              <div style="font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--fg);margin-bottom:3px;">Desired role</div>
-              <div style="font-size:16px;white-space:pre-wrap;">${esc(app.role)}</div>
-            </div>
-          </div>
-        </details>`).join('')}
-      </div>
-    </details>`:''}
 
     <div>
       <div style="font-size:18px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--border);">All Members</div>
