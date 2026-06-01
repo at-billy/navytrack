@@ -1092,7 +1092,7 @@ function renderNav() {
     const openLotteries=state.lotteries.filter(l=>l.status==='open'||l.status==='drawn').length;
     sub=`
       <div class="nav-sub-item${currentPage==='archive'?' active':''}" onclick="goTo('archive')">Log</div>
-      ${isAdmin(u)?`<div class="nav-sub-item${currentPage==='admin'?' active':''}" onclick="goTo('admin')">Admin${state.applications.filter(a=>a.status==='pending').length?` (${state.applications.filter(a=>a.status==='pending').length})`:''}</div>`:''}
+      ${isAdmin(u)?`<div class="nav-sub-item${currentPage==='admin'?' active':''}" onclick="goTo('admin')">${(()=>{const pending=state.allUsers.filter(u=>isRecruit(u)).length;return `Admin${pending?` (${pending})`:''}`})()}</div>`:''}
       ${canManageLottery(u)?`<div class="nav-sub-item${currentPage==='lottery'?' active':''}" onclick="goTo('lottery')">Lottery${openLotteries?' ('+openLotteries+')':''}</div>`:''}
       <div class="nav-sub-item${currentPage==='member'?' active':''}" onclick="goTo('member')">${esc(u.username)}</div>
       <div class="nav-sub-item" onclick="doLogout()">Sign out</div>`;
