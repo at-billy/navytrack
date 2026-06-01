@@ -1285,8 +1285,10 @@ function renderNav() {
     sub=`<div class="nav-sub-item" style="cursor:default;">Welcome back, ${esc(u.username)}</div><div class="nav-sub-item" onclick="toggleDark()">${dark?'DAYTIME':'NIGHTTIME'}</div>`;
   } else if(main==='task'){
     const oc=state.tasks.filter(t=>t.status==='open').length;
+    const mine=state.tasks.filter(t=>t.status==='open'&&t.members.some(m=>m.userId===u._id)).length;
     sub=`
       <div class="nav-sub-item${tasksFilter==='open'&&!tasksSearchActive?' active':''}" onclick="setTasksFilter('open')">Open${oc>0?` (${oc})`:''}</div>
+      <div class="nav-sub-item${tasksFilter==='mine'&&!tasksSearchActive?' active':''}" onclick="setTasksFilter('mine')">Mine${mine>0?` (${mine})`:''}</div>
       <div class="nav-sub-item${tasksFilter==='closed'&&!tasksSearchActive?' active':''}" onclick="setTasksFilter('closed')">Closed</div>
       <div class="nav-sub-item${tasksSearchActive?' active':''}" onclick="toggleTaskSearch()">Search</div>`;
   } else if(main==='items'){
@@ -1365,7 +1367,7 @@ function pageOverview() {
       <div class="ov-col-head">Open Projects</div>
       ${topTasks.length ? topTasks.map(t=>{
         const pb=TASK_PRIORITIES.find(p=>p.id===t.priority)||TASK_PRIORITIES[2];
-        return `<div style="display:flex;align-items:baseline;gap:28px;padding:14px 0;border-bottom:1px solid var(--border-l);">
+        return `<div onclick="openProjectFromOverview('${esc(t._id)}')" style="display:flex;align-items:baseline;gap:28px;padding:14px 0;border-bottom:1px solid var(--border-l);cursor:pointer;">
           <div style="flex:1;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;">
             <span class="p-badge ${pb.cls}">${pb.label}</span>
             <span style="font-size:24px;font-weight:900;">${esc(t.title)}</span>
@@ -2837,6 +2839,11 @@ const NAVY_ROLES = [
 ];
 
 function setTasksFilter(f){ tasksFilter=f; tasksSearchActive=false; tasksSearch=''; expandedTasks.clear(); renderPage(); renderNav(); }
+function openProjectFromOverview(taskId){
+  tasksFilter='open'; tasksSearchActive=false; tasksSearch='';
+  expandedTasks.clear(); expandedTasks.add(taskId);
+  currentPage='tasks'; renderNav(); renderPage();
+}
 function toggleTaskSearch(){ tasksSearchActive=!tasksSearchActive; if(!tasksSearchActive) tasksSearch=''; renderPage(); renderNav(); }
 
 function pageTasks() {
@@ -2865,13 +2872,18 @@ function renderTasksList() {
     tasks=state.tasks;
     if(tasksSearch.trim()){const q=tasksSearch.trim().toLowerCase();tasks=tasks.filter(t=>t.title.toLowerCase().includes(q)||(t.description||'').toLowerCase().includes(q));}
     if(!tasks.length) return `<div class="empty">No projects match "${esc(tasksSearch)}".</div>`;
+  } else if(tasksFilter==='mine') {
+    tasks=state.tasks.filter(t=>t.members.some(m=>m.userId===u._id));
+    if(!tasks.length) return `<div class="empty">You haven't joined any projects yet.</div>`;
   } else {
     tasks=state.tasks.filter(t=>t.status===tasksFilter);
     if(!tasks.length) return `<div class="empty">No ${tasksFilter} projects yet.</div>`;
   }
   tasks=tasks.slice().sort((a,b)=>{
     const po={urgent:0,high:1,normal:2,whenever:3};
-    return (po[a.priority]??2)-(po[b.priority]??2)||b._creationTime-a._creationTime;
+    // In "Mine" (mixed statuses), surface open projects above closed/cancelled.
+    const so=t=>t.status==='open'?0:1;
+    return (so(a)-so(b))||(po[a.priority]??2)-(po[b.priority]??2)||b._creationTime-a._creationTime;
   });
   return tasks.map(t=>{
     const isMember=t.members.some(m=>m.userId===u._id);
