@@ -329,6 +329,21 @@ details.log-month>div{padding-bottom:48px;}
 <div id="toast"></div>
 <div id="modal-overlay" onclick="modalOverlayClick(event)"><div class="modal-box" id="modal-box"></div></div>
 
+<!-- Convex reactive client (loaded from CDN). If this fails, the app falls back to polling. -->
+<script type="module">
+  try {
+    const [{ ConvexClient }, { anyApi }] = await Promise.all([
+      import("https://esm.sh/convex@1.39.1/browser"),
+      import("https://esm.sh/convex@1.39.1/server"),
+    ]);
+    window.__convex = { ConvexClient, anyApi };
+  } catch (e) {
+    console.warn("Convex reactive client failed to load; will use polling.", e);
+  } finally {
+    window.dispatchEvent(new Event("convex-ready"));
+  }
+</script>
+
 <script>
 // ─── STATIC DATA ─────────────────────────────────────────────────────────────
 const SC_CATALOG = [
@@ -851,8 +866,70 @@ async function refreshAll(silent=false) {
     updateLiveView(silent);
   } catch(e) { if(!silent) console.warn('Refresh:', e.message); }
 }
-function startPolling() { refreshAll(); pollTimer=setInterval(()=>refreshAll(true),5000); }
-function stopPolling()  { if(pollTimer) clearInterval(pollTimer); }
+// ─── REAL-TIME DATA (Convex reactive subscriptions, with polling fallback) ──────
+let convexClient = null;
+let convexSubs = [];
+
+// Tables to subscribe to, mapped to their state keys.
+const REALTIME_TABLES = [
+  ['items',        'getAll', 'navItems'],
+  ['archive',      'getAll', 'archive'],
+  ['users',        'getAllUsers', 'allUsers'],
+  ['tasks',        'getAll', 'tasks'],
+  ['lotteries',    'getAll', 'lotteries'],
+  ['applications', 'getAll', 'applications'],
+  ['logistics',    'getAll', 'logistics'],
+];
+
+function startData() {
+  refreshAll(); // immediate one-shot load so the UI is never blank
+  // Prefer reactive subscriptions; fall back to bounded polling if unavailable.
+  if (window.__convex && window.__convex.ConvexClient) { initReactive(); return; }
+  let settled = false;
+  const onReady = () => {
+    if (settled) return; settled = true;
+    window.removeEventListener('convex-ready', onReady);
+    if (window.__convex && window.__convex.ConvexClient) initReactive();
+    else startFallbackPoll();
+  };
+  window.addEventListener('convex-ready', onReady);
+  setTimeout(onReady, 4000); // safety: don't wait forever for the module
+}
+
+function initReactive() {
+  try {
+    convexClient = new window.__convex.ConvexClient(CONVEX_URL);
+    const api = window.__convex.anyApi;
+    const tok = state.sessionToken;
+    for (const [mod, fn, key] of REALTIME_TABLES) {
+      const ref = api[mod][fn];
+      const unsub = convexClient.onUpdate(ref, { sessionToken: tok }, (rows) => {
+        state[key] = rows || [];
+        if (state.user) {
+          const fresh = state.allUsers.find(u => u._id === state.user._id);
+          if (fresh) state.user = fresh;
+        }
+        updateLiveView(true); // background push: nav-only, never clobbers the active page
+      }, () => { /* query error (e.g. recruit unauthorized) — keep existing state */ });
+      convexSubs.push(unsub);
+    }
+  } catch (e) {
+    console.warn('Reactive init failed; falling back to polling.', e);
+    startFallbackPoll();
+  }
+}
+
+function startFallbackPoll() {
+  if (pollTimer) return;
+  pollTimer = setInterval(() => refreshAll(true), 20000); // bounded: 20s, not 5s
+}
+
+function stopData() {
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+  for (const unsub of convexSubs) { try { unsub(); } catch (e) {} }
+  convexSubs = [];
+  if (convexClient) { try { convexClient.close(); } catch (e) {} convexClient = null; }
+}
 
 function updateLiveView(silent=false) {
   if (silent) {
@@ -923,7 +1000,7 @@ function toggleDark() {
 
 // ─── SETUP ────────────────────────────────────────────────────────────────────
 function showSetup() {
-  stopPolling();
+  stopData();
   document.getElementById('root').innerHTML = `
     <div class="center-screen">
       <div class="auth-box" style="max-width:480px;">
@@ -960,7 +1037,7 @@ async function saveSetup() {
 
 // ─── AUTH ─────────────────────────────────────────────────────────────────────
 function showAuth(tab='signin') {
-  stopPolling();
+  stopData();
   document.getElementById('root').innerHTML = `
     <div class="center-screen">
       <div class="auth-box">
@@ -1025,7 +1102,7 @@ async function doSignUp() {
 }
 
 async function doLogout() {
-  stopPolling();
+  stopData();
   if(state.sessionToken) {
     try { await convexMutation('sessions:remove',{token:state.sessionToken}); } catch(e){}
   }
@@ -1036,7 +1113,7 @@ async function doLogout() {
 // ─── APP SHELL ────────────────────────────────────────────────────────────────
 function showApp() {
   document.getElementById('root').innerHTML=`<div id="nav"></div><div id="page-wrap"></div>`;
-  renderNav(); renderPage(); startPolling();
+  renderNav(); renderPage(); startData();
 }
 function roleTagHtml(role) {
   const labels={'recruit':'Recruit','member':'Member','core':'Core','command':'Command','admin':'Admin','removed':'Removed'};
