@@ -72,8 +72,11 @@ button{font-family:inherit;cursor:pointer;border:none;outline:none;}
 label.lbl{display:block;font-size:18px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:5px;color:#000;}
 input[type=text],input[type=password],input[type=number],select{
   display:block;width:100%;border:1.5px solid #000;padding:9px 12px;font-size:18px;font-family:inherit;background:#fff;appearance:none;-webkit-appearance:none;outline:none;}
-input:focus,select:focus{border-color:var(--red);}
-input::placeholder{color:#000;}
+/* Universal square corners on form controls (iOS rounds textareas & buttons by default) */
+input,select,textarea,button{border-radius:0;}
+textarea{appearance:none;-webkit-appearance:none;}
+input:focus,select:focus,textarea:focus{border-color:var(--red);}
+input::placeholder,textarea::placeholder{color:#000;}
 .field{margin-bottom:28px;}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:32px;}
 .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;}
