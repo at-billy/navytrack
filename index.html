@@ -2580,30 +2580,45 @@ function renderTasksList() {
       ${canManage&&t.status==='closed'?`<button class="btn-ghost btn-sm" onclick="event.stopPropagation();reopenTask('${esc(t._id)}')">Reopen</button>`:''}
       ${admin?`<button class="btn-del" onclick="event.stopPropagation();deleteTask('${esc(t._id)}')">&times;</button>`:''}`;
 
+    const joinLeaveBtn=`
+      ${t.status==='open'&&!isMember?`<button class="btn btn-black btn-sm" onclick="event.stopPropagation();joinTask('${esc(t._id)}')">Join</button>`:''}
+      ${t.status==='open'&&isMember?`<button class="btn btn-outline btn-sm" onclick="event.stopPropagation();leaveTask('${esc(t._id)}')">Leave</button>`:''}`;
+    const mgmtBtns=`
+      ${(()=>{if(!canManage||t.status!=='open'||!t.requiredItems?.length)return'';const hasAvail=t.requiredItems.some(req=>state.navItems.some(i=>i.status==='available'&&i.name===req.name&&i.category===req.category));return hasAvail?`<button class="btn btn-black btn-sm" onclick="event.stopPropagation();useItemsForProject('${esc(t._id)}','${esc(t.title)}')">Use items</button>`:'';})()}
+      ${(canManage||t.createdBy===u._id)?`<button class="btn-ghost btn-sm" onclick="event.stopPropagation();openEditTaskModal('${esc(t._id)}')">Edit</button>`:''}
+      ${canManage&&t.status==='open'?`<button class="btn-ghost btn-sm" onclick="event.stopPropagation();closeTask('${esc(t._id)}')">Close</button>`:''}
+      ${canManage&&t.status==='closed'?`<button class="btn-ghost btn-sm" onclick="event.stopPropagation();reopenTask('${esc(t._id)}')">Reopen</button>`:''}
+      ${admin?`<button class="btn-del" onclick="event.stopPropagation();deleteTask('${esc(t._id)}')">&times;</button>`:''}`;
+
+    const membersLine = t.members.length
+      ? `<strong>Members:</strong> ${t.members.map(m=>esc(m.userName)).join(', ')}`
+      : `<span style="color:var(--fg);">No members yet</span>`;
+
     return `<div class="task-card ${t.priority} ${t.status}" onclick="toggleTaskExpand('${esc(t._id)}')" style="cursor:pointer;">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
+      <!-- Header row: priority + title + join/expand -->
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
         <div style="flex:1;min-width:0;">
-          <div style="display:flex;align-items:baseline;flex-wrap:wrap;gap:8px;">
+          <div style="display:flex;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:6px;">
             <span class="p-badge ${pb.cls}">${pb.label}</span>
             <span class="task-card-title">${esc(t.title)}</span>
           </div>
-          <div style="font-size:15px;color:var(--fg);margin-top:4px;display:flex;gap:10px;flex-wrap:wrap;">
-            <span>${t.members.length} member${t.members.length!==1?'s':''}</span>
-            <span>by ${esc(t.createdByName)}</span>
-            ${itemsSummary}
-          </div>
+          ${t.goal?`<div style="font-size:17px;margin-bottom:5px;">${esc(t.goal)}</div>`:''}
+          ${t.description&&!t.goal?`<div style="font-size:17px;color:var(--fg);margin-bottom:5px;">${esc(t.description)}</div>`:''}
+          <div style="font-size:15px;margin-bottom:3px;">${membersLine}</div>
+          ${itemsSummary?`<div style="font-size:15px;margin-bottom:3px;">${itemsSummary}</div>`:''}
+          <div style="font-size:14px;color:var(--fg);">by ${esc(t.createdByName)}</div>
         </div>
-        <span style="color:var(--fg);font-size:18px;flex-shrink:0;">${isExpanded?'▼':'▶'}</span>
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;padding-top:2px;">
+          ${joinLeaveBtn}
+          <span style="color:var(--fg);font-size:18px;padding-left:2px;">${isExpanded?'▼':'▶'}</span>
+        </div>
       </div>
+      <!-- Expanded detail -->
       ${isExpanded?`
       <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border-m);">
-        ${t.description?`<div style="font-size:18px;color:var(--fg);margin-bottom:8px;">${esc(t.description)}</div>`:''}
-        ${t.goal?`<div style="font-size:18px;color:var(--fg);margin-bottom:8px;"><strong>Goal:</strong> ${esc(t.goal)}</div>`:''}
+        ${t.goal&&t.description?`<div style="font-size:17px;color:var(--fg);margin-bottom:8px;">${esc(t.description)}</div>`:''}
         ${renderTaskRequiredItems(t)}
-        <div style="font-size:15px;color:var(--fg);margin-bottom:10px;">
-          ${t.members.length?'Members: '+t.members.map(m=>esc(m.userName)).join(', '):'No members yet'}
-        </div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;">${buttons}</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">${mgmtBtns}</div>
       </div>`:''}
     </div>`;
   }).join('');
