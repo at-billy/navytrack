@@ -1037,7 +1037,11 @@ function canHandOut(u)       { return u && (u.roles||[]).some(r=>['admin','comma
 function canEditAnyItem(u)   { return u && (u.roles||[]).some(r=>['admin','command'].includes(r)); }
 function canEditOwnItem(u)   { return u && (u.roles||[]).some(r=>['admin','command','core','member'].includes(r)); }
 function canEditItem(u,item) { return canEditAnyItem(u) || (canEditOwnItem(u) && item.addedBy===u._id); }
-function hasAdmin() { return state.allUsers.some(u=>(u.roles||[]).includes('admin')); }
+function hasAdmin() {
+  // If user list hasn't loaded yet, assume admin exists to prevent flash of Claim Admin button
+  if (!state.allUsers.length) return true;
+  return state.allUsers.some(u=>(u.roles||[]).includes('admin'));
+}
 function isRecruit(u) { return u && (u.roles||[]).length===1 && (u.roles||[]).includes('recruit'); }
 
 function renderNav() {
@@ -1179,13 +1183,11 @@ function pageOverview() {
 }
 
 function pageRecruitOverview(u) {
-  const noAdmin = !hasAdmin();
   return `
     <div class="page-head">
       <div class="page-head-left">
         <div class="page-title">${esc(u.username)}</div>
       </div>
-      ${noAdmin?`<button class="btn btn-outline" style="border-color:var(--red);color:var(--fg);font-size:18px;" onclick="claimBootstrapAdmin()">Claim Admin</button>`:''}
     </div>
     <div style="max-width:560px;">
       <div style="font-size:32px;font-weight:900;letter-spacing:-.5px;margin-bottom:16px;">You're registered.</div>
