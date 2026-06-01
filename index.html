@@ -4332,6 +4332,12 @@ async function claimBootstrapAdmin() {
     if(open && !open.panel.contains(e.target) && !open.wrap.contains(e.target)) closeOpen(false);
   });
 
+  // Escape closes only the open dropdown (capture-phase so it pre-empts the modal's
+  // Escape handler) — works even when the trigger isn't focused (mouse-opened on macOS).
+  document.addEventListener('keydown',(e)=>{
+    if(open && e.key==='Escape'){ e.preventDefault(); e.stopPropagation(); closeOpen(true); }
+  }, true);
+
   function enhanceAll(root){ (root||document).querySelectorAll('select:not([data-cs-on])').forEach(enhance); }
   new MutationObserver((muts)=>{
     for(const m of muts) for(const n of m.addedNodes){
