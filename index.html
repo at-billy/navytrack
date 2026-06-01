@@ -732,6 +732,7 @@ const state = { user: null, sessionToken: null, navItems: [], archive: [], allUs
 let tasksFilter = 'open';
 let tasksSearchActive = false;
 let tasksSearch = '';
+let expandedTasks = new Set();
 // Create-project modal: required items state
 let ctNeedsItems = false;
 let ctRequiredItems = [];
@@ -1286,7 +1287,29 @@ const FPS_ARMOR_PRESETS = {
 };
 
 // Wikelo preset item names
-const WIKELO_PRESETS = ['DCHS-01','DCHS-02','DCHS-03','DCHS-04','DCHS-05','DCHS-06','DCHS-07','Wikelo Favors','Ace Interceptor Helmet','Government Cartography Medal (Pristine)'];
+const WIKELO_PRESETS = [
+  'Wikelo Favor','Wikelo Favors',
+  'DCHS-01','DCHS-02','DCHS-03','DCHS-04','DCHS-05','DCHS-05 Orbital Positioning Comp-Board','DCHS-06','DCHS-07',
+  'Ace Interceptor Helmet',
+  'ASD Secure Drive',
+  'Carinite','Carinite (Pure)',
+  'Government Cartography Agency Medal (Pristine)','Government Cartography Medal (Pristine)',
+  'Irradiated Kopion Horn',
+  'Irradiated Valakkar Fang (Adult)','Irradiated Valakkar Fang (Apex)','Irradiated Valakkar Fang (Juvenile)',
+  'Irradiated Valakkar Pearl (Grade AA)','Irradiated Valakkar Pearl (Grade AAA)',
+  'Jaclium (Ore)',
+  'Large Artifact Fragment (Pristine)',
+  'MG Scrip',
+  'Polaris Bit',
+  'RCMBNT-PWL-1','RCMBNT-PWL-2','RCMBNT-PWL-3',
+  'RCMBNT-RGL-1','RCMBNT-RGL-2','RCMBNT-RGL-3',
+  'RCMBNT-XTL-1','RCMBNT-XTL-2','RCMBNT-XTL-3',
+  'Saldynium (Ore)',
+  'Tevarin War Service Marker (Pristine)',
+  'UEE 6th Platoon Medal (Pristine)',
+  'Vanduul Metal','Vanduul Plating',
+  'Yormandi Eye','Yormandi Tongue',
+];
 
 let itemsView      = 'inventory'; // 'inventory' | 'handed_out' | 'used' | 'logistics'
 let logisticsDetailId = null;
@@ -2492,7 +2515,7 @@ const NAVY_ROLES = [
   {id:'admin',   label:'Admin'},
 ];
 
-function setTasksFilter(f){ tasksFilter=f; tasksSearchActive=false; tasksSearch=''; renderPage(); renderNav(); }
+function setTasksFilter(f){ tasksFilter=f; tasksSearchActive=false; tasksSearch=''; expandedTasks.clear(); renderPage(); renderNav(); }
 function toggleTaskSearch(){ tasksSearchActive=!tasksSearchActive; if(!tasksSearchActive) tasksSearch=''; renderPage(); renderNav(); }
 
 function pageTasks() {
@@ -2533,32 +2556,55 @@ function renderTasksList() {
     const isMember=t.members.some(m=>m.userId===u._id);
     const pb=TASK_PRIORITIES.find(p=>p.id===t.priority)||TASK_PRIORITIES[2];
     const canManage=u.roles.some(r=>['admin','command','core'].includes(r));
-    return `<div class="task-card ${t.priority} ${t.status}">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:20px;">
+    const isExpanded=expandedTasks.has(t._id);
+
+    // Compute items progress for compact summary
+    let itemsSummary='';
+    if(t.requiredItems?.length){
+      const total=t.requiredItems.reduce((s,r)=>s+r.quantityNeeded,0);
+      const collected=t.requiredItems.reduce((s,r)=>{
+        const inStock=state.navItems.filter(i=>i.status==='available'&&i.name===r.name&&i.category===r.category).reduce((s2,i)=>s2+i.quantity,0);
+        return s+Math.min(inStock,r.quantityNeeded);
+      },0);
+      const pct=Math.round((collected/total)*100);
+      const color=pct>=100?'#16a34a':pct>0?'inherit':'var(--fg)';
+      itemsSummary=`<span style="font-size:15px;color:${color};">· needs items · ${pct}%</span>`;
+    }
+
+    const buttons=`
+      ${t.status==='open'&&!isMember?`<button class="btn btn-black btn-sm" onclick="event.stopPropagation();joinTask('${esc(t._id)}')">Join</button>`:''}
+      ${t.status==='open'&&isMember?`<button class="btn btn-outline btn-sm" onclick="event.stopPropagation();leaveTask('${esc(t._id)}')">Leave</button>`:''}
+      ${(()=>{if(!canManage||t.status!=='open'||!t.requiredItems?.length)return'';const hasAvail=t.requiredItems.some(req=>state.navItems.some(i=>i.status==='available'&&i.name===req.name&&i.category===req.category));return hasAvail?`<button class="btn btn-black btn-sm" onclick="event.stopPropagation();useItemsForProject('${esc(t._id)}','${esc(t.title)}')">Use items</button>`:'';})()}
+      ${(canManage||t.createdBy===u._id)?`<button class="btn-ghost btn-sm" onclick="event.stopPropagation();openEditTaskModal('${esc(t._id)}')">Edit</button>`:''}
+      ${canManage&&t.status==='open'?`<button class="btn-ghost btn-sm" onclick="event.stopPropagation();closeTask('${esc(t._id)}')">Close</button>`:''}
+      ${canManage&&t.status==='closed'?`<button class="btn-ghost btn-sm" onclick="event.stopPropagation();reopenTask('${esc(t._id)}')">Reopen</button>`:''}
+      ${admin?`<button class="btn-del" onclick="event.stopPropagation();deleteTask('${esc(t._id)}')">&times;</button>`:''}`;
+
+    return `<div class="task-card ${t.priority} ${t.status}" onclick="toggleTaskExpand('${esc(t._id)}')" style="cursor:pointer;">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
         <div style="flex:1;min-width:0;">
-          <div style="display:flex;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:8px;">
+          <div style="display:flex;align-items:baseline;flex-wrap:wrap;gap:8px;">
             <span class="p-badge ${pb.cls}">${pb.label}</span>
             <span class="task-card-title">${esc(t.title)}</span>
           </div>
-          ${t.description?`<div style="font-size:18px;color:var(--fg);margin-bottom:8px;">${esc(t.description)}</div>`:''}
-          ${t.goal?`<div style="font-size:18px;color:var(--fg);margin-bottom:8px;"><strong>Goal:</strong> ${esc(t.goal)}</div>`:''}
-          ${renderTaskRequiredItems(t)}
-          <div style="font-size:18px;color:var(--fg);display:flex;gap:16px;flex-wrap:wrap;margin-top:4px;">
-            <span>${t.members.length} member${t.members.length!==1?'s':''} joined${t.members.length?': '+t.members.map(m=>esc(m.userName)).join(', '):''}
-            </span>
-            <span style="color:var(--fg);">by ${esc(t.createdByName)}</span>
+          <div style="font-size:15px;color:var(--fg);margin-top:4px;display:flex;gap:10px;flex-wrap:wrap;">
+            <span>${t.members.length} member${t.members.length!==1?'s':''}</span>
+            <span>by ${esc(t.createdByName)}</span>
+            ${itemsSummary}
           </div>
         </div>
-        <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;flex-shrink:0;padding-top:2px;">
-          ${t.status==='open'&&!isMember?`<button class="btn btn-black btn-sm" onclick="joinTask('${esc(t._id)}')">Join</button>`:''}
-          ${t.status==='open'&&isMember?`<button class="btn btn-outline btn-sm" onclick="leaveTask('${esc(t._id)}')">Leave</button>`:''}
-          ${(()=>{if(!canManage||t.status!=='open'||!t.requiredItems?.length)return'';const hasAvail=t.requiredItems.some(req=>state.navItems.some(i=>i.status==='available'&&i.name===req.name&&i.category===req.category));return hasAvail?`<button class="btn btn-black btn-sm" onclick="useItemsForProject('${esc(t._id)}','${esc(t.title)}')">Use items</button>`:'';})()}
-          ${(canManage||t.createdBy===u._id)?`<button class="btn-ghost btn-sm" onclick="openEditTaskModal('${esc(t._id)}')">Edit</button>`:''}
-          ${canManage&&t.status==='open'?`<button class="btn-ghost btn-sm" onclick="closeTask('${esc(t._id)}')">Close</button>`:''}
-          ${canManage&&t.status==='closed'?`<button class="btn-ghost btn-sm" onclick="reopenTask('${esc(t._id)}')">Reopen</button>`:''}
-          ${admin?`<button class="btn-del" onclick="deleteTask('${esc(t._id)}')">&times;</button>`:''}
-        </div>
+        <span style="color:var(--fg);font-size:18px;flex-shrink:0;">${isExpanded?'▼':'▶'}</span>
       </div>
+      ${isExpanded?`
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border-m);">
+        ${t.description?`<div style="font-size:18px;color:var(--fg);margin-bottom:8px;">${esc(t.description)}</div>`:''}
+        ${t.goal?`<div style="font-size:18px;color:var(--fg);margin-bottom:8px;"><strong>Goal:</strong> ${esc(t.goal)}</div>`:''}
+        ${renderTaskRequiredItems(t)}
+        <div style="font-size:15px;color:var(--fg);margin-bottom:10px;">
+          ${t.members.length?'Members: '+t.members.map(m=>esc(m.userName)).join(', '):'No members yet'}
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">${buttons}</div>
+      </div>`:''}
     </div>`;
   }).join('');
 }
@@ -2631,6 +2677,13 @@ async function confirmEditTask(taskId) {
     closeModal(); toast('Project updated');
     await refreshAll(); renderPage();
   } catch(e){alert(e.message);}
+}
+
+function toggleTaskExpand(taskId) {
+  if(expandedTasks.has(taskId)) expandedTasks.delete(taskId);
+  else expandedTasks.add(taskId);
+  const el=document.getElementById('tasks-list');
+  if(el) el.innerHTML=renderTasksList();
 }
 
 function renderTaskRequiredItems(task) {
