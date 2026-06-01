@@ -1,15 +1,23 @@
 import { mutation, query } from "./_generated/server";
 import { v, ConvexError } from "convex/values";
 import { requireSession } from "./_helpers";
+import { hashPassword, verifyPassword, isLegacyHash } from "./_password";
 
 export const authenticate = mutation({
-  args: { username: v.string(), passwordHash: v.string() },
-  handler: async (ctx, { username, passwordHash }) => {
+  args: { username: v.string(), password: v.string() },
+  handler: async (ctx, { username, password }) => {
     const user = await ctx.db
       .query("users")
-      .withIndex("by_username", q => q.eq("username", username))
+      .withIndex("by_username", q => q.eq("username", username.trim()))
       .first();
-    if (!user || user.passwordHash !== passwordHash || user.roles.includes("removed")) return null;
+    if (!user || user.roles.includes("removed")) return null;
+    const ok = await verifyPassword(password, user.passwordHash);
+    if (!ok) return null;
+    // Transparent upgrade: legacy SHA-256 records are re-hashed with PBKDF2 on first login.
+    if (isLegacyHash(user.passwordHash)) {
+      const upgraded = await hashPassword(password);
+      await ctx.db.patch(user._id, { passwordHash: upgraded });
+    }
     const token = crypto.randomUUID();
     await ctx.db.insert("sessions", { userId: user._id, token, createdAt: Date.now() });
     return { _id: user._id, username: user.username, roles: user.roles, token };
@@ -40,13 +48,14 @@ export const getAllUsers = query({
 export const signUp = mutation({
   args: {
     username: v.string(),
-    passwordHash: v.string(),
+    password: v.string(),
   },
   handler: async (ctx, args) => {
     // Validate username server-side: trim, length, charset. Never trust client formatting.
     const username = args.username.trim();
     if (username.length < 2 || username.length > 32) throw new ConvexError("USERNAME_INVALID");
     if (!/^[A-Za-z0-9 _.\-]+$/.test(username)) throw new ConvexError("USERNAME_INVALID");
+    if (args.password.length < 6) throw new ConvexError("PASSWORD_TOO_SHORT");
 
     const existing = await ctx.db
       .query("users")
@@ -54,9 +63,11 @@ export const signUp = mutation({
       .first();
     if (existing) throw new ConvexError("USERNAME_TAKEN");
 
+    // Hash server-side with PBKDF2 + per-user salt. The raw password is never stored.
+    const passwordHash = await hashPassword(args.password);
     // Role is forced server-side — new accounts are always recruits, regardless of client input.
     const roles = ["recruit"];
-    const id = await ctx.db.insert("users", { username, passwordHash: args.passwordHash, roles });
+    const id = await ctx.db.insert("users", { username, passwordHash, roles });
     const user = await ctx.db.get(id);
     await ctx.db.insert("archive", {
       type: "user_joined",

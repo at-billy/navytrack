@@ -782,10 +782,7 @@ async function convexMutation(path, args = {}) {
 }
 
 // ─── UTILS ────────────────────────────────────────────────────────────────────
-async function hashPwd(pw) {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw+'|navytrack_v1'));
-  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
-}
+// Passwords are sent raw over TLS and hashed server-side with PBKDF2 (see convex/_password.ts).
 const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 // Escape a value for safe use inside a SINGLE-quoted JS string that itself sits inside a
 // DOUBLE-quoted HTML attribute (e.g. onclick="fn('${escJs(x)}')"). Neutralises both the JS
@@ -1002,8 +999,7 @@ async function doSignIn() {
   const password=(document.getElementById('si-pass')||{value:''}).value;
   if(!username||!password){showErr('si-err','Fill in all fields');return;}
   try {
-    const ph=await hashPwd(password);
-    const res=await convexMutation('users:authenticate',{username,passwordHash:ph});
+    const res=await convexMutation('users:authenticate',{username,password});
     if(!res){showErr('si-err','Invalid username or password');return;}
     state.user=res; state.sessionToken=res.token;
     localStorage.setItem('navytrack_token',res.token); showApp();
@@ -1014,14 +1010,15 @@ async function doSignUp() {
   const username=(document.getElementById('su-user')||{value:''}).value.trim();
   const password=(document.getElementById('su-pass')||{value:''}).value;
   if(!username||!password){showErr('su-err','Fill in all fields');return;}
+  if(password.length<6){showErr('su-err','Password must be at least 6 characters');return;}
   try {
-    const ph=await hashPwd(password);
-    const res=await convexMutation('users:signUp',{username,passwordHash:ph});
+    const res=await convexMutation('users:signUp',{username,password});
     state.user=res; state.sessionToken=res.token;
     localStorage.setItem('navytrack_token',res.token); showApp();
   } catch(e){
     const msg = e.message.includes('USERNAME_TAKEN') ? 'Username already taken'
       : e.message.includes('USERNAME_INVALID') ? 'Username must be 2–32 chars: letters, numbers, space, _ . -'
+      : e.message.includes('PASSWORD_TOO_SHORT') ? 'Password must be at least 6 characters'
       : e.message;
     showErr('su-err',msg);
   }
