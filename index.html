@@ -2428,7 +2428,37 @@ function pageMember() {
           <td style="font-size:18px;color:var(--fg);">${fmtArchiveDetails(e)}</td>
         </tr>`).join('')}</tbody>
       </table>
-    </div>`:`<div class="empty">No activity recorded yet.</div>`}`;
+    </div>`:`<div class="empty">No activity recorded yet.</div>`}
+
+    <div style="margin-top:48px;max-width:420px;border-top:1px solid var(--border-m);padding-top:32px;">
+      <div style="font-size:18px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:16px;color:var(--fg);">Change Password</div>
+      <div class="field"><label class="lbl">Current password</label>
+        <input type="password" id="cp-current" autocomplete="current-password"></div>
+      <div class="field"><label class="lbl">New password</label>
+        <input type="password" id="cp-new" autocomplete="new-password"></div>
+      <div class="field"><label class="lbl">Confirm new password</label>
+        <input type="password" id="cp-confirm" autocomplete="new-password"></div>
+      <button class="btn btn-black" onclick="submitChangePassword()">Update password</button>
+    </div>`;
+}
+
+async function submitChangePassword(){
+  const cur=(document.getElementById('cp-current')||{value:''}).value;
+  const nw=(document.getElementById('cp-new')||{value:''}).value;
+  const cf=(document.getElementById('cp-confirm')||{value:''}).value;
+  if(!cur||!nw){toast('Fill in all password fields');return;}
+  if(nw.length<6){toast('New password must be at least 6 characters');return;}
+  if(nw!==cf){toast('New passwords do not match');return;}
+  try {
+    await convexMutation('users:changePassword',{sessionToken:state.sessionToken,currentPassword:cur,newPassword:nw});
+    toast('Password updated');
+    ['cp-current','cp-new','cp-confirm'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  } catch(e){
+    const m=(e&&e.message)||'';
+    if(m.includes('CURRENT_PASSWORD_WRONG')) toast('Current password is incorrect');
+    else if(m.includes('PASSWORD_TOO_SHORT')) toast('New password must be at least 6 characters');
+    else notifyError(e);
+  }
 }
 
 // ─── ADMIN PAGE ───────────────────────────────────────────────────────────────

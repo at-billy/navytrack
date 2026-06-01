@@ -171,6 +171,22 @@ export const restoreMember = mutation({
   },
 });
 
+export const changePassword = mutation({
+  args: { sessionToken: v.string(), currentPassword: v.string(), newPassword: v.string() },
+  handler: async (ctx, { sessionToken, currentPassword, newPassword }) => {
+    const user = await requireSession(ctx.db, sessionToken);
+    const ok = await verifyPassword(currentPassword, user.passwordHash);
+    if (!ok) throw new ConvexError("CURRENT_PASSWORD_WRONG");
+    if (newPassword.length < 6) throw new ConvexError("PASSWORD_TOO_SHORT");
+    await ctx.db.patch(user._id, { passwordHash: await hashPassword(newPassword) });
+    // Security: invalidate this user's OTHER sessions on a password change.
+    const sessions = await ctx.db.query("sessions").collect();
+    for (const s of sessions) {
+      if (s.userId === user._id && s.token !== sessionToken) await ctx.db.delete(s._id);
+    }
+  },
+});
+
 export const requestRole = mutation({
   args: { sessionToken: v.string(), role: v.string() },
   handler: async (ctx, { sessionToken, role }) => {
