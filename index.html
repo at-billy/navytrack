@@ -815,14 +815,15 @@ function locationOptions(system) {
 // ─── POLLING / DATA ───────────────────────────────────────────────────────────
 async function refreshAll(silent=false) {
   try {
+    const tok = state.sessionToken;
     const [navItems, archive, allUsers, tasks, lotteries, applications, logistics] = await Promise.all([
-      convexQuery('items:getAll').catch(()=>[]),
-      convexQuery('archive:getAll').catch(()=>[]),
-      convexQuery('users:getAllUsers').catch(()=>[]),
-      convexQuery('tasks:getAll').catch(()=>[]),
-      convexQuery('lotteries:getAll').catch(()=>[]),
-      convexQuery('applications:getAll').catch(()=>[]),
-      convexQuery('logistics:getAll').catch(()=>[]),
+      convexQuery('items:getAll',{sessionToken:tok}).catch(()=>[]),
+      convexQuery('archive:getAll',{sessionToken:tok}).catch(()=>[]),
+      convexQuery('users:getAllUsers',{sessionToken:tok}).catch(()=>[]),
+      convexQuery('tasks:getAll',{sessionToken:tok}).catch(()=>[]),
+      convexQuery('lotteries:getAll',{sessionToken:tok}).catch(()=>[]),
+      convexQuery('applications:getAll',{sessionToken:tok}).catch(()=>[]),
+      convexQuery('logistics:getAll',{sessionToken:tok}).catch(()=>[]),
     ]);
     state.navItems      = navItems      || [];
     state.archive       = archive       || [];

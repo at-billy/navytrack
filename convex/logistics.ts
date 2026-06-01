@@ -1,10 +1,11 @@
 import { mutation, query } from "./_generated/server";
 import { v, ConvexError } from "convex/values";
-import { requireSession } from "./_helpers";
+import { requireSession, requireMember } from "./_helpers";
 
 export const getAll = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { sessionToken: v.string() },
+  handler: async (ctx, { sessionToken }) => {
+    await requireMember(ctx.db, sessionToken);
     return await ctx.db.query("logistics").collect();
   },
 });

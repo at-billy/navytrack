@@ -1,6 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { requireSession } from "./_helpers";
+import { requireSession, assertRole } from "./_helpers";
 
 const lotteryItemSchema = v.object({
   id: v.string(),
@@ -18,8 +18,10 @@ function canManageLottery(roles: string[]) {
 }
 
 export const getAll = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { sessionToken: v.string() },
+  handler: async (ctx, { sessionToken }) => {
+    const user = await requireSession(ctx.db, sessionToken);
+    assertRole(user, ["admin", "command"]);
     return await ctx.db.query("lotteries").collect();
   },
 });

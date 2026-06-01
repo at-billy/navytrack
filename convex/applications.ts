@@ -1,13 +1,15 @@
 import { mutation, query, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v, ConvexError } from "convex/values";
-import { requireSession } from "./_helpers";
+import { requireSession, assertRole } from "./_helpers";
 
 const SHEETS_WEBHOOK = "https://script.google.com/macros/s/AKfycbyZeqjMZVYfoqlfOEljh9xN03Bd79GQojGvXqaNYmvH4owbZrzESTi_kXyryLM4l7WUFA/exec";
 
 export const getAll = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { sessionToken: v.string() },
+  handler: async (ctx, { sessionToken }) => {
+    const user = await requireSession(ctx.db, sessionToken);
+    assertRole(user, ["admin"]);
     return await ctx.db.query("applications").collect();
   },
 });

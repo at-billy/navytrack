@@ -17,8 +17,9 @@ export const authenticate = mutation({
 });
 
 export const getById = query({
-  args: { userId: v.id("users") },
-  handler: async (ctx, { userId }) => {
+  args: { sessionToken: v.string(), userId: v.id("users") },
+  handler: async (ctx, { sessionToken, userId }) => {
+    await requireSession(ctx.db, sessionToken);
     const user = await ctx.db.get(userId);
     if (!user) return null;
     return { _id: user._id, username: user.username, roles: user.roles };
@@ -26,8 +27,11 @@ export const getById = query({
 });
 
 export const getAllUsers = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { sessionToken: v.string() },
+  handler: async (ctx, { sessionToken }) => {
+    // Any authenticated user (incl. recruit) — needed for member names + bootstrap.
+    // Only non-sensitive fields are returned; passwordHash is never projected.
+    await requireSession(ctx.db, sessionToken);
     const users = await ctx.db.query("users").collect();
     return users.map(u => ({ _id: u._id, username: u.username, roles: u.roles }));
   },
