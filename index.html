@@ -314,6 +314,11 @@ details.log-month{}
 details.log-month>summary{display:flex;align-items:center;gap:14px;padding:28px 0;cursor:pointer;user-select:none;list-style:none;}
 details.log-month>summary::-webkit-details-marker{display:none;}
 details.log-month>summary::marker{display:none;}
+/* ── ACCESSIBILITY ───────────────────────────────────────────────── */
+:focus-visible{outline:2px solid var(--red);outline-offset:2px;}
+button:focus-visible,[role="button"]:focus-visible{outline:2px solid var(--red);outline-offset:2px;}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
+
 /* CSS-drawn caret (no glyph/emoji) */
 .caret{display:inline-block;width:0;height:0;border-left:7px solid currentColor;border-top:5px solid transparent;border-bottom:5px solid transparent;transition:transform .15s;vertical-align:middle;}
 .caret.open{transform:rotate(90deg);}
@@ -1315,6 +1320,14 @@ function hasAdmin() {
 }
 function isRecruit(u) { return u && (u.roles||[]).length===1 && (u.roles||[]).includes('recruit'); }
 
+// Make clickable nav items keyboard-focusable + activatable (Enter/Space via global handler).
+function a11yNavify(){
+  document.querySelectorAll('#nav .nav-main[onclick], #nav .nav-sub-item[onclick]').forEach(el=>{
+    el.setAttribute('role','button');
+    if(!el.hasAttribute('tabindex')) el.setAttribute('tabindex','0');
+  });
+}
+
 function renderNav() {
   const u=state.user; if(!u) return;
   const recruit = isRecruit(u);
@@ -1332,6 +1345,7 @@ function renderNav() {
         <div class="nav-main active" onclick="goTo('overview')">NAVY</div>
       </div>
       <div id="nav-sub">${sub}</div>`;
+    a11yNavify();
     if(window._navScrollUpdate) window._navScrollUpdate();
     return;
   }
@@ -1380,6 +1394,7 @@ function renderNav() {
       <div class="nav-main outline${main==='log'?' active':''}" onclick="goTo('archive')">LOG</div>
     </div>
     ${sub?`<div id="nav-sub">${sub}</div>`:''}`;
+  a11yNavify();
   if(window._navScrollUpdate) window._navScrollUpdate();
 }
 function renderPage() {
@@ -1430,7 +1445,7 @@ function pageOverview() {
       <div class="ov-col-head">Open Projects</div>
       ${topTasks.length ? topTasks.map(t=>{
         const pb=TASK_PRIORITIES.find(p=>p.id===t.priority)||TASK_PRIORITIES[2];
-        return `<div onclick="openProjectFromOverview('${esc(t._id)}')" style="display:flex;align-items:baseline;gap:28px;padding:14px 0;border-bottom:1px solid var(--border-l);cursor:pointer;">
+        return `<div onclick="openProjectFromOverview('${esc(t._id)}')" role="button" tabindex="0" aria-label="Open project: ${esc(t.title)}" style="display:flex;align-items:baseline;gap:28px;padding:14px 0;border-bottom:1px solid var(--border-l);cursor:pointer;">
           <div style="flex:1;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;">
             <span class="p-badge ${pb.cls}">${pb.label}</span>
             <span style="font-size:24px;font-weight:900;">${esc(t.title)}</span>
@@ -1649,7 +1664,7 @@ function renderLogisticsRow(t, u) {
     : `<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#94a3b8;margin-right:8px;"></span>`;
   const actions = `<div style="display:flex;gap:6px;align-items:center;" onclick="event.stopPropagation()">
     ${canEditLogistics(u,t)?`<button class="btn-ghost btn-sm" onclick="openEditLogisticsModal('${esc(t._id)}')">Edit</button>`:''}
-    ${canDeleteLogistics(u)?`<button class="btn-del" onclick="deleteLogisticsTask('${esc(t._id)}')">&times;</button>`:''}
+    ${canDeleteLogistics(u)?`<button class="btn-del" onclick="deleteLogisticsTask('${esc(t._id)}')" aria-label="Delete task">&times;</button>`:''}
   </div>`;
   return `<div onclick="logisticsDetailId='${esc(t._id)}';renderPage();" style="padding:14px 18px;border:1px solid var(--border);margin-bottom:8px;cursor:pointer;transition:background .1s;" onmouseover="this.style.background='var(--hover)'" onmouseout="this.style.background=''">
     <div style="display:flex;align-items:center;justify-content:space-between;">
@@ -1960,7 +1975,7 @@ function renderInventoryList() {
           <td data-label="" style="white-space:nowrap;">
             ${showHandOut?`<button class="btn btn-outline btn-sm" style="margin-right:4px;" onclick="openHandOutModal('${esc(i._id)}')">Hand Out</button>`:''}
             ${isWikelo&&canEditAnyItem(u)?`<button class="btn btn-outline btn-sm" style="margin-right:4px;" onclick="openUsedModal('${esc(i._id)}')">Used</button>`:''}
-            ${showDel?`<button class="btn-del" onclick="deleteNavItem('${esc(i._id)}')">&times;</button>`:''}
+            ${showDel?`<button class="btn-del" onclick="deleteNavItem('${esc(i._id)}')" aria-label="Delete item">&times;</button>`:''}
           </td>
         </tr>`;
         }).join('');})()}</tbody>
@@ -1979,7 +1994,7 @@ function renderHandedOutList() {
       <td data-label="Qty">${i.handedOutQty||i.quantity}</td>
       <td data-label="Given To" style="font-weight:700;">${esc(i.handedOutTo||'—')}</td>
       <td data-label="Location" style="font-size:18px;">${esc(i.location)}</td>
-      <td data-label="">${canEditItem(u,i)?`<button class="btn-del" onclick="deleteNavItem('${esc(i._id)}')">&times;</button>`:''}</td>
+      <td data-label="">${canEditItem(u,i)?`<button class="btn-del" onclick="deleteNavItem('${esc(i._id)}')" aria-label="Delete item">&times;</button>`:''}</td>
     </tr>`).join('')}</tbody>
   </table>`;
 }
@@ -1995,7 +2010,7 @@ function renderUsedList() {
       <td data-label="Qty">${i.quantity}</td>
       <td data-label="Used For" style="color:var(--fg);">${esc(i.usedFor||'—')}</td>
       <td data-label="Added By" style="color:var(--fg);">${esc(i.addedByName)}</td>
-      <td data-label="">${canEditItem(u,i)?`<button class="btn-del" onclick="deleteNavItem('${esc(i._id)}')">&times;</button>`:''}</td>
+      <td data-label="">${canEditItem(u,i)?`<button class="btn-del" onclick="deleteNavItem('${esc(i._id)}')" aria-label="Delete item">&times;</button>`:''}</td>
     </tr>`).join('')}</tbody>
   </table>`;
 }
@@ -2463,7 +2478,7 @@ function renderArchiveTable(openMonths){
     const isOpen = key===currentKey || (openMonths&&openMonths.has(key));
     return `<details class="log-month"${isOpen?' open':''} data-key="${key}">
       <summary>
-        <span class="log-month-arrow"></span>
+        <span class="log-month-arrow" aria-hidden="true"></span>
         <span class="log-month-name">${label}</span>
         <span class="log-month-count">${entries.length} entr${entries.length===1?'y':'ies'}</span>
       </summary>
@@ -2512,7 +2527,7 @@ function renderMonthRows(entries){
       <td data-label="Action"><span class="badge badge-${e.type}">${labels[e.type]||e.type}</span></td>
       <td data-label="User" style="font-weight:600;font-size:18px;">${esc(e.userName)}</td>
       <td data-label="Details" style="font-size:18px;color:var(--fg);">${fmtArchiveDetails(e)}</td>
-      ${admin?`<td data-label=""><button class="btn-del" onclick="adminDeleteLog('${esc(e._id)}')">&times;</button></td>`:''}
+      ${admin?`<td data-label=""><button class="btn-del" onclick="adminDeleteLog('${esc(e._id)}')" aria-label="Delete log entry">&times;</button></td>`:''}
     </tr>`).join('')}</tbody></table>`;
 }
 function fmtArchiveDetails(e){
@@ -2739,8 +2754,8 @@ function renderAdminContent() {
 
     ${removedMembers.length?`
     <div style="margin-top:28px;">
-      <div onclick="toggleAdminRemoved()" style="cursor:pointer;user-select:none;font-size:15px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--fg);display:inline-flex;align-items:center;gap:8px;">
-        <span class="caret${adminShowRemoved?' open':''}"></span> Removed members (${removedMembers.length})
+      <div onclick="toggleAdminRemoved()" role="button" tabindex="0" aria-expanded="${adminShowRemoved?'true':'false'}" style="cursor:pointer;user-select:none;font-size:15px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--fg);display:inline-flex;align-items:center;gap:8px;">
+        <span class="caret${adminShowRemoved?' open':''}" aria-hidden="true"></span> Removed members (${removedMembers.length})
       </div>
       ${adminShowRemoved?`<div style="margin-top:12px;">${removedMembers.map(m=>`
         <div style="display:flex;align-items:center;gap:16px;padding:12px 0;border-bottom:1px solid var(--border-m);opacity:.75;">
@@ -2891,19 +2906,60 @@ function togglePanel(id){
 
 
 // ─── MODAL UTILS ─────────────────────────────────────────────────────────────
+let _modalLastFocus = null;
 function showModal(html) {
   const box=document.getElementById('modal-box');
   const overlay=document.getElementById('modal-overlay');
-  if(box) box.innerHTML=`<button onclick="closeModal()" style="position:absolute;top:16px;right:16px;background:none;border:none;font-size:24px;cursor:pointer;color:var(--fg);line-height:1;padding:4px 8px;" aria-label="Close">&times;</button>${html}`;
+  _modalLastFocus = document.activeElement;
+  if(box){
+    box.setAttribute('role','dialog');
+    box.setAttribute('aria-modal','true');
+    box.innerHTML=`<button onclick="closeModal()" style="position:absolute;top:16px;right:16px;background:none;border:none;font-size:24px;cursor:pointer;color:var(--fg);line-height:1;padding:4px 8px;" aria-label="Close">&times;</button>${html}`;
+  }
   if(overlay) overlay.classList.add('open');
+  // Move focus into the dialog (first real field, not the close button).
+  setTimeout(()=>{
+    if(!box) return;
+    const first=box.querySelector('input,select,textarea,[contenteditable="true"]')
+      || box.querySelector('button:not([aria-label="Close"])') || box;
+    try{ first.focus(); }catch(e){}
+  },0);
 }
 function closeModal() {
   const overlay=document.getElementById('modal-overlay');
   if(overlay) overlay.classList.remove('open');
+  if(_modalLastFocus && _modalLastFocus.focus){ try{_modalLastFocus.focus(); }catch(e){} }
+  _modalLastFocus=null;
 }
 function modalOverlayClick(e) {
   // clicking backdrop no longer closes — use the X button instead
 }
+
+// Global keyboard accessibility: Esc closes modals, Tab is trapped inside an
+// open modal, and Enter/Space activate role="button" elements (the clickable divs).
+document.addEventListener('keydown', e=>{
+  const overlay=document.getElementById('modal-overlay');
+  const modalOpen=overlay&&overlay.classList.contains('open');
+  if(modalOpen && e.key==='Escape'){ e.preventDefault(); closeModal(); return; }
+  if(modalOpen && e.key==='Tab'){
+    const box=document.getElementById('modal-box');
+    if(box){
+      const f=[...box.querySelectorAll('a[href],button,input,select,textarea,[tabindex]:not([tabindex="-1"])')]
+        .filter(el=>!el.disabled && el.offsetParent!==null);
+      if(f.length){
+        const first=f[0], last=f[f.length-1];
+        if(e.shiftKey && document.activeElement===first){ e.preventDefault(); last.focus(); }
+        else if(!e.shiftKey && document.activeElement===last){ e.preventDefault(); first.focus(); }
+      }
+    }
+  }
+  if((e.key==='Enter'||e.key===' ')){
+    const t=e.target;
+    if(t && t.getAttribute && t.getAttribute('role')==='button' && t.tabIndex>=0 && t.tagName!=='BUTTON'){
+      e.preventDefault(); t.click();
+    }
+  }
+});
 
 // ─── INVENTORY PAGE ───────────────────────────────────────────────────────────
 
@@ -2994,7 +3050,7 @@ function renderTasksList() {
       ${(canManage||t.createdBy===u._id)?`<button class="btn-ghost btn-sm" onclick="event.stopPropagation();openEditTaskModal('${esc(t._id)}')">Edit</button>`:''}
       ${canManage&&t.status==='open'?`<button class="btn-ghost btn-sm" onclick="event.stopPropagation();closeTask('${esc(t._id)}')">Close</button>`:''}
       ${canManage&&t.status==='closed'?`<button class="btn-ghost btn-sm" onclick="event.stopPropagation();reopenTask('${esc(t._id)}')">Reopen</button>`:''}
-      ${admin?`<button class="btn-del" onclick="event.stopPropagation();deleteTask('${esc(t._id)}')">&times;</button>`:''}`;
+      ${admin?`<button class="btn-del" onclick="event.stopPropagation();deleteTask('${esc(t._id)}')" aria-label="Delete project">&times;</button>`:''}`;
 
     const joinLeaveBtn=`
       ${t.status==='open'&&!isMember?`<button class="btn btn-black btn-sm" onclick="event.stopPropagation();joinTask('${esc(t._id)}')">Join</button>`:''}
@@ -3004,13 +3060,13 @@ function renderTasksList() {
       ${(canManage||t.createdBy===u._id)?`<button class="btn-ghost btn-sm" onclick="event.stopPropagation();openEditTaskModal('${esc(t._id)}')">Edit</button>`:''}
       ${canManage&&t.status==='open'?`<button class="btn-ghost btn-sm" onclick="event.stopPropagation();closeTask('${esc(t._id)}')">Close</button>`:''}
       ${canManage&&t.status==='closed'?`<button class="btn-ghost btn-sm" onclick="event.stopPropagation();reopenTask('${esc(t._id)}')">Reopen</button>`:''}
-      ${admin?`<button class="btn-del" onclick="event.stopPropagation();deleteTask('${esc(t._id)}')">&times;</button>`:''}`;
+      ${admin?`<button class="btn-del" onclick="event.stopPropagation();deleteTask('${esc(t._id)}')" aria-label="Delete project">&times;</button>`:''}`;
 
     const membersLine = t.members.length
       ? `<strong>Members:</strong> ${t.members.map(m=>esc(m.userName)).join(', ')}`
       : `<span style="color:var(--fg);">No members yet</span>`;
 
-    return `<div class="task-card ${t.priority} ${t.status}" onclick="toggleTaskExpand('${esc(t._id)}')" style="cursor:pointer;">
+    return `<div class="task-card ${t.priority} ${t.status}" onclick="toggleTaskExpand('${esc(t._id)}')" role="button" tabindex="0" aria-expanded="${isExpanded?'true':'false'}" aria-label="Project: ${esc(t.title)}" style="cursor:pointer;">
       <!-- Header row: priority + title + join/expand -->
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
         <div style="flex:1;min-width:0;">
@@ -3026,7 +3082,7 @@ function renderTasksList() {
         </div>
         <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;padding-top:2px;">
           ${joinLeaveBtn}
-          <span class="caret${isExpanded?' open':''}" style="margin-left:2px;"></span>
+          <span class="caret${isExpanded?' open':''}" aria-hidden="true" style="margin-left:2px;"></span>
         </div>
       </div>
       <!-- Expanded detail -->
@@ -3337,7 +3393,7 @@ function renderCtItemResults() {
         ${ctRequiredItems.map((r,i)=>`
           <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border-m);">
             <span style="font-size:16px;">${esc(r.name)} <span style="color:var(--fg);font-size:14px;">(${esc(itemCatLabel(r.category))})</span> &times; ${r.quantityNeeded}</span>
-            <button class="btn-del" onclick="ctRemoveRequired(${i})" style="padding:2px 8px;">&times;</button>
+            <button class="btn-del" onclick="ctRemoveRequired(${i})" style="padding:2px 8px;" aria-label="Remove item">&times;</button>
           </div>`).join('')}
       </div>` : '';
   }
