@@ -1089,12 +1089,13 @@ function stopData() {
 
 function updateLiveView(silent=false) {
   if (silent) {
-    // Skip all DOM updates if a modal is open and the user is typing inside it
-    const modalOpen = document.getElementById('modal-overlay')?.classList.contains('open');
+    // Background push (someone else changed data). Re-render the current page so the
+    // change shows live — but don't clobber an in-progress edit. If the user is typing
+    // in a field (page or modal), just refresh nav counts and leave the page alone.
     const active = document.activeElement;
-    const typingInModal = modalOpen && active && (active.tagName==='INPUT'||active.tagName==='TEXTAREA'||active.isContentEditable);
-    if (!typingInModal) renderNav();
-    return;
+    const typing = active && (active.tagName==='INPUT'||active.tagName==='TEXTAREA'||active.isContentEditable);
+    if (typing) { renderNav(); return; }
+    // otherwise fall through and re-render the current page like a normal update
   }
   if (currentPage==='items' && itemsView==='inventory') {
     const el=document.getElementById('items-content');
