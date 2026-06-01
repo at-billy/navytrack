@@ -50,6 +50,9 @@ body{font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;background:#fff;col
 .page{padding:var(--space-8) 40px 140px;}
 .page-title{font-size:var(--text-xl);font-weight:900;letter-spacing:-.5px;line-height:1;margin-bottom:10px;}
 .page-sub{font-size:var(--text-md);color:#000;margin-bottom:52px;margin-top:4px;}
+/* Section lead — replaces a page title that just repeats the sub-nav. Medium prominence. */
+.page-lead{font-size:var(--text-lg);font-weight:700;letter-spacing:-.2px;line-height:1.2;color:#000;}
+body.dark .page-lead{color:#e0e0e0;}
 .page-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:var(--space-8);padding-bottom:0;}
 .page-head-left{flex:1;}
 hr.thick{border:none;border-top:2px solid #000;margin:var(--space-8) 0;}
@@ -1296,6 +1299,7 @@ async function doSignUp() {
 }
 
 async function doLogout() {
+  if(!await confirmModal({title:'Sign out', body:'Sign out of Navytrack?', confirmLabel:'Sign out'})) return;
   stopData();
   if(state.sessionToken) {
     try { await convexMutation('sessions:remove',{token:state.sessionToken}); } catch(e){}
@@ -1604,8 +1608,7 @@ function pageItems() {
   return `
     <div class="page-head">
       <div class="page-head-left">
-        <div class="page-title">Inventory</div>
-        <div class="page-sub">${inventory.reduce((s,i)=>s+i.quantity,0)} item${inventory.reduce((s,i)=>s+i.quantity,0)!==1?'s':''} available</div>
+        <div class="page-lead">${inventory.reduce((s,i)=>s+i.quantity,0)} item${inventory.reduce((s,i)=>s+i.quantity,0)!==1?'s':''} available</div>
       </div>
       ${canAdd?`<button class="btn btn-black" onclick="openAddItemModal()">+ Add Item</button>`:''}
     </div>
@@ -1617,8 +1620,7 @@ function pageItemsHandedOut() {
   return `
     <div class="page-head">
       <div class="page-head-left">
-        <div class="page-title">Handed Out</div>
-        <div class="page-sub">${items.reduce((s,i)=>s+i.quantity,0)} item${items.reduce((s,i)=>s+i.quantity,0)!==1?'s':''} handed out</div>
+        <div class="page-lead">${items.reduce((s,i)=>s+i.quantity,0)} item${items.reduce((s,i)=>s+i.quantity,0)!==1?'s':''} handed out</div>
       </div>
     </div>
     <div style="margin-top:32px;">${renderHandedOutList()}</div>`;
@@ -1629,8 +1631,7 @@ function pageItemsUsed() {
   return `
     <div class="page-head">
       <div class="page-head-left">
-        <div class="page-title">Used</div>
-        <div class="page-sub">${items.reduce((s,i)=>s+i.quantity,0)} item${items.reduce((s,i)=>s+i.quantity,0)!==1?'s':''} used</div>
+        <div class="page-lead">${items.reduce((s,i)=>s+i.quantity,0)} item${items.reduce((s,i)=>s+i.quantity,0)!==1?'s':''} used</div>
       </div>
     </div>
     <div style="margin-top:32px;">${renderUsedList()}</div>`;
@@ -1649,8 +1650,7 @@ function pageLogistics() {
   return `
     <div class="page-head">
       <div class="page-head-left">
-        <div class="page-title">Logistics</div>
-        <div class="page-sub">${open.length} open &middot; ${closed.length} completed</div>
+        <div class="page-lead">${open.length} open &middot; ${closed.length} completed</div>
       </div>
       ${canDo?`<button class="btn btn-black" onclick="openNewLogisticsModal()">+ New Task</button>`:''}
     </div>
@@ -2439,8 +2439,7 @@ function pageArchive(){
   return `
     <div class="page-head">
       <div class="page-head-left">
-        <div class="page-title">Log</div>
-        <div class="page-sub" id="archive-count">${archiveCountLabel()}</div>
+        <div class="page-lead" id="archive-count">${archiveCountLabel()}</div>
       </div>
     </div>
     <div id="archive-table">${renderArchiveTable()}</div>`;
@@ -2657,8 +2656,7 @@ function pageAdmin() {
   return `
     <div class="page-head">
       <div class="page-head-left">
-        <div class="page-title">Admin</div>
-        <div class="page-sub">Manage members and roles</div>
+        <div class="page-lead">Manage members, roles &amp; requests</div>
       </div>
     </div>
     <div id="admin-wrap">${renderAdminContent()}</div>`;
@@ -3034,8 +3032,7 @@ function pageTasks() {
   return `
     <div class="page-head">
       <div class="page-head-left">
-        <div class="page-title">Projects</div>
-        <div class="page-sub">${openCount} open</div>
+        <div class="page-lead">${openCount} open project${openCount!==1?'s':''}</div>
       </div>
       ${canCreate?`<button class="btn btn-black" onclick="openCreateTaskModal()">+ Create Project</button>`:''}
     </div>
@@ -3485,8 +3482,7 @@ function pageLotteryList() {
   return `
     <div class="page-head">
       <div class="page-head-left">
-        <div class="page-title">Lottery</div>
-        <div class="page-sub">${activeCount} active &middot; ${state.lotteries.length} total</div>
+        <div class="page-lead">${activeCount} active &middot; ${state.lotteries.length} total</div>
       </div>
       ${admin?`<button class="btn btn-black" onclick="openCreateLotteryModal()">+ New Lottery</button>`:''}
     </div>
