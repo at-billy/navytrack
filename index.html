@@ -314,7 +314,10 @@ details.log-month{}
 details.log-month>summary{display:flex;align-items:center;gap:14px;padding:28px 0;cursor:pointer;user-select:none;list-style:none;}
 details.log-month>summary::-webkit-details-marker{display:none;}
 details.log-month>summary::marker{display:none;}
-.log-month-arrow{font-size:9px;color:#000;transition:transform .15s;display:inline-block;flex-shrink:0;}
+/* CSS-drawn caret (no glyph/emoji) */
+.caret{display:inline-block;width:0;height:0;border-left:7px solid currentColor;border-top:5px solid transparent;border-bottom:5px solid transparent;transition:transform .15s;vertical-align:middle;}
+.caret.open{transform:rotate(90deg);}
+.log-month-arrow{width:0;height:0;border-left:7px solid currentColor;border-top:5px solid transparent;border-bottom:5px solid transparent;color:#000;transition:transform .15s;display:inline-block;flex-shrink:0;}
 details.log-month[open] .log-month-arrow{transform:rotate(90deg);}
 .log-month-name{font-size:24px;font-weight:900;letter-spacing:-.3px;}
 .log-month-count{font-size:18px;color:#000;margin-left:auto;font-weight:700;letter-spacing:.06em;}
@@ -346,10 +349,19 @@ details.log-month>div{padding-bottom:48px;}
   .ov-col-head{font-size:26px;}
   .ov-stat{padding:24px 0;}
 
-  /* Wide tables scroll horizontally instead of overflowing the page */
-  table{display:block;width:max-content;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  /* Non-card tables scroll horizontally instead of overflowing the page */
+  table:not(.cards){display:block;width:max-content;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;}
   thead th{padding:12px 10px;font-size:14px;}
   tbody td{padding:14px 10px;font-size:15px;}
+  /* Card tables (inventory, log): each row becomes a stacked card with field labels */
+  table.cards,table.cards tbody,table.cards tr,table.cards td{display:block;width:100%;}
+  table.cards thead{display:none;}
+  table.cards tr{border:1px solid var(--border);padding:14px 16px;margin-bottom:14px;}
+  table.cards tr:hover{background:none;}
+  table.cards td{padding:6px 0;border:none;font-size:16px;}
+  table.cards td::before{content:attr(data-label);display:block;font-weight:700;text-transform:uppercase;font-size:12px;letter-spacing:.07em;color:var(--fg);margin-bottom:3px;}
+  table.cards td[data-label=""]::before{display:none;}
+  table.cards td[data-label=""]{margin-top:8px;}
 
   /* Modals go near-full-width with comfortable padding */
   #modal-overlay{padding:12px;}
@@ -1913,7 +1925,7 @@ function renderInventoryList() {
       style="width:100%;max-width:400px;"
       oninput="itemsSearch=this.value;document.getElementById('items-content').innerHTML=renderInventoryList();"></div>`:''}
     ${!items.length?`<div class="empty">No items${itemsCatFilter!=='all'?' in '+itemCatLabel(itemsCatFilter):''}.</div>`:`
-    <table>
+    <table class="cards">
       <thead><tr>
         ${[['name','Item'],['category','Category'],['quantity','Qty'],['quality','Quality'],['location','Location'],['addedByName','Added By']].map(([col,label])=>`
         <th onclick="invSortDir=(invSortCol==='${col}'&&invSortDir==='asc'?'desc':'asc');invSortCol='${col}';document.getElementById('items-content').innerHTML=renderInventoryList();"
@@ -1939,13 +1951,13 @@ function renderInventoryList() {
         const showHandOut = canHandOut(u);
         const showDel     = canEditItem(u, i);
         return `<tr>
-          <td style="font-weight:700;">${esc(i.name)}${i.description?`<div style="font-size:15px;font-weight:400;color:var(--fg);">${esc(i.description)}</div>`:''}${compInfo}${subInfo}</td>
-          <td><span class="item-cat-tag">${itemCatLabel(i.category)}</span></td>
-          <td style="font-weight:700;">${i.quantity}</td>
-          <td>${i.quality!=null?i.quality:'—'}</td>
-          <td style="font-size:18px;">${esc(i.location)}${i.system?` <span class="sys-badge">${esc(i.system)}</span>`:''}</td>
-          <td style="color:var(--fg);">${esc(i.addedByName)}</td>
-          <td style="white-space:nowrap;">
+          <td data-label="Item" style="font-weight:700;">${esc(i.name)}${i.description?`<div style="font-size:15px;font-weight:400;color:var(--fg);">${esc(i.description)}</div>`:''}${compInfo}${subInfo}</td>
+          <td data-label="Category"><span class="item-cat-tag">${itemCatLabel(i.category)}</span></td>
+          <td data-label="Qty" style="font-weight:700;">${i.quantity}</td>
+          <td data-label="Quality">${i.quality!=null?i.quality:'—'}</td>
+          <td data-label="Location" style="font-size:18px;">${esc(i.location)}${i.system?` <span class="sys-badge">${esc(i.system)}</span>`:''}</td>
+          <td data-label="Added By" style="color:var(--fg);">${esc(i.addedByName)}</td>
+          <td data-label="" style="white-space:nowrap;">
             ${showHandOut?`<button class="btn btn-outline btn-sm" style="margin-right:4px;" onclick="openHandOutModal('${esc(i._id)}')">Hand Out</button>`:''}
             ${isWikelo&&canEditAnyItem(u)?`<button class="btn btn-outline btn-sm" style="margin-right:4px;" onclick="openUsedModal('${esc(i._id)}')">Used</button>`:''}
             ${showDel?`<button class="btn-del" onclick="deleteNavItem('${esc(i._id)}')">&times;</button>`:''}
@@ -1959,15 +1971,15 @@ function renderHandedOutList() {
   const u = state.user;
   const items = state.navItems.filter(i=>i.status==='handed_out');
   if(!items.length) return `<div class="empty">No items have been handed out yet.</div>`;
-  return `<table>
+  return `<table class="cards">
     <thead><tr><th>Item</th><th>Category</th><th>Qty</th><th>Given To</th><th>Location</th><th></th></tr></thead>
     <tbody>${items.map(i=>`<tr>
-      <td style="font-weight:700;">${esc(i.name)}${i.compType?`<div style="font-size:15px;color:var(--fg);">${itemCompDesc(i)}</div>`:''}</td>
-      <td><span class="item-cat-tag">${itemCatLabel(i.category)}</span></td>
-      <td>${i.handedOutQty||i.quantity}</td>
-      <td style="font-weight:700;">${esc(i.handedOutTo||'—')}</td>
-      <td style="font-size:18px;">${esc(i.location)}</td>
-      <td>${canEditItem(u,i)?`<button class="btn-del" onclick="deleteNavItem('${esc(i._id)}')">&times;</button>`:''}</td>
+      <td data-label="Item" style="font-weight:700;">${esc(i.name)}${i.compType?`<div style="font-size:15px;color:var(--fg);">${itemCompDesc(i)}</div>`:''}</td>
+      <td data-label="Category"><span class="item-cat-tag">${itemCatLabel(i.category)}</span></td>
+      <td data-label="Qty">${i.handedOutQty||i.quantity}</td>
+      <td data-label="Given To" style="font-weight:700;">${esc(i.handedOutTo||'—')}</td>
+      <td data-label="Location" style="font-size:18px;">${esc(i.location)}</td>
+      <td data-label="">${canEditItem(u,i)?`<button class="btn-del" onclick="deleteNavItem('${esc(i._id)}')">&times;</button>`:''}</td>
     </tr>`).join('')}</tbody>
   </table>`;
 }
@@ -1976,14 +1988,14 @@ function renderUsedList() {
   const u = state.user;
   const items = state.navItems.filter(i=>i.status==='used');
   if(!items.length) return `<div class="empty">No Wikelo items have been marked as used yet.</div>`;
-  return `<table>
+  return `<table class="cards">
     <thead><tr><th>Item</th><th>Qty</th><th>Used For</th><th>Added By</th><th></th></tr></thead>
     <tbody>${items.map(i=>`<tr>
-      <td style="font-weight:700;">${esc(i.name)}</td>
-      <td>${i.quantity}</td>
-      <td style="color:var(--fg);">${esc(i.usedFor||'—')}</td>
-      <td style="color:var(--fg);">${esc(i.addedByName)}</td>
-      <td>${canEditItem(u,i)?`<button class="btn-del" onclick="deleteNavItem('${esc(i._id)}')">&times;</button>`:''}</td>
+      <td data-label="Item" style="font-weight:700;">${esc(i.name)}</td>
+      <td data-label="Qty">${i.quantity}</td>
+      <td data-label="Used For" style="color:var(--fg);">${esc(i.usedFor||'—')}</td>
+      <td data-label="Added By" style="color:var(--fg);">${esc(i.addedByName)}</td>
+      <td data-label="">${canEditItem(u,i)?`<button class="btn-del" onclick="deleteNavItem('${esc(i._id)}')">&times;</button>`:''}</td>
     </tr>`).join('')}</tbody>
   </table>`;
 }
@@ -2451,7 +2463,7 @@ function renderArchiveTable(openMonths){
     const isOpen = key===currentKey || (openMonths&&openMonths.has(key));
     return `<details class="log-month"${isOpen?' open':''} data-key="${key}">
       <summary>
-        <span class="log-month-arrow">▶</span>
+        <span class="log-month-arrow"></span>
         <span class="log-month-name">${label}</span>
         <span class="log-month-count">${entries.length} entr${entries.length===1?'y':'ies'}</span>
       </summary>
@@ -2493,14 +2505,14 @@ async function loadOlderArchive(){
 function renderMonthRows(entries){
   const admin=isAdmin(state.user);
   const labels={user_joined:'Joined',role_approved:'Role Approved',role_denied:'Role Denied',admin_granted:'Admin Granted',member_removed:'Member Removed',member_restored:'Member Restored',task_created:'Task Created',task_closed:'Task Closed',item_added:'Item Added',item_removed:'Item Removed',item_handed_out:'Handed Out',item_used:'Item Used',items_used_for_project:'Items Used',password_reset_issued:'Reset Code Issued',password_reset_completed:'Password Reset',lottery_opened:'Lottery Opened',lottery_drawn:'Lottery Drawn',lottery_pick:'Lottery Pick'};
-  return `<table>
+  return `<table class="cards">
     <thead><tr><th>Date</th><th>Action</th><th>User</th><th>Details</th>${admin?'<th></th>':''}</tr></thead>
     <tbody>${entries.map(e=>`<tr>
-      <td style="font-size:18px;color:var(--fg);white-space:nowrap;">${fmtDT(e._creationTime)}</td>
-      <td><span class="badge badge-${e.type}">${labels[e.type]||e.type}</span></td>
-      <td style="font-weight:600;font-size:18px;">${esc(e.userName)}</td>
-      <td style="font-size:18px;color:var(--fg);">${fmtArchiveDetails(e)}</td>
-      ${admin?`<td><button class="btn-del" onclick="adminDeleteLog('${esc(e._id)}')">&times;</button></td>`:''}
+      <td data-label="Date" style="font-size:18px;color:var(--fg);white-space:nowrap;">${fmtDT(e._creationTime)}</td>
+      <td data-label="Action"><span class="badge badge-${e.type}">${labels[e.type]||e.type}</span></td>
+      <td data-label="User" style="font-weight:600;font-size:18px;">${esc(e.userName)}</td>
+      <td data-label="Details" style="font-size:18px;color:var(--fg);">${fmtArchiveDetails(e)}</td>
+      ${admin?`<td data-label=""><button class="btn-del" onclick="adminDeleteLog('${esc(e._id)}')">&times;</button></td>`:''}
     </tr>`).join('')}</tbody></table>`;
 }
 function fmtArchiveDetails(e){
@@ -2728,7 +2740,7 @@ function renderAdminContent() {
     ${removedMembers.length?`
     <div style="margin-top:28px;">
       <div onclick="toggleAdminRemoved()" style="cursor:pointer;user-select:none;font-size:15px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--fg);display:inline-flex;align-items:center;gap:8px;">
-        <span>${adminShowRemoved?'▼':'▶'}</span> Removed members (${removedMembers.length})
+        <span class="caret${adminShowRemoved?' open':''}"></span> Removed members (${removedMembers.length})
       </div>
       ${adminShowRemoved?`<div style="margin-top:12px;">${removedMembers.map(m=>`
         <div style="display:flex;align-items:center;gap:16px;padding:12px 0;border-bottom:1px solid var(--border-m);opacity:.75;">
@@ -3014,7 +3026,7 @@ function renderTasksList() {
         </div>
         <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;padding-top:2px;">
           ${joinLeaveBtn}
-          <span style="color:var(--fg);font-size:18px;padding-left:2px;">${isExpanded?'▼':'▶'}</span>
+          <span class="caret${isExpanded?' open':''}" style="margin-left:2px;"></span>
         </div>
       </div>
       <!-- Expanded detail -->
