@@ -1180,80 +1180,20 @@ function pageOverview() {
 
 function pageRecruitOverview(u) {
   const noAdmin = !hasAdmin();
-  const myApp = state.applications.find(a => a.userId === u._id);
-
-  if(myApp) {
-    // Already submitted
-    return `
-      <div class="page-head">
-        <div class="page-head-left">
-          <div class="page-title">${esc(u.username)}</div>
-        </div>
-        ${noAdmin?`<button class="btn btn-outline" style="border-color:var(--red);color:var(--fg);font-size:18px;" onclick="claimBootstrapAdmin()">Claim Admin</button>`:''}
-      </div>
-      <div style="max-width:640px;">
-        <div style="font-size:32px;font-weight:900;letter-spacing:-.5px;margin-bottom:16px;">Application submitted.</div>
-        <div style="font-size:20px;color:var(--fg);line-height:1.6;">
-          Your application has been handed in. Sit tight — you'll hear from us soon.
-        </div>
-      </div>`;
-  }
-
-  // Show the form
   return `
     <div class="page-head">
       <div class="page-head-left">
-        <div class="page-title">FRCN Navy Application Form</div>
-        <div class="page-sub">Complete your application to join the wing</div>
+        <div class="page-title">${esc(u.username)}</div>
       </div>
       ${noAdmin?`<button class="btn btn-outline" style="border-color:var(--red);color:var(--fg);font-size:18px;" onclick="claimBootstrapAdmin()">Claim Admin</button>`:''}
     </div>
-
-    <div style="max-width:640px;">
-      <div style="font-size:18px;color:var(--fg);line-height:1.7;margin-bottom:48px;padding:24px;background:#f5f5f5;">
-        So you're interested in joining FRCN Navy? Good stuff! Just a few more steps and you are good to go to submit your application to join the wing!
+    <div style="max-width:560px;">
+      <div style="font-size:32px;font-weight:900;letter-spacing:-.5px;margin-bottom:16px;">You're registered.</div>
+      <div style="font-size:20px;color:var(--fg);line-height:1.7;">
+        Your account is pending approval. An admin will grant you access once your membership has been confirmed.<br><br>
+        Sit tight — you'll be let in soon.
       </div>
-
-      <div class="field" style="margin-bottom:36px;">
-        <label class="lbl" style="font-size:20px;">1. What is your Discord and Star Citizen handles?</label>
-        <div style="font-size:18px;color:var(--fg);margin-bottom:10px;">Please put both if they are not similar</div>
-        <textarea id="app-handles" rows="3" placeholder="e.g. Discord: username#0000 / SC: HanSolo" style="width:100%;padding:12px;font-size:18px;font-family:inherit;border:2px solid #000;resize:vertical;background:var(--bg);color:var(--fg);"></textarea>
-      </div>
-
-      <div class="field" style="margin-bottom:36px;">
-        <label class="lbl" style="font-size:20px;">2. Why do you want to join FRCN Navy?</label>
-        <div style="font-size:18px;color:var(--fg);margin-bottom:10px;">How did you hear about us?</div>
-        <textarea id="app-why" rows="4" placeholder="Tell us why you want to join and how you found us…" style="width:100%;padding:12px;font-size:18px;font-family:inherit;border:2px solid #000;resize:vertical;background:var(--bg);color:var(--fg);"></textarea>
-      </div>
-
-      <div class="field" style="margin-bottom:48px;">
-        <label class="lbl" style="font-size:20px;">3. What do you want to do within the wing?</label>
-        <div style="font-size:18px;color:var(--fg);margin-bottom:10px;">e.g: Engineering, Gunner, Pilot, Marine</div>
-        <textarea id="app-role" rows="3" placeholder="Describe what role interests you…" style="width:100%;padding:12px;font-size:18px;font-family:inherit;border:2px solid #000;resize:vertical;background:var(--bg);color:var(--fg);"></textarea>
-      </div>
-
-      <div style="font-size:18px;color:var(--fg);margin-bottom:28px;font-style:italic;">
-        That's it! You'll hear from us soon! Just click "Submit" below.
-      </div>
-
-      <div class="err-msg" id="app-err" style="margin-bottom:12px;"></div>
-      <button class="btn btn-black" style="font-size:20px;padding:14px 32px;" onclick="submitApplication()">Submit Application</button>
     </div>`;
-}
-
-async function submitApplication() {
-  const handles = (document.getElementById('app-handles')||{value:''}).value.trim();
-  const whyJoin = (document.getElementById('app-why')||{value:''}).value.trim();
-  const role    = (document.getElementById('app-role')||{value:''}).value.trim();
-  if(!handles){showErr('app-err','Please fill in your Discord and SC handles');return;}
-  if(!whyJoin){showErr('app-err','Please fill in why you want to join');return;}
-  if(!role){showErr('app-err','Please fill in what you want to do in the wing');return;}
-  try {
-    await convexMutation('applications:submit',{sessionToken:state.sessionToken,handles,whyJoin,role});
-    toast('Application submitted!');
-    await refreshAll();
-    renderPage();
-  } catch(e){ showErr('app-err', e.message); }
 }
 
 // ─── ITEMS PAGE ───────────────────────────────────────────────────────────────
