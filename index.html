@@ -1122,7 +1122,7 @@ function showSetup() {
     <div class="center-screen">
       <div class="auth-box" style="max-width:480px;">
         <div class="auth-logo">NAVYTRACK</div>
-        <div style="font-size:18px;color:var(--fg);margin-bottom:24px;text-align:center;">Connect to your Convex backend.</div>
+        <div style="font-size:var(--text-md);color:var(--fg);margin-bottom:24px;text-align:center;">Connect to your Convex backend.</div>
         <div class="field">
           <label class="lbl">Convex Deployment URL</label>
           <input type="text" id="setup-url" placeholder="https://happy-animal-123.convex.cloud" value="${esc(CONVEX_URL)}">
@@ -1164,45 +1164,45 @@ function showAuth(tab='signin') {
       <div class="field"><label class="lbl">Password</label><input id="si-pass" type="password" autocomplete="current-password" placeholder="password"></div>
       <div class="err-msg" id="si-err"></div>
       <button class="btn btn-black" style="width:100%;justify-content:center;" onclick="doSignIn()">Sign In</button>
-      <div style="margin-top:12px;font-size:18px;color:var(--fg);text-align:center;">
+      <div style="margin-top:12px;font-size:var(--text-md);color:var(--fg);text-align:center;">
         <span style="cursor:pointer;text-decoration:underline;" onclick="showAuth('forgot')">Forgot password?</span>
       </div>
-      <div style="margin-top:8px;font-size:18px;color:var(--fg);text-align:center;">
+      <div style="margin-top:8px;font-size:var(--text-md);color:var(--fg);text-align:center;">
         Wrong URL? <span style="cursor:pointer;text-decoration:underline;" onclick="showSetup()">Change setup</span>
       </div>`;
   } else if (tab==='signup') {
     body = `
       <div class="field"><label class="lbl">Username</label><input id="su-user" type="text" placeholder="choose a username"></div>
       <div class="field"><label class="lbl">Password</label><input id="su-pass" type="password" placeholder="create a password"></div>
-      <div style="font-size:18px;color:var(--fg);margin-bottom:16px;padding:10px 14px;background:#f5f5f5;">
+      <div style="font-size:var(--text-md);color:var(--fg);margin-bottom:16px;padding:10px 14px;background:#f5f5f5;">
         New accounts start as <strong>Recruit</strong>. An admin can promote your role.
       </div>
       <div class="err-msg" id="su-err"></div>
       <button class="btn btn-black" style="width:100%;justify-content:center;" onclick="doSignUp()">Create Account</button>`;
   } else if (tab==='forgot') {
     body = `
-      <div style="font-size:18px;font-weight:700;margin-bottom:6px;">Forgot password</div>
-      <div style="font-size:16px;color:var(--fg);margin-bottom:16px;">Enter your username. An admin will verify you and send a one-time reset code (e.g. via Discord).</div>
+      <div style="font-size:var(--text-md);font-weight:700;margin-bottom:6px;">Forgot password</div>
+      <div style="font-size:var(--text-sm);color:var(--fg);margin-bottom:16px;">Enter your username. An admin will verify you and send a one-time reset code (e.g. via Discord).</div>
       <div class="field"><label class="lbl">Username</label><input id="fp-user" type="text" autocomplete="username" placeholder="username"></div>
       <div class="err-msg" id="fp-err"></div>
       <button class="btn btn-black" style="width:100%;justify-content:center;" onclick="doRequestReset()">Request reset</button>
-      <div style="margin-top:12px;font-size:18px;color:var(--fg);text-align:center;">
+      <div style="margin-top:12px;font-size:var(--text-md);color:var(--fg);text-align:center;">
         Already have a code? <span style="cursor:pointer;text-decoration:underline;" onclick="showAuth('reset')">Enter it</span>
       </div>
-      <div style="margin-top:8px;font-size:18px;color:var(--fg);text-align:center;">
+      <div style="margin-top:8px;font-size:var(--text-md);color:var(--fg);text-align:center;">
         <span style="cursor:pointer;text-decoration:underline;" onclick="showAuth('signin')">Back to sign in</span>
       </div>`;
   } else { // reset
     body = `
-      <div style="font-size:18px;font-weight:700;margin-bottom:6px;">Reset password</div>
-      <div style="font-size:16px;color:var(--fg);margin-bottom:16px;">Enter the one-time code your admin sent you and choose a new password.</div>
+      <div style="font-size:var(--text-md);font-weight:700;margin-bottom:6px;">Reset password</div>
+      <div style="font-size:var(--text-sm);color:var(--fg);margin-bottom:16px;">Enter the one-time code your admin sent you and choose a new password.</div>
       <div class="field"><label class="lbl">Username</label><input id="rp-user" type="text" autocomplete="username" value="${esc(authPrefillUser)}" placeholder="username"></div>
       <div class="field"><label class="lbl">Reset code</label><input id="rp-code" type="text" placeholder="8-character code" style="text-transform:uppercase;letter-spacing:2px;"></div>
       <div class="field"><label class="lbl">New password</label><input id="rp-new" type="password" autocomplete="new-password"></div>
       <div class="field"><label class="lbl">Confirm new password</label><input id="rp-confirm" type="password" autocomplete="new-password"></div>
       <div class="err-msg" id="rp-err"></div>
       <button class="btn btn-black" style="width:100%;justify-content:center;" onclick="doCompleteReset()">Set new password</button>
-      <div style="margin-top:12px;font-size:18px;color:var(--fg);text-align:center;">
+      <div style="margin-top:12px;font-size:var(--text-md);color:var(--fg);text-align:center;">
         <span style="cursor:pointer;text-decoration:underline;" onclick="showAuth('signin')">Back to sign in</span>
       </div>`;
   }
@@ -1455,22 +1455,22 @@ function pageOverview() {
         return `<div onclick="openProjectFromOverview('${esc(t._id)}')" role="button" tabindex="0" aria-label="Open project: ${esc(t.title)}" style="display:flex;align-items:baseline;gap:28px;padding:14px 0;border-bottom:1px solid var(--border-l);cursor:pointer;">
           <div style="flex:1;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;">
             <span class="p-badge ${pb.cls}">${pb.label}</span>
-            <span style="font-size:24px;font-weight:900;">${esc(t.title)}</span>
-            ${t.description?`<span style="font-size:18px;color:var(--fg);">${esc(t.description)}</span>`:''}
+            <span style="font-size:var(--text-lg);font-weight:900;">${esc(t.title)}</span>
+            ${t.description?`<span style="font-size:var(--text-md);color:var(--fg);">${esc(t.description)}</span>`:''}
           </div>
-          <div style="font-size:18px;white-space:nowrap;">${t.members.length} joined</div>
+          <div style="font-size:var(--text-md);white-space:nowrap;">${t.members.length} joined</div>
         </div>`;
       }).join('')
       : `<div class="ov-empty" style="padding:40px 0;">No open projects.</div>`}
-      ${openTasks.length>6?`<div style="padding-top:20px;"><span style="font-size:18px;cursor:pointer;text-decoration:underline;" onclick="goTo('tasks')">All projects (${openTasks.length}) →</span></div>`:''}
+      ${openTasks.length>6?`<div style="padding-top:20px;"><span style="font-size:var(--text-md);cursor:pointer;text-decoration:underline;" onclick="goTo('tasks')">All projects (${openTasks.length}) →</span></div>`:''}
     </div>
     <div style="border-top:2px solid var(--border);padding:60px 0;">
       <div class="ov-col-head">Recent Activity</div>
       ${recentLog.length?recentLog.map(e=>`
         <div style="display:flex;align-items:baseline;gap:20px;padding:12px 0;border-bottom:1px solid var(--border-l);">
-          <span style="font-size:18px;color:var(--fg);white-space:nowrap;min-width:72px;">${shortDate(e._creationTime)}</span>
-          <span style="font-size:18px;font-weight:700;">${esc(e.userName)}</span>
-          <span style="font-size:18px;color:var(--fg);">${fmtArchiveDetails(e)}</span>
+          <span style="font-size:var(--text-md);color:var(--fg);white-space:nowrap;min-width:72px;">${shortDate(e._creationTime)}</span>
+          <span style="font-size:var(--text-md);font-weight:700;">${esc(e.userName)}</span>
+          <span style="font-size:var(--text-md);color:var(--fg);">${fmtArchiveDetails(e)}</span>
         </div>`).join('')
       :`<div class="ov-empty" style="padding:40px 0;">No activity yet.</div>`}
     </div>
@@ -1483,30 +1483,30 @@ function pageRecruitOverview(u) {
       <div class="page-head-left">
         <div class="page-title">${esc(u.username)}</div>
         <div class="page-sub" style="margin-top:6px;">
-          <span style="display:inline-block;background:var(--red);color:#fff;font-size:14px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:3px 10px;">Pending approval</span>
+          <span style="display:inline-block;background:var(--red);color:#fff;font-size:var(--text-sm);font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:3px 10px;">Pending approval</span>
         </div>
       </div>
     </div>
     <div style="max-width:600px;">
-      <div style="font-size:32px;font-weight:900;letter-spacing:-.5px;margin-bottom:16px;">Welcome to FRCN Navy.</div>
-      <div style="font-size:19px;color:var(--fg);line-height:1.7;margin-bottom:32px;">
+      <div style="font-size:var(--text-lg);font-weight:900;letter-spacing:-.5px;margin-bottom:16px;">Welcome to FRCN Navy.</div>
+      <div style="font-size:var(--text-md);color:var(--fg);line-height:1.7;margin-bottom:32px;">
         This is the wing's operations tracker — inventory, logistics, projects and lottery, all in one place.
         Your account is created, but it's locked until an admin confirms your membership.
       </div>
 
-      <div style="font-size:15px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--fg);margin-bottom:14px;">What happens next</div>
+      <div style="font-size:var(--text-sm);font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--fg);margin-bottom:14px;">What happens next</div>
       <div style="display:grid;gap:14px;margin-bottom:32px;">
         ${[
           ['1','An admin verifies you in our Discord and grants you the Member role.'],
           ['2','Once approved, sign back in and the full tracker opens up automatically.'],
           ['3','Need it sooner? Give us a nudge in the Discord recruitment channel.'],
         ].map(([n,t])=>`<div style="display:flex;gap:14px;align-items:flex-start;">
-          <span style="flex-shrink:0;width:30px;height:30px;border:2px solid #000;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;">${n}</span>
-          <span style="font-size:18px;color:var(--fg);line-height:1.5;padding-top:3px;">${t}</span>
+          <span style="flex-shrink:0;width:30px;height:30px;border:2px solid #000;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:var(--text-sm);">${n}</span>
+          <span style="font-size:var(--text-md);color:var(--fg);line-height:1.5;padding-top:3px;">${t}</span>
         </div>`).join('')}
       </div>
 
-      <div style="font-size:16px;color:var(--fg);padding:14px 18px;background:var(--bg2);line-height:1.6;">
+      <div style="font-size:var(--text-sm);color:var(--fg);padding:14px 18px;background:var(--bg2);line-height:1.6;">
         Nothing to do here for now — you can close this tab and come back after you've been approved.
         Your sign-in stays the same.
       </div>
@@ -1655,12 +1655,12 @@ function pageLogistics() {
     ${!open.length&&!closed.length?`<div class="empty" style="margin-top:48px;">No logistics tasks yet.</div>`:''}
     ${open.length?`
       <div style="margin-top:32px;">
-        <div style="font-size:13px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--fg);margin-bottom:12px;">Open</div>
+        <div style="font-size:var(--text-xs);font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--fg);margin-bottom:12px;">Open</div>
         ${open.map(t=>renderLogisticsRow(t,u)).join('')}
       </div>`:''}
     ${closed.length?`
       <div style="margin-top:32px;">
-        <div style="font-size:13px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--fg);margin-bottom:12px;">Completed</div>
+        <div style="font-size:var(--text-xs);font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--fg);margin-bottom:12px;">Completed</div>
         ${closed.map(t=>renderLogisticsRow(t,u)).join('')}
       </div>`:''}`;
 }
@@ -1675,10 +1675,10 @@ function renderLogisticsRow(t, u) {
   </div>`;
   return `<div onclick="logisticsDetailId='${esc(t._id)}';renderPage();" style="padding:14px 18px;border:1px solid var(--border);margin-bottom:8px;cursor:pointer;transition:background .1s;" onmouseover="this.style.background='var(--hover)'" onmouseout="this.style.background=''">
     <div style="display:flex;align-items:center;justify-content:space-between;">
-      <div style="font-size:19px;font-weight:700;">${statusDot}${esc(t.items.length)} item${t.items.length!==1?'s':''} &rarr; ${esc(t.destinationLocation)}${t.destinationSystem?` <span style="font-weight:400;font-size:15px;color:var(--fg);">(${esc(t.destinationSystem)})</span>`:''}</div>
+      <div style="font-size:var(--text-md);font-weight:700;">${statusDot}${esc(t.items.length)} item${t.items.length!==1?'s':''} &rarr; ${esc(t.destinationLocation)}${t.destinationSystem?` <span style="font-weight:400;font-size:var(--text-sm);color:var(--fg);">(${esc(t.destinationSystem)})</span>`:''}</div>
       ${actions}
     </div>
-    <div style="font-size:15px;color:var(--fg);margin-top:4px;">Created by ${esc(t.createdByName)} &middot; Stored by ${esc(t.storedBy)}${t.completedByName?` &middot; Completed by ${esc(t.completedByName)}`:''}</div>
+    <div style="font-size:var(--text-sm);color:var(--fg);margin-top:4px;">Created by ${esc(t.createdByName)} &middot; Stored by ${esc(t.storedBy)}${t.completedByName?` &middot; Completed by ${esc(t.completedByName)}`:''}</div>
   </div>`;
 }
 
@@ -1708,11 +1708,11 @@ function pageLogisticsDetail(id) {
     </div>
 
     <div style="margin-top:24px;padding:14px 18px;background:var(--hover);border:1px solid var(--border);margin-bottom:28px;">
-      <div style="font-size:13px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--fg);margin-bottom:4px;">Destination</div>
-      <div style="font-size:22px;font-weight:700;">${esc(dest)}</div>
+      <div style="font-size:var(--text-xs);font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--fg);margin-bottom:4px;">Destination</div>
+      <div style="font-size:var(--text-lg);font-weight:700;">${esc(dest)}</div>
     </div>
 
-    <div style="font-size:13px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--fg);margin-bottom:12px;">Pick-up List</div>
+    <div style="font-size:var(--text-xs);font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--fg);margin-bottom:12px;">Pick-up List</div>
     <table>
       <thead><tr>
         <th>Item</th>
@@ -1722,8 +1722,8 @@ function pageLogisticsDetail(id) {
       <tbody>
         ${t.items.map(it=>`<tr>
           <td style="font-weight:700;">${esc(it.name)}</td>
-          <td style="font-size:15px;color:var(--fg);">${itemCatLabel(it.category)}</td>
-          <td style="font-size:15px;">${esc(it.fromLocation)}${it.fromSystem?` <span style="color:var(--fg);">(${esc(it.fromSystem)})</span>`:''}</td>
+          <td style="font-size:var(--text-sm);color:var(--fg);">${itemCatLabel(it.category)}</td>
+          <td style="font-size:var(--text-sm);">${esc(it.fromLocation)}${it.fromSystem?` <span style="color:var(--fg);">(${esc(it.fromSystem)})</span>`:''}</td>
         </tr>`).join('')}
       </tbody>
     </table>`;
@@ -1740,8 +1740,8 @@ function openNewLogisticsModal() {
           <div style="display:flex;align-items:center;gap:10px;padding:7px 12px;border-bottom:1px solid var(--border);">
             <input type="checkbox" id="log-item-${i}" value="${esc(item._id)}" style="width:18px;height:18px;flex-shrink:0;cursor:pointer;">
             <label for="log-item-${i}" style="flex:1;cursor:pointer;">
-              <div style="font-size:17px;font-weight:700;">${esc(item.name)}</div>
-              <div style="font-size:13px;color:var(--fg);">${itemCatLabel(item.category)} &middot; ${esc(item.location)}${item.system?` (${esc(item.system)})`:''}</div>
+              <div style="font-size:var(--text-md);font-weight:700;">${esc(item.name)}</div>
+              <div style="font-size:var(--text-xs);color:var(--fg);">${itemCatLabel(item.category)} &middot; ${esc(item.location)}${item.system?` (${esc(item.system)})`:''}</div>
             </label>
           </div>`).join('')}
       </div>
@@ -1790,7 +1790,7 @@ function openCompleteLogisticsModal(logisticsId) {
   if(!t) return;
   showModal(`
     <div class="modal-title">Complete Task</div>
-    <p style="font-size:18px;margin-bottom:16px;">
+    <p style="font-size:var(--text-md);margin-bottom:16px;">
       Mark this move task as completed. The location of all ${t.items.length} item${t.items.length!==1?'s':''} will be updated to <strong>${esc(t.destinationLocation)}</strong>.
     </p>
     <div class="field"><label class="lbl">Stored by <span style="font-weight:400;">(leave unset to keep "${esc(t.storedBy)}")</span></label>
@@ -1844,8 +1844,8 @@ function openEditLogisticsModal(logisticsId) {
           <div style="display:flex;align-items:center;gap:10px;padding:7px 12px;border-bottom:1px solid var(--border);">
             <input type="checkbox" id="elog-item-${idx}" value="${esc(item._id)}" ${inTask?'checked':''} style="width:18px;height:18px;flex-shrink:0;cursor:pointer;">
             <label for="elog-item-${idx}" style="flex:1;cursor:pointer;">
-              <div style="font-size:17px;font-weight:700;">${esc(item.name)}${fromTask?` <span style="font-size:13px;color:var(--fg);">(not in inventory)</span>`:''}</div>
-              <div style="font-size:13px;color:var(--fg);">${itemCatLabel(item.category)} &middot; ${esc(item.location||'—')}${item.system?` (${esc(item.system)})`:''}</div>
+              <div style="font-size:var(--text-md);font-weight:700;">${esc(item.name)}${fromTask?` <span style="font-size:var(--text-xs);color:var(--fg);">(not in inventory)</span>`:''}</div>
+              <div style="font-size:var(--text-xs);color:var(--fg);">${itemCatLabel(item.category)} &middot; ${esc(item.location||'—')}${item.system?` (${esc(item.system)})`:''}</div>
             </label>
           </div>`).join('')}
       </div>
@@ -1928,17 +1928,17 @@ function renderInventoryList() {
     ${isComp&&(compTypes.length||compSizes.length||compTiers.length)?`
     <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;">
       ${compTypes.length>1?`<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;">
-        <span style="font-size:13px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--fg);margin-right:4px;">Type</span>
+        <span style="font-size:var(--text-xs);font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--fg);margin-right:4px;">Type</span>
         <button class="btn-ghost btn-sm${invCompType==='all'?' active':''}" onclick="invCompType='all';document.getElementById('items-content').innerHTML=renderInventoryList();">All</button>
         ${compTypes.map(t=>`<button class="btn-ghost btn-sm${invCompType===t?' active':''}" onclick="invCompType='${t}';document.getElementById('items-content').innerHTML=renderInventoryList();">${COMP_TYPE_MAP[t]||t}</button>`).join('')}
       </div>`:''}
       ${compSizes.length>1?`<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;">
-        <span style="font-size:13px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--fg);margin-right:4px;">Size</span>
+        <span style="font-size:var(--text-xs);font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--fg);margin-right:4px;">Size</span>
         <button class="btn-ghost btn-sm${invCompSize==='all'?' active':''}" onclick="invCompSize='all';document.getElementById('items-content').innerHTML=renderInventoryList();">All</button>
         ${compSizes.map(s=>`<button class="btn-ghost btn-sm${invCompSize===String(s)?' active':''}" onclick="invCompSize='${s}';document.getElementById('items-content').innerHTML=renderInventoryList();">S${s}</button>`).join('')}
       </div>`:''}
       ${compTiers.length>1?`<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;">
-        <span style="font-size:13px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--fg);margin-right:4px;">Grade</span>
+        <span style="font-size:var(--text-xs);font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--fg);margin-right:4px;">Grade</span>
         <button class="btn-ghost btn-sm${invCompTier==='all'?' active':''}" onclick="invCompTier='all';document.getElementById('items-content').innerHTML=renderInventoryList();">All</button>
         ${compTiers.map(t=>`<button class="btn-ghost btn-sm${invCompTier===t?' active':''}" onclick="invCompTier='${t}';document.getElementById('items-content').innerHTML=renderInventoryList();">Grade ${t}</button>`).join('')}
       </div>`:''}
@@ -1968,16 +1968,16 @@ function renderInventoryList() {
         });
         return sorted.map(i=>{
         const isWikelo = i.category==='wikelo';
-        const compInfo = i.compType?`<div style="font-size:15px;color:var(--fg);margin-top:2px;">${itemCompDesc(i)}</div>`:'';
-        const subInfo  = i.subcategory&&i.category==='fps_armor'?`<div style="font-size:15px;color:var(--fg);margin-top:2px;">${itemSubcatLabel(i.category,i.subcategory)}</div>`:'';
+        const compInfo = i.compType?`<div style="font-size:var(--text-sm);color:var(--fg);margin-top:2px;">${itemCompDesc(i)}</div>`:'';
+        const subInfo  = i.subcategory&&i.category==='fps_armor'?`<div style="font-size:var(--text-sm);color:var(--fg);margin-top:2px;">${itemSubcatLabel(i.category,i.subcategory)}</div>`:'';
         const showHandOut = canHandOut(u);
         const showDel     = canEditItem(u, i);
         return `<tr>
-          <td data-label="Item" style="font-weight:700;">${esc(i.name)}${i.description?`<div style="font-size:15px;font-weight:400;color:var(--fg);">${esc(i.description)}</div>`:''}${compInfo}${subInfo}</td>
+          <td data-label="Item" style="font-weight:700;">${esc(i.name)}${i.description?`<div style="font-size:var(--text-sm);font-weight:400;color:var(--fg);">${esc(i.description)}</div>`:''}${compInfo}${subInfo}</td>
           <td data-label="Category"><span class="item-cat-tag">${itemCatLabel(i.category)}</span></td>
           <td data-label="Qty" style="font-weight:700;">${i.quantity}</td>
           <td data-label="Quality">${i.quality!=null?i.quality:'—'}</td>
-          <td data-label="Location" style="font-size:18px;">${esc(i.location)}${i.system?` <span class="sys-badge">${esc(i.system)}</span>`:''}</td>
+          <td data-label="Location" style="font-size:var(--text-md);">${esc(i.location)}${i.system?` <span class="sys-badge">${esc(i.system)}</span>`:''}</td>
           <td data-label="Added By" style="color:var(--fg);">${esc(i.addedByName)}</td>
           <td data-label="" style="white-space:nowrap;">
             ${showHandOut?`<button class="btn btn-outline btn-sm" style="margin-right:4px;" onclick="openHandOutModal('${esc(i._id)}')">Hand Out</button>`:''}
@@ -1996,11 +1996,11 @@ function renderHandedOutList() {
   return `<table class="cards">
     <thead><tr><th>Item</th><th>Category</th><th>Qty</th><th>Given To</th><th>Location</th><th></th></tr></thead>
     <tbody>${items.map(i=>`<tr>
-      <td data-label="Item" style="font-weight:700;">${esc(i.name)}${i.compType?`<div style="font-size:15px;color:var(--fg);">${itemCompDesc(i)}</div>`:''}</td>
+      <td data-label="Item" style="font-weight:700;">${esc(i.name)}${i.compType?`<div style="font-size:var(--text-sm);color:var(--fg);">${itemCompDesc(i)}</div>`:''}</td>
       <td data-label="Category"><span class="item-cat-tag">${itemCatLabel(i.category)}</span></td>
       <td data-label="Qty">${i.handedOutQty||i.quantity}</td>
       <td data-label="Given To" style="font-weight:700;">${esc(i.handedOutTo||'—')}</td>
-      <td data-label="Location" style="font-size:18px;">${esc(i.location)}</td>
+      <td data-label="Location" style="font-size:var(--text-md);">${esc(i.location)}</td>
       <td data-label="">${canEditItem(u,i)?`<button class="btn-del" onclick="deleteNavItem('${esc(i._id)}')" aria-label="Delete item">&times;</button>`:''}</td>
     </tr>`).join('')}</tbody>
   </table>`;
@@ -2071,13 +2071,13 @@ function openHandOutModal(itemId) {
   if(!item) return;
   showModal(`
     <div class="modal-title">Hand Out: ${esc(item.name)}</div>
-    <div style="font-size:18px;color:var(--fg);margin-bottom:20px;">${itemCatLabel(item.category)} &middot; ${item.quantity} available</div>
+    <div style="font-size:var(--text-md);color:var(--fg);margin-bottom:20px;">${itemCatLabel(item.category)} &middot; ${item.quantity} available</div>
     <div class="field"><label class="lbl">Hand out to</label>
       ${memberPickerHtml('ho-recipient', '', 'member')}
     </div>
     <div class="field"><label class="lbl">Quantity</label>
       <input type="number" id="ho-qty" value="${item.quantity}" min="1" max="${item.quantity}" step="1">
-      <div style="font-size:15px;color:var(--fg);margin-top:4px;">Max: ${item.quantity}</div>
+      <div style="font-size:var(--text-sm);color:var(--fg);margin-top:4px;">Max: ${item.quantity}</div>
     </div>
     <div style="display:flex;gap:10px;margin-top:8px;">
       <button class="btn btn-black" onclick="confirmHandOut('${esc(itemId)}',${item.quantity})">Hand Out</button>
@@ -2197,7 +2197,7 @@ function renderAICompPicker() {
   const sizes = [...new Set(COMPONENTS_CATALOG.map(c=>c.size))].sort((a,b)=>a-b);
   const tiers = ['A','B','C'];
   return `
-    <div style="font-size:18px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;color:var(--fg);">Select Component</div>
+    <div style="font-size:var(--text-md);font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;color:var(--fg);">Select Component</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
       <select id="ai-comp-type" onchange="aiCompTypeFilter=this.value;aiCompGradeFilter='all';aiCompSizeFilter='all';aiCompTierFilter='all';refreshAICompPicker()" style="margin:0;">
         <option value="all">All Types</option>
@@ -2229,18 +2229,18 @@ function renderAICompResults() {
   if(aiCompTierFilter!=='all') filtered=filtered.filter(c=>c.tier===aiCompTierFilter);
   if(aiCompSearch.trim()){const q=aiCompSearch.trim().toLowerCase();filtered=filtered.filter(c=>c.name.toLowerCase().includes(q));}
   return `
-    ${aiSelectedComp?`<div style="padding:8px 12px;background:#f0f0f0;margin-bottom:10px;font-size:18px;font-weight:700;">
+    ${aiSelectedComp?`<div style="padding:8px 12px;background:#f0f0f0;margin-bottom:10px;font-size:var(--text-md);font-weight:700;">
       Selected: ${esc(aiSelectedComp.name)} &middot; ${COMP_TYPE_MAP[aiSelectedComp.type]||aiSelectedComp.type} &middot; ${COMP_GRADE_MAP[aiSelectedComp.grade]||aiSelectedComp.grade} &middot; S${aiSelectedComp.size} &middot; Grade ${aiSelectedComp.tier}
     </div>`:''}
     <div style="max-height:200px;overflow-y:auto;border:1px solid var(--border);margin-bottom:12px;">
-      ${!filtered.length?`<div style="padding:12px;font-size:18px;color:var(--fg);">No components match.</div>`:`
+      ${!filtered.length?`<div style="padding:12px;font-size:var(--text-md);color:var(--fg);">No components match.</div>`:`
       <table style="margin:0;">
         <tbody>${filtered.map(c=>`<tr style="cursor:pointer;${aiSelectedComp&&aiSelectedComp.name===c.name&&aiSelectedComp.type===c.type?'background:#e8e8e8;':''}" onclick="selectAIComp('${esc(c.name)}','${c.type}','${c.grade}',${c.size},'${c.tier}')">
-          <td style="font-weight:700;font-size:18px;">${esc(c.name)}</td>
-          <td style="font-size:15px;color:var(--fg);">${COMP_TYPE_MAP[c.type]||c.type}</td>
-          <td style="font-size:15px;color:var(--fg);">${COMP_GRADE_MAP[c.grade]||c.grade}</td>
-          <td style="font-size:15px;">S${c.size}</td>
-          <td style="font-size:15px;font-weight:700;">Gr. ${c.tier}</td>
+          <td style="font-weight:700;font-size:var(--text-md);">${esc(c.name)}</td>
+          <td style="font-size:var(--text-sm);color:var(--fg);">${COMP_TYPE_MAP[c.type]||c.type}</td>
+          <td style="font-size:var(--text-sm);color:var(--fg);">${COMP_GRADE_MAP[c.grade]||c.grade}</td>
+          <td style="font-size:var(--text-sm);">S${c.size}</td>
+          <td style="font-size:var(--text-sm);font-weight:700;">Gr. ${c.tier}</td>
         </tr>`).join('')}</tbody>
       </table>`}
     </div>`;
@@ -2332,9 +2332,9 @@ function renderArmorPresets(subcat) {
   return `<div style="margin-bottom:4px;">`+items.map((name,i)=>`
     <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);">
       <input type="checkbox" id="armor-preset-${i}" value="${esc(name)}" style="width:18px;height:18px;flex-shrink:0;cursor:pointer;">
-      <label for="armor-preset-${i}" style="flex:1;font-size:18px;cursor:pointer;">${esc(name)}</label>
+      <label for="armor-preset-${i}" style="flex:1;font-size:var(--text-md);cursor:pointer;">${esc(name)}</label>
       <div style="display:flex;align-items:center;gap:4px;">
-        <label style="font-size:15px;color:var(--fg);">Qty</label>
+        <label style="font-size:var(--text-sm);color:var(--fg);">Qty</label>
         <input type="number" id="armor-qty-${i}" value="1" min="1" step="1" style="width:64px;">
       </div>
     </div>`).join('')+`</div>`;
@@ -2530,10 +2530,10 @@ function renderMonthRows(entries){
   return `<table class="cards">
     <thead><tr><th>Date</th><th>Action</th><th>User</th><th>Details</th>${admin?'<th></th>':''}</tr></thead>
     <tbody>${entries.map(e=>`<tr>
-      <td data-label="Date" style="font-size:18px;color:var(--fg);white-space:nowrap;">${fmtDT(e._creationTime)}</td>
+      <td data-label="Date" style="font-size:var(--text-md);color:var(--fg);white-space:nowrap;">${fmtDT(e._creationTime)}</td>
       <td data-label="Action"><span class="badge badge-${e.type}">${labels[e.type]||e.type}</span></td>
-      <td data-label="User" style="font-weight:600;font-size:18px;">${esc(e.userName)}</td>
-      <td data-label="Details" style="font-size:18px;color:var(--fg);">${fmtArchiveDetails(e)}</td>
+      <td data-label="User" style="font-weight:600;font-size:var(--text-md);">${esc(e.userName)}</td>
+      <td data-label="Details" style="font-size:var(--text-md);color:var(--fg);">${fmtArchiveDetails(e)}</td>
       ${admin?`<td data-label=""><button class="btn-del" onclick="adminDeleteLog('${esc(e._id)}')" aria-label="Delete log entry">&times;</button></td>`:''}
     </tr>`).join('')}</tbody></table>`;
 }
@@ -2583,7 +2583,7 @@ function pageMember() {
           ${activeRoles.map(r=>roleTagHtml(r)).join('')}
         </div>
       </div>
-      ${noAdmin?`<button class="btn btn-outline" style="border-color:var(--red);color:var(--fg);font-size:18px;" onclick="claimBootstrapAdmin()">Claim Admin</button>`:''}
+      ${noAdmin?`<button class="btn btn-outline" style="border-color:var(--red);color:var(--fg);font-size:var(--text-md);" onclick="claimBootstrapAdmin()">Claim Admin</button>`:''}
     </div>
 
     <div class="ov-stats" style="margin-bottom:40px;">
@@ -2606,19 +2606,19 @@ function pageMember() {
 
     ${recentActivity.length?`
     <div>
-      <div style="font-size:18px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:14px;color:var(--fg);">Recent Activity</div>
+      <div style="font-size:var(--text-md);font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:14px;color:var(--fg);">Recent Activity</div>
       <table>
         <thead><tr><th>Date</th><th>Action</th><th>Details</th></tr></thead>
         <tbody>${recentActivity.map(e=>`<tr>
-          <td style="font-size:18px;color:var(--fg);white-space:nowrap;">${fmtDate(e._creationTime)}</td>
+          <td style="font-size:var(--text-md);color:var(--fg);white-space:nowrap;">${fmtDate(e._creationTime)}</td>
           <td><span class="badge badge-${e.type}">${logLabels[e.type]||e.type}</span></td>
-          <td style="font-size:18px;color:var(--fg);">${fmtArchiveDetails(e)}</td>
+          <td style="font-size:var(--text-md);color:var(--fg);">${fmtArchiveDetails(e)}</td>
         </tr>`).join('')}</tbody>
       </table>
     </div>`:`<div class="empty">No activity recorded yet.</div>`}
 
     <div style="margin-top:48px;max-width:420px;border-top:1px solid var(--border-m);padding-top:32px;">
-      <div style="font-size:18px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:16px;color:var(--fg);">Change Password</div>
+      <div style="font-size:var(--text-md);font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:16px;color:var(--fg);">Change Password</div>
       <div class="field"><label class="lbl">Current password</label>
         <input type="password" id="cp-current" autocomplete="current-password"></div>
       <div class="field"><label class="lbl">New password</label>
@@ -2673,19 +2673,19 @@ function renderAdminContent() {
   return `
     ${resets.length?`
     <div style="margin-bottom:56px;">
-      <div style="font-size:18px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--red);display:flex;align-items:center;gap:12px;">
+      <div style="font-size:var(--text-md);font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--red);display:flex;align-items:center;gap:12px;">
         Password Reset Requests
-        <span style="background:var(--red);color:#fff;padding:1px 8px;font-size:18px;">${resets.length}</span>
+        <span style="background:var(--red);color:#fff;padding:1px 8px;font-size:var(--text-md);">${resets.length}</span>
       </div>
-      <div style="font-size:15px;color:var(--fg);margin-bottom:14px;">Verify the person's identity (e.g. over Discord) before issuing a code. Relay the code to them privately — it expires in 30 minutes and works once.</div>
+      <div style="font-size:var(--text-sm);color:var(--fg);margin-bottom:14px;">Verify the person's identity (e.g. over Discord) before issuing a code. Relay the code to them privately — it expires in 30 minutes and works once.</div>
       ${resets.map(r=>{
         const issued = r.status==='issued';
         const exp = r.expiresAt ? new Date(r.expiresAt) : null;
         const expired = exp && Date.now() > r.expiresAt;
         return `<div style="display:flex;align-items:center;gap:16px;padding:14px 0;border-bottom:1px solid var(--border-m);flex-wrap:wrap;">
           <div style="min-width:180px;">
-            <div style="font-weight:700;font-size:18px;">${esc(r.username)}</div>
-            <div style="font-size:14px;color:var(--fg);margin-top:2px;">
+            <div style="font-weight:700;font-size:var(--text-md);">${esc(r.username)}</div>
+            <div style="font-size:var(--text-sm);color:var(--fg);margin-top:2px;">
               ${issued?(expired?'<span style="color:var(--red);">code expired</span>':`code sent${exp?` · expires ${exp.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}`:''}`):'requested '+fmtDate(r._creationTime)}
             </div>
           </div>
@@ -2699,17 +2699,17 @@ function renderAdminContent() {
 
     ${pendingApps.length?`
     <div style="margin-bottom:56px;">
-      <div style="font-size:18px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--red);display:flex;align-items:center;gap:12px;">
+      <div style="font-size:var(--text-md);font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--red);display:flex;align-items:center;gap:12px;">
         Recruit Applications
-        <span style="background:var(--red);color:#fff;padding:1px 8px;font-size:18px;">${pendingApps.length} pending</span>
+        <span style="background:var(--red);color:#fff;padding:1px 8px;font-size:var(--text-md);">${pendingApps.length} pending</span>
       </div>
       ${pendingApps.map(app=>{
         const member = state.allUsers.find(m=>m._id===app.userId);
         return `<div style="padding:20px;border:2px solid #000;margin-bottom:16px;">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
             <div>
-              <div style="font-size:22px;font-weight:900;">${esc(app.userName)}</div>
-              <div style="font-size:15px;color:var(--fg);margin-top:2px;">Applied ${fmtDate(app._creationTime)}</div>
+              <div style="font-size:var(--text-lg);font-weight:900;">${esc(app.userName)}</div>
+              <div style="font-size:var(--text-sm);color:var(--fg);margin-top:2px;">Applied ${fmtDate(app._creationTime)}</div>
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
               ${member&&!member.roles.includes('member')?`<button class="btn btn-black btn-sm" onclick="adminAcceptRecruit('${esc(app._id)}','${esc(app.userId)}','${escJs(app.userName)}')">Accept as Member</button>`:''}
@@ -2717,16 +2717,16 @@ function renderAdminContent() {
           </div>
           <div style="display:grid;gap:14px;">
             <div>
-              <div style="font-size:15px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--fg);margin-bottom:4px;">Discord &amp; SC Handles</div>
-              <div style="font-size:18px;white-space:pre-wrap;">${esc(app.handles)}</div>
+              <div style="font-size:var(--text-sm);font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--fg);margin-bottom:4px;">Discord &amp; SC Handles</div>
+              <div style="font-size:var(--text-md);white-space:pre-wrap;">${esc(app.handles)}</div>
             </div>
             <div>
-              <div style="font-size:15px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--fg);margin-bottom:4px;">Why they want to join</div>
-              <div style="font-size:18px;white-space:pre-wrap;">${esc(app.whyJoin)}</div>
+              <div style="font-size:var(--text-sm);font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--fg);margin-bottom:4px;">Why they want to join</div>
+              <div style="font-size:var(--text-md);white-space:pre-wrap;">${esc(app.whyJoin)}</div>
             </div>
             <div>
-              <div style="font-size:15px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--fg);margin-bottom:4px;">Desired role</div>
-              <div style="font-size:18px;white-space:pre-wrap;">${esc(app.role)}</div>
+              <div style="font-size:var(--text-sm);font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--fg);margin-bottom:4px;">Desired role</div>
+              <div style="font-size:var(--text-md);white-space:pre-wrap;">${esc(app.role)}</div>
             </div>
           </div>
         </div>`;
@@ -2735,13 +2735,13 @@ function renderAdminContent() {
 
 
     <div>
-      <div style="font-size:18px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--border);">All Members</div>
+      <div style="font-size:var(--text-md);font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--border);">All Members</div>
       ${members.map(m=>{
         const isMe=m._id===u._id;
         const removed=m.roles.includes('removed');
         return `<div style="display:flex;align-items:flex-start;gap:16px;padding:14px 0;border-bottom:1px solid var(--border-m);flex-wrap:wrap;">
           <div style="min-width:160px;">
-            <div style="font-weight:700;font-size:18px;">${esc(m.username)}${isMe?' <span style="color:var(--fg);font-size:18px;">(you)</span>':''}</div>
+            <div style="font-weight:700;font-size:var(--text-md);">${esc(m.username)}${isMe?' <span style="color:var(--fg);font-size:var(--text-md);">(you)</span>':''}</div>
             <div style="margin-top:4px;">${m.roles.map(r=>roleTagHtml(r)).join(' ')}</div>
           </div>
           ${!removed?`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;flex:1;">
@@ -2754,21 +2754,21 @@ function renderAdminContent() {
           </div>
           <div style="margin-left:auto;">
             ${!isMe?`<button class="btn-del" onclick="adminRemoveMember('${esc(m._id)}','${escJs(m.username)}')">Remove</button>`:''}
-          </div>`:`<div style="color:#ef4444;font-size:18px;align-self:center;">Removed</div>`}
+          </div>`:`<div style="color:#ef4444;font-size:var(--text-md);align-self:center;">Removed</div>`}
         </div>`;
       }).join('')}
     </div>
 
     ${removedMembers.length?`
     <div style="margin-top:28px;">
-      <div onclick="toggleAdminRemoved()" role="button" tabindex="0" aria-expanded="${adminShowRemoved?'true':'false'}" style="cursor:pointer;user-select:none;font-size:15px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--fg);display:inline-flex;align-items:center;gap:8px;">
+      <div onclick="toggleAdminRemoved()" role="button" tabindex="0" aria-expanded="${adminShowRemoved?'true':'false'}" style="cursor:pointer;user-select:none;font-size:var(--text-sm);font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--fg);display:inline-flex;align-items:center;gap:8px;">
         <span class="caret${adminShowRemoved?' open':''}" aria-hidden="true"></span> Removed members (${removedMembers.length})
       </div>
       ${adminShowRemoved?`<div style="margin-top:12px;">${removedMembers.map(m=>`
         <div style="display:flex;align-items:center;gap:16px;padding:12px 0;border-bottom:1px solid var(--border-m);opacity:.75;">
           <div style="min-width:160px;">
-            <div style="font-weight:700;font-size:18px;">${esc(m.username)}</div>
-            <div style="margin-top:4px;"><span style="color:#ef4444;font-size:15px;">Removed</span></div>
+            <div style="font-weight:700;font-size:var(--text-md);">${esc(m.username)}</div>
+            <div style="margin-top:4px;"><span style="color:#ef4444;font-size:var(--text-sm);">Removed</span></div>
           </div>
           <div style="margin-left:auto;">
             <button class="btn-ghost btn-sm" onclick="adminRestoreMember('${esc(m._id)}','${escJs(m.username)}')">Restore</button>
@@ -2803,8 +2803,8 @@ async function adminIssueResetCode(resetId, username){
     const code = (res && res.code) || '';
     showModal(`
       <div class="modal-title">Reset code for ${esc(username)}</div>
-      <p style="font-size:16px;color:var(--fg);margin-bottom:16px;">Send this one-time code to <strong>${esc(username)}</strong> privately (e.g. Discord DM). It expires in 30 minutes and works once.</p>
-      <div style="font-size:34px;font-weight:900;letter-spacing:6px;text-align:center;padding:18px;border:2px solid #000;background:var(--bg2);user-select:all;margin-bottom:16px;">${esc(code)}</div>
+      <p style="font-size:var(--text-sm);color:var(--fg);margin-bottom:16px;">Send this one-time code to <strong>${esc(username)}</strong> privately (e.g. Discord DM). It expires in 30 minutes and works once.</p>
+      <div style="font-size:var(--text-xl);font-weight:900;letter-spacing:6px;text-align:center;padding:18px;border:2px solid #000;background:var(--bg2);user-select:all;margin-bottom:16px;">${esc(code)}</div>
       <div style="display:flex;gap:10px;">
         <button class="btn btn-black" onclick="copyText('${escJs(code)}')">Copy code</button>
         <button class="btn btn-outline" onclick="closeModal()">Done</button>
@@ -2921,7 +2921,7 @@ function showModal(html) {
   if(box){
     box.setAttribute('role','dialog');
     box.setAttribute('aria-modal','true');
-    box.innerHTML=`<button onclick="closeModal()" style="position:absolute;top:16px;right:16px;background:none;border:none;font-size:24px;cursor:pointer;color:var(--fg);line-height:1;padding:4px 8px;" aria-label="Close">&times;</button>${html}`;
+    box.innerHTML=`<button onclick="closeModal()" style="position:absolute;top:16px;right:16px;background:none;border:none;font-size:var(--text-lg);cursor:pointer;color:var(--fg);line-height:1;padding:4px 8px;" aria-label="Close">&times;</button>${html}`;
   }
   if(overlay) overlay.classList.add('open');
   // Move focus into the dialog (first real field, not the close button).
@@ -2961,7 +2961,7 @@ function confirmModal(opts){
     const settle=(val)=>{ if(settled) return; settled=true; _modalOnClose=null; resolve(val); };
     showModal(`
       <div class="modal-title">${esc(title)}</div>
-      <div style="font-size:18px;color:var(--fg);line-height:1.6;margin-bottom:28px;">${esc(body)}</div>
+      <div style="font-size:var(--text-md);color:var(--fg);line-height:1.6;margin-bottom:28px;">${esc(body)}</div>
       <div style="display:flex;gap:10px;">
         <button class="btn ${danger?'btn-red':'btn-black'}" id="cm-yes">${esc(confirmLabel)}</button>
         <button class="btn btn-outline" id="cm-no">${esc(cancelLabel)}</button>
@@ -3080,7 +3080,7 @@ function renderTasksList() {
       },0);
       const pct=Math.round((collected/total)*100);
       const color=pct>=100?'#16a34a':pct>0?'inherit':'var(--fg)';
-      itemsSummary=`<span style="font-size:15px;color:${color};">· needs items · ${pct}%</span>`;
+      itemsSummary=`<span style="font-size:var(--text-sm);color:${color};">· needs items · ${pct}%</span>`;
     }
 
     const buttons=`
@@ -3114,11 +3114,11 @@ function renderTasksList() {
             <span class="p-badge ${pb.cls}">${pb.label}</span>
             <span class="task-card-title">${esc(t.title)}</span>
           </div>
-          ${t.goal?`<div style="font-size:17px;margin-bottom:5px;">${esc(t.goal)}</div>`:''}
-          ${t.description&&!t.goal?`<div style="font-size:17px;color:var(--fg);margin-bottom:5px;">${esc(t.description)}</div>`:''}
-          <div style="font-size:15px;margin-bottom:3px;">${membersLine}</div>
-          ${itemsSummary?`<div style="font-size:15px;margin-bottom:3px;">${itemsSummary}</div>`:''}
-          <div style="font-size:14px;color:var(--fg);">by ${esc(t.createdByName)}</div>
+          ${t.goal?`<div style="font-size:var(--text-md);margin-bottom:5px;">${esc(t.goal)}</div>`:''}
+          ${t.description&&!t.goal?`<div style="font-size:var(--text-md);color:var(--fg);margin-bottom:5px;">${esc(t.description)}</div>`:''}
+          <div style="font-size:var(--text-sm);margin-bottom:3px;">${membersLine}</div>
+          ${itemsSummary?`<div style="font-size:var(--text-sm);margin-bottom:3px;">${itemsSummary}</div>`:''}
+          <div style="font-size:var(--text-sm);color:var(--fg);">by ${esc(t.createdByName)}</div>
         </div>
         <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;padding-top:2px;">
           ${joinLeaveBtn}
@@ -3128,7 +3128,7 @@ function renderTasksList() {
       <!-- Expanded detail -->
       ${isExpanded?`
       <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border-m);">
-        ${t.goal&&t.description?`<div style="font-size:17px;color:var(--fg);margin-bottom:8px;">${esc(t.description)}</div>`:''}
+        ${t.goal&&t.description?`<div style="font-size:var(--text-md);color:var(--fg);margin-bottom:8px;">${esc(t.description)}</div>`:''}
         ${renderTaskRequiredItems(t)}
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">${mgmtBtns}</div>
       </div>`:''}
@@ -3162,11 +3162,11 @@ function openEditTaskModal(taskId) {
     </div>
     <div class="field"><label class="lbl">Visible to (roles)</label>
       <div style="display:flex;gap:12px;margin-top:4px;flex-wrap:wrap;">
-        ${NAVY_ROLES.map(r=>`<label class="chk-row" style="margin:0;"><input type="checkbox" class="et-role" value="${r.id}" style="width:auto;"${t.targetRoles.includes(r.id)?' checked':''}> <span style="font-size:18px;">${r.label}</span></label>`).join('')}
+        ${NAVY_ROLES.map(r=>`<label class="chk-row" style="margin:0;"><input type="checkbox" class="et-role" value="${r.id}" style="width:auto;"${t.targetRoles.includes(r.id)?' checked':''}> <span style="font-size:var(--text-md);">${r.label}</span></label>`).join('')}
       </div>
     </div>
     <div class="field">
-      <label class="chk-row" style="margin:0;"><input type="checkbox" id="ct-needs-items" style="width:auto;"${ctNeedsItems?' checked':''} onchange="ctNeedsItems=this.checked;renderCtItemsSection()"> <span style="font-size:18px;font-weight:700;">Needs items to complete</span></label>
+      <label class="chk-row" style="margin:0;"><input type="checkbox" id="ct-needs-items" style="width:auto;"${ctNeedsItems?' checked':''} onchange="ctNeedsItems=this.checked;renderCtItemsSection()"> <span style="font-size:var(--text-md);font-weight:700;">Needs items to complete</span></label>
     </div>
     <div id="ct-items-wrap" style="display:${ctNeedsItems?'':'none'};">
       <div class="field" style="margin-top:0;">
@@ -3220,12 +3220,12 @@ function renderTaskRequiredItems(task) {
     const collected = Math.min(inStock, req.quantityNeeded);
     const done = collected >= req.quantityNeeded;
     return `<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;">
-      <span style="font-size:16px;">${esc(req.name)} <span style="font-size:14px;color:var(--fg);">(${esc(itemCatLabel(req.category))})</span></span>
-      <span style="font-size:16px;font-weight:700;color:${done?'#16a34a':'inherit'};">${collected}/${req.quantityNeeded}</span>
+      <span style="font-size:var(--text-sm);">${esc(req.name)} <span style="font-size:var(--text-sm);color:var(--fg);">(${esc(itemCatLabel(req.category))})</span></span>
+      <span style="font-size:var(--text-sm);font-weight:700;color:${done?'#16a34a':'inherit'};">${collected}/${req.quantityNeeded}</span>
     </div>`;
   });
   return `<div style="margin:8px 0;padding:8px 10px;background:var(--bg);border:1px solid var(--border-m);">
-    <div style="font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--fg);margin-bottom:4px;">Required Items</div>
+    <div style="font-size:var(--text-xs);font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--fg);margin-bottom:4px;">Required Items</div>
     ${rows.join('')}
   </div>`;
 }
@@ -3242,18 +3242,18 @@ async function useItemsForProject(taskId, taskTitle) {
   const rows = plan.map(p=>{
     const full = p.shortfall===0;
     const head = `<div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;">
-      <span style="font-size:17px;font-weight:700;">${esc(p.name)} <span style="font-size:13px;color:var(--fg);font-weight:400;">(${esc(itemCatLabel(p.category))})</span></span>
-      <span style="font-size:16px;font-weight:700;color:${full?'#16a34a':'var(--red)'};">consume ${p.consumed}/${p.needed}${p.shortfall>0?` · ${p.shortfall} short`:''}</span>
+      <span style="font-size:var(--text-md);font-weight:700;">${esc(p.name)} <span style="font-size:var(--text-xs);color:var(--fg);font-weight:400;">(${esc(itemCatLabel(p.category))})</span></span>
+      <span style="font-size:var(--text-sm);font-weight:700;color:${full?'#16a34a':'var(--red)'};">consume ${p.consumed}/${p.needed}${p.shortfall>0?` · ${p.shortfall} short`:''}</span>
     </div>`;
     const srcs = p.sources.length
-      ? `<div style="margin:4px 0 0 0;font-size:14px;color:var(--fg);">${p.sources.map(s=>`${s.take}× from ${esc(s.location)}${s.system?` (${esc(s.system)})`:''}`).join('<br>')}</div>`
-      : `<div style="margin:4px 0 0 0;font-size:14px;color:var(--red);">none available in inventory</div>`;
+      ? `<div style="margin:4px 0 0 0;font-size:var(--text-sm);color:var(--fg);">${p.sources.map(s=>`${s.take}× from ${esc(s.location)}${s.system?` (${esc(s.system)})`:''}`).join('<br>')}</div>`
+      : `<div style="margin:4px 0 0 0;font-size:var(--text-sm);color:var(--red);">none available in inventory</div>`;
     return `<div style="padding:10px 0;border-bottom:1px solid var(--border-m);">${head}${srcs}</div>`;
   }).join('');
 
   showModal(`
     <div class="modal-title">Use items — ${esc(taskTitle)}</div>
-    <p style="font-size:15px;color:var(--fg);margin-bottom:12px;">The following items will be marked as <strong>used</strong> for this project and removed from inventory. This cannot be undone.</p>
+    <p style="font-size:var(--text-sm);color:var(--fg);margin-bottom:12px;">The following items will be marked as <strong>used</strong> for this project and removed from inventory. This cannot be undone.</p>
     <div style="max-height:320px;overflow-y:auto;">${rows||'<div class="empty">No required items.</div>'}</div>
     <div style="display:flex;gap:10px;margin-top:16px;">
       ${totalConsumed>0
@@ -3312,11 +3312,11 @@ function openCreateTaskModal() {
     </div>
     <div class="field"><label class="lbl">Visible to (roles)</label>
       <div style="display:flex;gap:12px;margin-top:4px;flex-wrap:wrap;">
-        ${NAVY_ROLES.map(r=>`<label class="chk-row" style="margin:0;"><input type="checkbox" class="ct-role" value="${r.id}" style="width:auto;" checked> <span style="font-size:18px;">${r.label}</span></label>`).join('')}
+        ${NAVY_ROLES.map(r=>`<label class="chk-row" style="margin:0;"><input type="checkbox" class="ct-role" value="${r.id}" style="width:auto;" checked> <span style="font-size:var(--text-md);">${r.label}</span></label>`).join('')}
       </div>
     </div>
     <div class="field">
-      <label class="chk-row" style="margin:0;"><input type="checkbox" id="ct-needs-items" style="width:auto;" onchange="ctNeedsItems=this.checked;renderCtItemsSection()"> <span style="font-size:18px;font-weight:700;">Needs items to complete</span></label>
+      <label class="chk-row" style="margin:0;"><input type="checkbox" id="ct-needs-items" style="width:auto;" onchange="ctNeedsItems=this.checked;renderCtItemsSection()"> <span style="font-size:var(--text-md);font-weight:700;">Needs items to complete</span></label>
     </div>
     <div id="ct-items-wrap" style="display:none;">
       <div class="field" style="margin-top:0;">
@@ -3416,23 +3416,23 @@ function renderCtItemResults() {
       <table style="margin:0;width:100%;">
         <tbody>
           ${ctFilteredTypes.map((t,i)=>`<tr>
-            <td style="font-size:16px;font-weight:700;">${esc(t.name)}</td>
-            <td style="font-size:14px;color:var(--fg);">${esc(itemCatLabel(t.category))}</td>
-            <td style="font-size:14px;color:${t.inStock>0?'#16a34a':'var(--fg)'};">${t.inStock > 0 ? `${t.inStock} in stock` : 'not in stock'}</td>
+            <td style="font-size:var(--text-sm);font-weight:700;">${esc(t.name)}</td>
+            <td style="font-size:var(--text-sm);color:var(--fg);">${esc(itemCatLabel(t.category))}</td>
+            <td style="font-size:var(--text-sm);color:${t.inStock>0?'#16a34a':'var(--fg)'};">${t.inStock > 0 ? `${t.inStock} in stock` : 'not in stock'}</td>
             <td style="padding:4px 2px;"><input type="number" id="ctqty${i}" min="1" value="1" style="width:72px;margin:0;"></td>
             <td style="padding:4px 2px;"><button class="btn btn-black btn-sm" onclick="ctAddRequired(${i})">Add</button></td>
           </tr>`).join('')}
         </tbody>
       </table>
-    </div>` : `<div style="padding:8px;color:var(--fg);font-size:16px;">${q?'No items match.':'No Wikelo or Other items found.'}</div>`;
+    </div>` : `<div style="padding:8px;color:var(--fg);font-size:var(--text-sm);">${q?'No items match.':'No Wikelo or Other items found.'}</div>`;
 
   if (listEl) {
     listEl.innerHTML = ctRequiredItems.length ? `
       <div style="margin-top:10px;">
-        <div style="font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--fg);margin-bottom:6px;">Required for this project:</div>
+        <div style="font-size:var(--text-xs);font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--fg);margin-bottom:6px;">Required for this project:</div>
         ${ctRequiredItems.map((r,i)=>`
           <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border-m);">
-            <span style="font-size:16px;">${esc(r.name)} <span style="color:var(--fg);font-size:14px;">(${esc(itemCatLabel(r.category))})</span> &times; ${r.quantityNeeded}</span>
+            <span style="font-size:var(--text-sm);">${esc(r.name)} <span style="color:var(--fg);font-size:var(--text-sm);">(${esc(itemCatLabel(r.category))})</span> &times; ${r.quantityNeeded}</span>
             <button class="btn-del" onclick="ctRemoveRequired(${i})" style="padding:2px 8px;" aria-label="Remove item">&times;</button>
           </div>`).join('')}
       </div>` : '';
@@ -3493,25 +3493,25 @@ function pageLotteryList() {
 
     ${active.length?`
     <div style="margin-bottom:48px;">
-      <div style="font-size:18px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--border);">Open for Entry</div>
+      <div style="font-size:var(--text-md);font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--border);">Open for Entry</div>
       ${active.map(l=>lotteryCardHtml(l)).join('')}
     </div>`:''}
 
     ${drawn.length?`
     <div style="margin-bottom:48px;">
-      <div style="font-size:18px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--border);">Draw Complete</div>
+      <div style="font-size:var(--text-md);font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--border);">Draw Complete</div>
       ${drawn.map(l=>lotteryCardHtml(l)).join('')}
     </div>`:''}
 
     ${drafts.length&&admin?`
     <div style="margin-bottom:48px;">
-      <div style="font-size:18px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--border);">Drafts</div>
+      <div style="font-size:var(--text-md);font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--border);">Drafts</div>
       ${drafts.map(l=>lotteryCardHtml(l)).join('')}
     </div>`:''}
 
     ${closed.length?`
     <div style="margin-bottom:48px;">
-      <div style="font-size:18px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--border);">Closed</div>
+      <div style="font-size:var(--text-md);font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--border);">Closed</div>
       ${closed.map(l=>lotteryCardHtml(l)).join('')}
     </div>`:''}
 
@@ -3526,17 +3526,17 @@ function lotteryCardHtml(l) {
   const myHatCount=pkgs.filter(p=>(p.interested||[]).some(i=>i.id===u._id)).length;
   let statusBadge=l.status;
   let statusExtra='';
-  if(l.status==='open'&&myHatCount>0) statusExtra=`<span style="font-size:18px;font-weight:700;color:#22c55e;">(entered in ${myHatCount} package${myHatCount!==1?'s':''})</span>`;
-  if(l.status==='drawn'&&myWin) statusExtra=`<span style="font-size:18px;font-weight:700;color:#22c55e;">(you won Package ${myWin.pkgId.replace('pkg_','')})</span>`;
+  if(l.status==='open'&&myHatCount>0) statusExtra=`<span style="font-size:var(--text-md);font-weight:700;color:#22c55e;">(entered in ${myHatCount} package${myHatCount!==1?'s':''})</span>`;
+  if(l.status==='drawn'&&myWin) statusExtra=`<span style="font-size:var(--text-md);font-weight:700;color:#22c55e;">(you won Package ${myWin.pkgId.replace('pkg_','')})</span>`;
   return `<div class="lottery-card">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:20px;">
       <div style="flex:1;">
         <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px;">
-          <span style="font-size:24px;font-weight:900;">${esc(l.title)}</span>
+          <span style="font-size:var(--text-lg);font-weight:900;">${esc(l.title)}</span>
           <span class="lottery-status ${l.status}">${statusBadge}</span>
           ${statusExtra}
         </div>
-        <div style="font-size:18px;color:var(--fg);display:flex;gap:20px;flex-wrap:wrap;">
+        <div style="font-size:var(--text-md);color:var(--fg);display:flex;gap:20px;flex-wrap:wrap;">
           <span>${l.items.length} component${l.items.length!==1?'s':''}</span>
           ${pkgs.length?`<span>${pkgs.length} packages${l.status==='drawn'?' &middot; '+winnerCount+' winners':''}</span>`:''}
           <span>by ${esc(l.createdByName)}</span>
@@ -3573,7 +3573,7 @@ function pageLotteryDetail() {
     <div class="page-head">
       <div class="page-head-left">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
-          <span style="font-size:18px;cursor:pointer;font-weight:700;letter-spacing:.06em;text-transform:uppercase;" onclick="backToLotteryList()">← Lotteries</span>
+          <span style="font-size:var(--text-md);cursor:pointer;font-weight:700;letter-spacing:.06em;text-transform:uppercase;" onclick="backToLotteryList()">← Lotteries</span>
         </div>
         <div class="page-title">${esc(l.title)} <span class="lottery-status ${l.status}">${l.status}</span></div>
         <div class="page-sub">${l.items.length} components &middot; total value ${totalVal.toLocaleString()} pts &middot; by ${esc(l.createdByName)}</div>
@@ -3604,40 +3604,40 @@ function renderLotteryDraftDetail(l) {
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;">
       <!-- LEFT: items in lottery -->
       <div>
-        <div style="font-size:18px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid var(--border);">
+        <div style="font-size:var(--text-md);font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid var(--border);">
           Items in Lottery (${l.items.length})
-          ${totalVal?`<span style="font-size:18px;font-weight:400;margin-left:8px;">total: <strong>${totalVal.toLocaleString()}</strong></span>`:''}
+          ${totalVal?`<span style="font-size:var(--text-md);font-weight:400;margin-left:8px;">total: <strong>${totalVal.toLocaleString()}</strong></span>`:''}
         </div>
-        ${l.items.length===0?`<div style="font-size:18px;color:var(--fg);padding:20px 0;">No items added yet. Add from the catalog →</div>`:''}
+        ${l.items.length===0?`<div style="font-size:var(--text-md);color:var(--fg);padding:20px 0;">No items added yet. Add from the catalog →</div>`:''}
         ${l.items.map(item=>`
           <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border-m);">
             <div style="flex:1;">
-              <span class="comp-type-badge" style="font-size:9px;">${esc(item.typeName)}</span>
-              <span style="margin-left:6px;font-weight:700;font-size:18px;" class="comp-grade-${item.grade.toLowerCase()}">${esc(item.name)}</span>
-              <span style="margin-left:6px;font-size:18px;color:var(--fg);">S${item.size} / <span class="tier-${item.tier.toLowerCase()}">${item.tier}</span></span>
+              <span class="comp-type-badge" style="font-size:var(--text-xs);">${esc(item.typeName)}</span>
+              <span style="margin-left:6px;font-weight:700;font-size:var(--text-md);" class="comp-grade-${item.grade.toLowerCase()}">${esc(item.name)}</span>
+              <span style="margin-left:6px;font-size:var(--text-md);color:var(--fg);">S${item.size} / <span class="tier-${item.tier.toLowerCase()}">${item.tier}</span></span>
             </div>
             <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
-              <span style="font-size:18px;font-weight:700;min-width:60px;text-align:right;">${item.value}</span>
-              <span style="font-size:18px;color:var(--fg);">pts</span>
+              <span style="font-size:var(--text-md);font-weight:700;min-width:60px;text-align:right;">${item.value}</span>
+              <span style="font-size:var(--text-md);color:var(--fg);">pts</span>
               <button class="btn-del" style="padding:3px 8px;" onclick="removeLotteryItem('${esc(l._id)}','${esc(item.id)}')">x</button>
             </div>
           </div>`).join('')}
 
         ${l.items.length>0?`
         <div style="margin-top:24px;padding:20px;background:var(--bg2);border:1.5px solid var(--border-l);">
-          <div style="font-size:18px;font-weight:700;margin-bottom:12px;letter-spacing:.08em;text-transform:uppercase;">Generate Packages</div>
+          <div style="font-size:var(--text-md);font-weight:700;margin-bottom:12px;letter-spacing:.08em;text-transform:uppercase;">Generate Packages</div>
           <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-            <label style="font-size:18px;">Number of packages:</label>
-            <input type="number" id="pkg-count" min="2" max="20" value="${lotteryPkgCount}" style="width:70px;margin:0;padding:6px;font-size:18px;" oninput="lotteryPkgCount=parseInt(this.value)||2">
+            <label style="font-size:var(--text-md);">Number of packages:</label>
+            <input type="number" id="pkg-count" min="2" max="20" value="${lotteryPkgCount}" style="width:70px;margin:0;padding:6px;font-size:var(--text-md);" oninput="lotteryPkgCount=parseInt(this.value)||2">
             <button class="btn btn-black btn-sm" onclick="doGeneratePackages('${esc(l._id)}')">Generate</button>
           </div>
-          <div id="lottery-gen-status">${pkgs.length?`<div style="margin-top:10px;font-size:18px;color:#22c55e;font-weight:700;">${pkgs.length} packages generated</div>`:''}</div>
+          <div id="lottery-gen-status">${pkgs.length?`<div style="margin-top:10px;font-size:var(--text-md);color:#22c55e;font-weight:700;">${pkgs.length} packages generated</div>`:''}</div>
         </div>`:''}
       </div>
 
       <!-- RIGHT: component catalog -->
       <div>
-        <div style="font-size:18px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid var(--border);">Component Catalog</div>
+        <div style="font-size:var(--text-md);font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid var(--border);">Component Catalog</div>
 
         <!-- Category tabs -->
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
@@ -3653,17 +3653,17 @@ function renderLotteryDraftDetail(l) {
         <!-- Size + Grade sub-filters (only when a type is selected) -->
         ${lotteryCompTypeFilter!=='all'?`
         <div style="display:flex;gap:10px;margin-bottom:8px;flex-wrap:wrap;align-items:center;">
-          <span style="font-size:18px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;min-width:42px;">Size:</span>
+          <span style="font-size:var(--text-md);font-weight:700;letter-spacing:.06em;text-transform:uppercase;min-width:42px;">Size:</span>
           ${['all','0','1','2','3'].map(s=>`<button class="btn-ghost btn-sm${lotteryCompSizeFilter===s?' active':''}"
             onclick="setLotCompSize('${esc(l._id)}','${s}')">${s==='all'?'All':'S'+s}</button>`).join('')}
         </div>
         <div style="display:flex;gap:10px;margin-bottom:8px;flex-wrap:wrap;align-items:center;">
-          <span style="font-size:18px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;min-width:42px;">Tier:</span>
+          <span style="font-size:var(--text-md);font-weight:700;letter-spacing:.06em;text-transform:uppercase;min-width:42px;">Tier:</span>
           ${['all','A','B','C'].map(g=>`<button class="btn-ghost btn-sm${lotteryCompGradeFilter===g?' active':''}"
             onclick="setLotCompGrade('${esc(l._id)}','${g}')">${g==='all'?'All':g}</button>`).join('')}
         </div>
         <div style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap;align-items:center;">
-          <span style="font-size:18px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;min-width:42px;">Class:</span>
+          <span style="font-size:var(--text-md);font-weight:700;letter-spacing:.06em;text-transform:uppercase;min-width:42px;">Class:</span>
           ${[{id:'all',label:'All'},{id:'Mil',label:'Military'},{id:'Civ',label:'Civilian'},{id:'Ind',label:'Industrial'},{id:'Cmp',label:'Competition'},{id:'Sth',label:'Stealth'}]
             .map(c=>`<button class="btn-ghost btn-sm${lotteryCompClassFilter===c.id?' active':''}"
               onclick="setLotCompClass('${esc(l._id)}','${c.id}')">${c.label}</button>`).join('')}
@@ -3671,7 +3671,7 @@ function renderLotteryDraftDetail(l) {
 
         <!-- Search -->
         <div style="margin-bottom:10px;">
-          <input type="text" placeholder="Search by name…" value="${esc(lotteryCompSearch)}" style="margin:0;padding:6px 10px;font-size:18px;"
+          <input type="text" placeholder="Search by name…" value="${esc(lotteryCompSearch)}" style="margin:0;padding:6px 10px;font-size:var(--text-md);"
             oninput="lotteryCompSearch=this.value;document.getElementById('comp-catalog-list').innerHTML=renderCompCatalogList('${esc(l._id)}');">
         </div>
 
@@ -3683,7 +3683,7 @@ function renderLotteryDraftDetail(l) {
 
     <div id="lottery-pkgs-preview" style="margin-top:48px;">
       ${pkgs.length?`
-      <div style="font-size:18px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--border);">Generated Packages Preview</div>
+      <div style="font-size:var(--text-md);font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--border);">Generated Packages Preview</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;">
         ${pkgs.map(pkg=>renderPackageCard(pkg,l,true)).join('')}
       </div>`:''}
@@ -3700,16 +3700,16 @@ function renderCompCatalogList(lotteryId) {
     const q=lotteryCompSearch.trim().toLowerCase();
     filtered=filtered.filter(c=>c.name.toLowerCase().includes(q)||c.gradeName.toLowerCase().includes(q));
   }
-  if(!filtered.length) return `<div style="padding:20px;font-size:18px;color:var(--fg);">No components match.</div>`;
+  if(!filtered.length) return `<div style="padding:20px;font-size:var(--text-md);color:var(--fg);">No components match.</div>`;
   return filtered.map(c=>{
     const itemId=`${c.type}_${c.name.replace(/\s+/g,'_')}_${c.grade}_${c.size}_${c.tier}`;
     return `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--border-m);">
       <div style="flex:1;min-width:0;">
         <div style="display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;">
-          <span style="font-size:18px;font-weight:700;color:var(--fg);" class="comp-grade-${c.grade.toLowerCase()}">${esc(c.name)}</span>
-          <span style="font-size:18px;color:var(--fg);">S${c.size}<span class="tier-${c.tier.toLowerCase()}"> ${c.tier}</span></span>
+          <span style="font-size:var(--text-md);font-weight:700;color:var(--fg);" class="comp-grade-${c.grade.toLowerCase()}">${esc(c.name)}</span>
+          <span style="font-size:var(--text-md);color:var(--fg);">S${c.size}<span class="tier-${c.tier.toLowerCase()}"> ${c.tier}</span></span>
         </div>
-        <div style="font-size:18px;color:var(--fg);opacity:.7;">${esc(c.typeName)} &middot; ${esc(c.gradeName)}</div>
+        <div style="font-size:var(--text-md);color:var(--fg);opacity:.7;">${esc(c.typeName)} &middot; ${esc(c.gradeName)}</div>
       </div>
       <button class="btn btn-black btn-sm" style="white-space:nowrap;" onclick="addLotteryItem('${esc(lotteryId)}','${esc(itemId)}','${esc(c.name)}','${esc(c.type)}','${esc(c.typeName)}','${esc(c.grade)}',${c.size},'${esc(c.tier)}')">Add</button>
     </div>`;
@@ -3724,9 +3724,9 @@ function renderLotteryOpenDetail(l) {
 
   return `
     <div style="margin-bottom:24px;padding:20px;background:var(--bg2);border-left:4px solid #22c55e;">
-      <div style="font-size:18px;font-weight:700;">Lottery is open for entries.</div>
-      <div style="margin-top:6px;font-size:18px;">Enter the packages you want. Admin will run the draw when ready.</div>
-      <div style="margin-top:6px;font-size:18px;color:var(--fg);"><span id="lottery-open-status">${totalHats} entr${totalHats!==1?'ies':'y'} across ${pkgs.length} packages.</span></div>
+      <div style="font-size:var(--text-md);font-weight:700;">Lottery is open for entries.</div>
+      <div style="margin-top:6px;font-size:var(--text-md);">Enter the packages you want. Admin will run the draw when ready.</div>
+      <div style="margin-top:6px;font-size:var(--text-md);color:var(--fg);"><span id="lottery-open-status">${totalHats} entr${totalHats!==1?'ies':'y'} across ${pkgs.length} packages.</span></div>
     </div>
     <div id="lottery-open-pkgs" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin-bottom:40px;">
       ${pkgs.map(pkg=>renderPackageCard(pkg,l,false)).join('')}
@@ -3734,16 +3734,16 @@ function renderLotteryOpenDetail(l) {
     ${admin?`
     <hr class="thick">
     <div style="margin-top:40px;">
-      <div style="font-size:18px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--border);">External Participants</div>
+      <div style="font-size:var(--text-md);font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--border);">External Participants</div>
       <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
         <input type="text" id="ext-name-input" placeholder="Member name (not signed up)…" style="max-width:300px;margin:0;">
         <button class="btn btn-black btn-sm" onclick="doAddExternalName('${esc(l._id)}')">Add</button>
         ${extNames.length?`<button class="btn btn-black btn-sm" style="margin-left:8px;" onclick="doEnterAllNamesAllPackages('${esc(l._id)}')">Enter All Names in All Packages</button>`:''}
       </div>
       <div style="margin-bottom:16px;">
-        <div style="font-size:18px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;">Import List</div>
+        <div style="font-size:var(--text-md);font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;">Import List</div>
         <div style="display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap;">
-          <textarea id="ext-bulk-input" placeholder="One name per line…" style="width:300px;height:100px;resize:vertical;border:1.5px solid #000;padding:8px 12px;font-size:18px;font-family:inherit;background:var(--bg);color:var(--fg);"></textarea>
+          <textarea id="ext-bulk-input" placeholder="One name per line…" style="width:300px;height:100px;resize:vertical;border:1.5px solid #000;padding:8px 12px;font-size:var(--text-md);font-family:inherit;background:var(--bg);color:var(--fg);"></textarea>
           <div style="display:flex;flex-direction:column;gap:8px;">
             <button class="btn btn-black btn-sm" onclick="doBulkAddNames('${esc(l._id)}')">Import Pasted List</button>
             <label class="btn btn-outline btn-sm" style="cursor:pointer;display:inline-flex;align-items:center;">
@@ -3757,7 +3757,7 @@ function renderLotteryOpenDetail(l) {
       ${extNames.length?`
       <div style="margin-bottom:24px;">
         ${extNames.map(name=>renderExtNameRow(l,pkgs,name)).join('')}
-      </div>`:`<div style="font-size:18px;color:var(--fg);padding:12px 0;">No external participants added.</div>`}
+      </div>`:`<div style="font-size:var(--text-md);color:var(--fg);padding:12px 0;">No external participants added.</div>`}
       </div>
     </div>`:''}`;
 }
@@ -3766,8 +3766,8 @@ function renderExtNameRow(l, pkgs, name) {
   const entered=pkgs.filter(p=>(p.interested||[]).some(i=>i.id==='ext_'+name));
   const notEntered=pkgs.filter(p=>!(p.interested||[]).some(i=>i.id==='ext_'+name));
   return `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border-m);flex-wrap:wrap;">
-    <span style="font-size:18px;font-weight:700;min-width:160px;">${esc(name)}</span>
-    <span style="font-size:18px;color:var(--fg);">${entered.length?'Entered: '+entered.map(p=>'Pkg '+p.pkgId.replace('pkg_','')).join(', '):'Not entered yet'}</span>
+    <span style="font-size:var(--text-md);font-weight:700;min-width:160px;">${esc(name)}</span>
+    <span style="font-size:var(--text-md);color:var(--fg);">${entered.length?'Entered: '+entered.map(p=>'Pkg '+p.pkgId.replace('pkg_','')).join(', '):'Not entered yet'}</span>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-left:auto;">
       ${notEntered.length?`<button class="btn btn-black btn-sm" onclick="doEnterAllPackages('${esc(l._id)}','${escJs(name)}')">Enter All</button>`:''}
       ${pkgs.map(p=>{
@@ -3799,7 +3799,7 @@ function refreshLotteryOpenView(lotteryId) {
   if(extEl) extEl.innerHTML=extNames.length?`
     <div style="margin-bottom:24px;">
       ${extNames.map(name=>renderExtNameRow(l,pkgs,name)).join('')}
-    </div>`:`<div style="font-size:18px;color:var(--fg);padding:12px 0;">No external participants added.</div>`;
+    </div>`:`<div style="font-size:var(--text-md);color:var(--fg);padding:12px 0;">No external participants added.</div>`;
 
   // Update status bar entry count
   const totalEntries=pkgs.reduce((s,p)=>s+(p.interested||[]).length,0);
@@ -3821,15 +3821,15 @@ function renderLotteryDrawnDetail(l) {
 
   return `
     <div style="margin-bottom:24px;padding:20px;background:var(--bg2);border-left:4px solid #22c55e;">
-      <div style="font-size:18px;font-weight:700;">Draw complete. ${winnerCount} of ${pkgs.length} packages assigned.</div>
+      <div style="font-size:var(--text-md);font-weight:700;">Draw complete. ${winnerCount} of ${pkgs.length} packages assigned.</div>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin-bottom:40px;">
       ${pkgs.map(pkg=>renderPackageCard(pkg,l,true)).join('')}
     </div>
     ${noWinners.length?`
     <div style="margin-top:8px;padding:16px 20px;background:var(--bg2);border:1.5px solid var(--border-l);">
-      <div style="font-size:18px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;">No Package Assigned</div>
-      ${noWinners.map(p=>`<div style="font-size:18px;padding:4px 0;">${esc(p.name)} — no package won</div>`).join('')}
+      <div style="font-size:var(--text-md);font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;">No Package Assigned</div>
+      ${noWinners.map(p=>`<div style="font-size:var(--text-md);padding:4px 0;">${esc(p.name)} — no package won</div>`).join('')}
     </div>`:''}`;
 }
 
@@ -3839,7 +3839,7 @@ function renderLotteryClosedDetail(l) {
 
   return `
     <div style="margin-bottom:24px;padding:20px;background:var(--bg2);border-left:4px solid #555;">
-      <div style="font-size:18px;font-weight:700;">Lottery closed. ${winnerCount} of ${pkgs.length} packages assigned.</div>
+      <div style="font-size:var(--text-md);font-weight:700;">Lottery closed. ${winnerCount} of ${pkgs.length} packages assigned.</div>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;">
       ${pkgs.map(pkg=>renderPackageCard(pkg,l,true)).join('')}
@@ -3861,30 +3861,30 @@ function renderPackageCard(pkg, lottery, readOnly) {
   return `<div class="${cardClass}">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
       <div>
-        <span style="font-size:20px;font-weight:900;">Package ${pkg.pkgId.replace('pkg_','')}</span>
-        <span style="font-size:18px;margin-left:8px;font-weight:700;">${pkg.totalValue.toLocaleString()} pts</span>
+        <span style="font-size:var(--text-md);font-weight:900;">Package ${pkg.pkgId.replace('pkg_','')}</span>
+        <span style="font-size:var(--text-md);margin-left:8px;font-weight:700;">${pkg.totalValue.toLocaleString()} pts</span>
       </div>
-      ${isDrawn&&winner?`<span style="font-size:18px;font-weight:700;color:#22c55e;">${esc(winner.name)}</span>`:''}
-      ${isDrawn&&!winner?`<span style="font-size:18px;color:var(--fg);opacity:.6;">Unassigned</span>`:''}
+      ${isDrawn&&winner?`<span style="font-size:var(--text-md);font-weight:700;color:#22c55e;">${esc(winner.name)}</span>`:''}
+      ${isDrawn&&!winner?`<span style="font-size:var(--text-md);color:var(--fg);opacity:.6;">Unassigned</span>`:''}
     </div>
     <div style="margin-bottom:10px;">
       ${pkg.items.map(item=>`
         <div class="pkg-item-row">
-          <span class="comp-type-badge" style="font-size:9px;">${esc(item.typeName)}</span>
-          <span style="font-weight:700;flex:1;font-size:18px;" class="comp-grade-${item.grade.toLowerCase()}">${esc(item.name)}</span>
-          <span style="font-size:18px;color:var(--fg);">S${item.size}<span class="tier-${item.tier.toLowerCase()}"> ${item.tier}</span></span>
-          <span style="font-size:18px;color:var(--fg);">${item.value} pts</span>
+          <span class="comp-type-badge" style="font-size:var(--text-xs);">${esc(item.typeName)}</span>
+          <span style="font-weight:700;flex:1;font-size:var(--text-md);" class="comp-grade-${item.grade.toLowerCase()}">${esc(item.name)}</span>
+          <span style="font-size:var(--text-md);color:var(--fg);">S${item.size}<span class="tier-${item.tier.toLowerCase()}"> ${item.tier}</span></span>
+          <span style="font-size:var(--text-md);color:var(--fg);">${item.value} pts</span>
         </div>`).join('')}
     </div>
     ${isOpen&&!readOnly?`
     <div style="margin-top:8px;">
-      <div style="font-size:18px;margin-bottom:8px;color:var(--fg);">${interested.length} interested${interested.length?': '+interested.map(i=>esc(i.name)).join(', '):''}.</div>
+      <div style="font-size:var(--text-md);margin-bottom:8px;color:var(--fg);">${interested.length} interested${interested.length?': '+interested.map(i=>esc(i.name)).join(', '):''}.</div>
       ${iHaveHat
         ?`<button class="btn btn-outline btn-sm" style="width:100%;justify-content:center;" onclick="doRemoveHat('${esc(lottery._id)}','${esc(pkg.pkgId)}','${u._id}')">Leave</button>`
         :`<button class="btn btn-black" style="width:100%;justify-content:center;" onclick="doThrowHat('${esc(lottery._id)}','${esc(pkg.pkgId)}')">Enter</button>`}
     </div>`:''}
     ${isDrawn&&interested.length?`
-    <div style="margin-top:8px;font-size:18px;color:var(--fg);">
+    <div style="margin-top:8px;font-size:var(--text-md);color:var(--fg);">
       ${interested.map(i=>{
         const won=winner&&winner.id===i.id;
         return `<span style="${won?'color:#22c55e;font-weight:700;':'opacity:.7;'}">${esc(i.name)}${won?' (winner)':''}</span>`;
@@ -3988,13 +3988,13 @@ async function doGeneratePackages(lotteryId) {
       const l=state.lotteries.find(x=>x._id===lotteryId);
       const pkgs=l?l.packages||[]:[];
       preview.innerHTML=pkgs.length?`
-        <div style="font-size:18px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--border);">Generated Packages Preview</div>
+        <div style="font-size:var(--text-md);font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--border);">Generated Packages Preview</div>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;">
           ${pkgs.map(pkg=>renderPackageCard(pkg,l,true)).join('')}
         </div>`:'';
       // Update the "X packages generated" status line inside the generate box
       const genStatus=document.getElementById('lottery-gen-status');
-      if(genStatus) genStatus.innerHTML=pkgs.length?`<div style="margin-top:10px;font-size:18px;color:#22c55e;font-weight:700;">${pkgs.length} packages generated</div>`:'';
+      if(genStatus) genStatus.innerHTML=pkgs.length?`<div style="margin-top:10px;font-size:var(--text-md);color:#22c55e;font-weight:700;">${pkgs.length} packages generated</div>`:'';
     } else {
       const pw=document.getElementById('page-wrap');
       if(pw) pw.innerHTML=`<div class="page">${pageLottery()}</div>`;
