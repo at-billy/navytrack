@@ -1810,7 +1810,7 @@ async function confirmCompleteLogistics(logisticsId) {
 }
 
 async function deleteLogisticsTask(logisticsId) {
-  if(!confirm('Delete this logistics task?')) return;
+  if(!await confirmModal('Delete this logistics task?')) return;
   try {
     await convexMutation('logistics:deleteTask',{sessionToken:state.sessionToken,logisticsId});
     toast('Task deleted');
@@ -2415,7 +2415,7 @@ async function confirmAddItem() {
 }
 
 async function deleteNavItem(itemId) {
-  if(!confirm('Remove this item from inventory?')) return;
+  if(!await confirmModal('Remove this item from inventory?')) return;
   try {
     await convexMutation('items:remove',{sessionToken:state.sessionToken,itemId});
     toast('Item removed');
@@ -2781,7 +2781,7 @@ function toggleAdminRemoved(){
 }
 
 async function adminRestoreMember(targetId, targetName){
-  if(!confirm(`Restore ${targetName} as a member? They'll be able to sign in again.`)) return;
+  if(!await confirmModal(`Restore ${targetName} as a member? They'll be able to sign in again.`)) return;
   try {
     await convexMutation('users:restoreMember',{sessionToken:state.sessionToken,targetUserId:targetId});
     toast(`${targetName} restored`);
@@ -2812,7 +2812,7 @@ async function adminIssueResetCode(resetId, username){
 }
 
 async function adminDismissReset(resetId, username){
-  if(!confirm(`Dismiss the password reset request from ${username}?`)) return;
+  if(!await confirmModal(`Dismiss the password reset request from ${username}?`)) return;
   try {
     await convexMutation('passwordResets:dismiss',{sessionToken:state.sessionToken,resetId});
     toast('Request dismissed');
@@ -2822,7 +2822,7 @@ async function adminDismissReset(resetId, username){
 }
 
 async function adminAcceptRecruit(appId, targetId, targetName) {
-  if(!confirm(`Accept ${targetName} as Member? Their recruit role will be replaced with member.`)) return;
+  if(!await confirmModal(`Accept ${targetName} as Member? Their recruit role will be replaced with member.`)) return;
   try {
     await convexMutation('users:grantRole',{sessionToken:state.sessionToken,targetUserId:targetId,role:'member'});
     await convexMutation('users:revokeRole',{sessionToken:state.sessionToken,targetUserId:targetId,role:'recruit'});
@@ -2834,7 +2834,7 @@ async function adminAcceptRecruit(appId, targetId, targetName) {
 }
 
 async function adminRemoveApp(appId, userName) {
-  if(!confirm(`Delete ${userName}'s application? This cannot be undone.`)) return;
+  if(!await confirmModal(`Delete ${userName}'s application? This cannot be undone.`)) return;
   try {
     await convexMutation('applications:remove',{sessionToken:state.sessionToken,applicationId:appId});
     toast('Application deleted');
@@ -2854,7 +2854,7 @@ async function adminMarkAppReviewed(appId) {
 
 async function adminGrantRole(targetId, targetName, role) {
   const label=role.charAt(0).toUpperCase()+role.slice(1);
-  if(!confirm(`Grant ${label} role to ${targetName}?`)) return;
+  if(!await confirmModal(`Grant ${label} role to ${targetName}?`)) return;
   try {
     await convexMutation('users:grantRole',{sessionToken:state.sessionToken,targetUserId:targetId,role});
     toast(`${label} role granted to ${targetName}`);
@@ -2865,7 +2865,7 @@ async function adminGrantRole(targetId, targetName, role) {
 
 async function adminRevokeRole(targetId, targetName, role) {
   const label=role.charAt(0).toUpperCase()+role.slice(1);
-  if(!confirm(`Revoke ${label} role from ${targetName}?`)) return;
+  if(!await confirmModal(`Revoke ${label} role from ${targetName}?`)) return;
   try {
     await convexMutation('users:revokeRole',{sessionToken:state.sessionToken,targetUserId:targetId,role});
     toast(`${label} role revoked from ${targetName}`);
@@ -2875,7 +2875,7 @@ async function adminRevokeRole(targetId, targetName, role) {
 }
 
 async function adminGrantAdmin(targetId, targetName) {
-  if(!confirm(`Grant admin role to ${targetName}? This cannot be undone.`)) return;
+  if(!await confirmModal(`Grant admin role to ${targetName}? This cannot be undone.`)) return;
   try {
     await convexMutation('users:grantAdmin',{sessionToken:state.sessionToken,targetUserId:targetId});
     toast(`Admin role granted to ${targetName}`);
@@ -2885,7 +2885,7 @@ async function adminGrantAdmin(targetId, targetName) {
 }
 
 async function adminRemoveMember(targetId, targetName) {
-  if(!confirm(`Remove ${targetName} from the org? They will be marked as removed.`)) return;
+  if(!await confirmModal(`Remove ${targetName} from the org? They will be marked as removed.`)) return;
   try {
     await convexMutation('users:removeMember',{sessionToken:state.sessionToken,targetUserId:targetId});
     toast(`${targetName} removed`);
@@ -2895,7 +2895,7 @@ async function adminRemoveMember(targetId, targetName) {
 }
 
 async function adminDeleteLog(id) {
-  if(!confirm('Delete this log entry?')) return;
+  if(!await confirmModal('Delete this log entry?')) return;
   try {
     await convexMutation('archive:removeLog',{id,sessionToken:state.sessionToken});
     toast('Log entry deleted');
@@ -2930,14 +2930,47 @@ function showModal(html) {
     try{ first.focus(); }catch(e){}
   },0);
 }
+let _modalOnClose = null;
 function closeModal() {
   const overlay=document.getElementById('modal-overlay');
   if(overlay) overlay.classList.remove('open');
   if(_modalLastFocus && _modalLastFocus.focus){ try{_modalLastFocus.focus(); }catch(e){} }
   _modalLastFocus=null;
+  const cb=_modalOnClose; _modalOnClose=null;
+  if(cb) cb();   // notify a pending confirmModal that the dialog was dismissed
 }
 function modalOverlayClick(e) {
   // clicking backdrop no longer closes — use the X button instead
+}
+
+// Styled, promise-based replacement for native confirm(). Resolves true/false.
+// Accepts a message string or { title, body, confirmLabel, cancelLabel, danger }.
+function confirmModal(opts){
+  const o = (typeof opts==='string') ? { body: opts } : (opts || {});
+  const title = o.title || 'Please confirm';
+  const body = o.body || 'Are you sure?';
+  const confirmLabel = o.confirmLabel || 'Confirm';
+  const cancelLabel = o.cancelLabel || 'Cancel';
+  // Auto-flag destructive confirms (red button) from the wording unless told explicitly.
+  const danger = (o.danger!==undefined) ? !!o.danger
+    : /\b(delete|remove|cannot be undone|permanently|revert|draw now)\b/i.test(body);
+  return new Promise(resolve=>{
+    let settled=false;
+    const settle=(val)=>{ if(settled) return; settled=true; _modalOnClose=null; resolve(val); };
+    showModal(`
+      <div class="modal-title">${esc(title)}</div>
+      <div style="font-size:18px;color:var(--fg);line-height:1.6;margin-bottom:28px;">${esc(body)}</div>
+      <div style="display:flex;gap:10px;">
+        <button class="btn ${danger?'btn-red':'btn-black'}" id="cm-yes">${esc(confirmLabel)}</button>
+        <button class="btn btn-outline" id="cm-no">${esc(cancelLabel)}</button>
+      </div>`);
+    _modalOnClose = ()=>settle(false);   // Esc / × / dismiss = cancel
+    const yes=document.getElementById('cm-yes'), no=document.getElementById('cm-no');
+    if(yes) yes.onclick=()=>{ settle(true); closeModal(); };
+    if(no)  no.onclick=()=>{ settle(false); closeModal(); };
+    // Default focus to Cancel so a stray Enter never confirms a destructive action.
+    setTimeout(()=>{ if(no) try{no.focus();}catch(e){} },0);
+  });
 }
 
 // Global keyboard accessibility: Esc closes modals, Tab is trapped inside an
@@ -3240,18 +3273,18 @@ async function joinTask(taskId) {
   try { await convexMutation('tasks:join',{taskId,sessionToken:state.sessionToken}); toast('Joined'); await refreshAll(); } catch(e){notifyError(e);}
 }
 async function leaveTask(taskId) {
-  if(!confirm('Leave this project?')) return;
+  if(!await confirmModal('Leave this project?')) return;
   try { await convexMutation('tasks:leave',{taskId,sessionToken:state.sessionToken}); toast('Left project'); await refreshAll(); } catch(e){notifyError(e);}
 }
 async function closeTask(taskId) {
-  if(!confirm('Close this project?')) return;
+  if(!await confirmModal('Close this project?')) return;
   try { await convexMutation('tasks:close',{taskId,sessionToken:state.sessionToken}); toast('Project closed'); await refreshAll(); } catch(e){notifyError(e);}
 }
 async function reopenTask(taskId) {
   try { await convexMutation('tasks:reopen',{taskId,sessionToken:state.sessionToken}); toast('Project reopened'); await refreshAll(); } catch(e){notifyError(e);}
 }
 async function deleteTask(taskId) {
-  if(!confirm('Delete this project permanently?')) return;
+  if(!await confirmModal('Delete this project permanently?')) return;
   try { await convexMutation('tasks:remove',{taskId,sessionToken:state.sessionToken}); toast('Deleted'); await refreshAll(); } catch(e){notifyError(e);}
 }
 
@@ -3968,7 +4001,7 @@ async function doGeneratePackages(lotteryId) {
 }
 
 async function confirmOpenLottery(lotteryId) {
-  if(!confirm('Open this lottery for entry? Members will be able to register interest in packages.')) return;
+  if(!await confirmModal('Open this lottery for entry? Members will be able to register interest in packages.')) return;
   try {
     await convexMutation('lotteries:openLottery',{sessionToken:state.sessionToken,lotteryId});
     toast('Lottery opened');
@@ -3978,7 +4011,7 @@ async function confirmOpenLottery(lotteryId) {
 }
 
 async function confirmCloseLottery(lotteryId) {
-  if(!confirm('Close this lottery? Members will no longer be able to pick packages.')) return;
+  if(!await confirmModal('Close this lottery? Members will no longer be able to pick packages.')) return;
   try {
     await convexMutation('lotteries:closeLottery',{sessionToken:state.sessionToken,lotteryId});
     toast('Lottery closed');
@@ -3988,7 +4021,7 @@ async function confirmCloseLottery(lotteryId) {
 }
 
 async function confirmBackToDraft(lotteryId) {
-  if(!confirm('Revert to draft? This will clear all entries, winners, and external participants.')) return;
+  if(!await confirmModal('Revert to draft? This will clear all entries, winners, and external participants.')) return;
   try {
     await convexMutation('lotteries:backToDraft',{sessionToken:state.sessionToken,lotteryId});
     toast('Reverted to draft');
@@ -3998,7 +4031,7 @@ async function confirmBackToDraft(lotteryId) {
 }
 
 async function doPickPackage(lotteryId, pkgId) {
-  if(!confirm('Pick this package? You can only pick once.')) return;
+  if(!await confirmModal('Pick this package? You can only pick once.')) return;
   try {
     await convexMutation('lotteries:pickPackage',{sessionToken:state.sessionToken,lotteryId,pkgId});
     toast('Package picked');
@@ -4099,7 +4132,7 @@ async function doEnterAllNamesAllPackages(lotteryId) {
 }
 
 async function doRunDraw(lotteryId) {
-  if(!confirm('Run the lottery draw now? This will randomly assign winners to packages. This cannot be undone.')) return;
+  if(!await confirmModal('Run the lottery draw now? This will randomly assign winners to packages. This cannot be undone.')) return;
   try {
     await convexMutation('lotteries:runDraw',{sessionToken:state.sessionToken,lotteryId});
     toast('Lottery draw complete');
@@ -4109,7 +4142,7 @@ async function doRunDraw(lotteryId) {
 }
 
 async function deleteLottery(lotteryId) {
-  if(!confirm('Delete this lottery? This cannot be undone.')) return;
+  if(!await confirmModal('Delete this lottery? This cannot be undone.')) return;
   try {
     await convexMutation('lotteries:remove',{sessionToken:state.sessionToken,lotteryId});
     toast('Lottery deleted');
@@ -4121,7 +4154,7 @@ async function deleteLottery(lotteryId) {
 
 async function claimBootstrapAdmin() {
   if(hasAdmin()) { toast('An admin already exists.'); renderNav(); return; }
-  if(!confirm(`Claim admin role for "${state.user.username}"? This is only possible while no admins exist.`)) return;
+  if(!await confirmModal(`Claim admin role for "${state.user.username}"? This is only possible while no admins exist.`)) return;
   try {
     const updated=await convexMutation('users:claimBootstrapAdmin',{sessionToken:state.sessionToken});
     state.user=updated;
