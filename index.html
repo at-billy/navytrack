@@ -741,7 +741,7 @@ function compDefaultValue(comp) {
 // ─── CONFIG / STATE ───────────────────────────────────────────────────────────
 let CONVEX_URL = localStorage.getItem('navytrack_url') || 'https://colorless-stoat-737.eu-west-1.convex.cloud';
 let currentPage = 'overview';
-const state = { user: null, sessionToken: null, navItems: [], archive: [], allUsers: [], tasks: [], lotteries: [], applications: [], logistics: [] };
+const state = { user: null, sessionToken: null, navItems: [], archive: [], allUsers: [], tasks: [], lotteries: [], applications: [], logistics: [], passwordResets: [] };
 // Archive pagination: state.archive holds the reactive recent window; archiveOlder
 // accumulates on-demand pages fetched via archive:loadOlder on the Log page.
 let archiveOlder = [];
@@ -879,7 +879,7 @@ function locationOptions(system) {
 async function refreshAll(silent=false) {
   try {
     const tok = state.sessionToken;
-    const [navItems, archive, allUsers, tasks, lotteries, applications, logistics] = await Promise.all([
+    const [navItems, archive, allUsers, tasks, lotteries, applications, logistics, passwordResets] = await Promise.all([
       convexQuery('items:getAll',{sessionToken:tok}).catch(()=>[]),
       convexQuery('archive:getAll',{sessionToken:tok}).catch(()=>[]),
       convexQuery('users:getAllUsers',{sessionToken:tok}).catch(()=>[]),
@@ -887,6 +887,7 @@ async function refreshAll(silent=false) {
       convexQuery('lotteries:getAll',{sessionToken:tok}).catch(()=>[]),
       convexQuery('applications:getAll',{sessionToken:tok}).catch(()=>[]),
       convexQuery('logistics:getAll',{sessionToken:tok}).catch(()=>[]),
+      convexQuery('passwordResets:list',{sessionToken:tok}).catch(()=>[]),
     ]);
     state.navItems      = navItems      || [];
     state.archive       = archive       || [];
@@ -895,6 +896,7 @@ async function refreshAll(silent=false) {
     state.lotteries     = lotteries     || [];
     state.applications  = applications  || [];
     state.logistics     = logistics     || [];
+    state.passwordResets = passwordResets || [];
     // Sync logged-in user's roles from server
     if(state.user) {
       const fresh=state.allUsers.find(u=>u._id===state.user._id);
@@ -916,6 +918,7 @@ const REALTIME_TABLES = [
   ['lotteries',    'getAll', 'lotteries'],
   ['applications', 'getAll', 'applications'],
   ['logistics',    'getAll', 'logistics'],
+  ['passwordResets', 'list', 'passwordResets'],
 ];
 
 function startData() {
@@ -1075,39 +1078,114 @@ async function saveSetup() {
 }
 
 // ─── AUTH ─────────────────────────────────────────────────────────────────────
+let authPrefillUser = '';
 function showAuth(tab='signin') {
   stopData();
+  const showTabs = (tab==='signin'||tab==='signup');
+  let body;
+  if (tab==='signin') {
+    body = `
+      <div class="field"><label class="lbl">Username</label><input id="si-user" type="text" autocomplete="username" placeholder="username"></div>
+      <div class="field"><label class="lbl">Password</label><input id="si-pass" type="password" autocomplete="current-password" placeholder="password"></div>
+      <div class="err-msg" id="si-err"></div>
+      <button class="btn btn-black" style="width:100%;justify-content:center;" onclick="doSignIn()">Sign In</button>
+      <div style="margin-top:12px;font-size:18px;color:var(--fg);text-align:center;">
+        <span style="cursor:pointer;text-decoration:underline;" onclick="showAuth('forgot')">Forgot password?</span>
+      </div>
+      <div style="margin-top:8px;font-size:18px;color:var(--fg);text-align:center;">
+        Wrong URL? <span style="cursor:pointer;text-decoration:underline;" onclick="showSetup()">Change setup</span>
+      </div>`;
+  } else if (tab==='signup') {
+    body = `
+      <div class="field"><label class="lbl">Username</label><input id="su-user" type="text" placeholder="choose a username"></div>
+      <div class="field"><label class="lbl">Password</label><input id="su-pass" type="password" placeholder="create a password"></div>
+      <div style="font-size:18px;color:var(--fg);margin-bottom:16px;padding:10px 14px;background:#f5f5f5;">
+        New accounts start as <strong>Recruit</strong>. An admin can promote your role.
+      </div>
+      <div class="err-msg" id="su-err"></div>
+      <button class="btn btn-black" style="width:100%;justify-content:center;" onclick="doSignUp()">Create Account</button>`;
+  } else if (tab==='forgot') {
+    body = `
+      <div style="font-size:18px;font-weight:700;margin-bottom:6px;">Forgot password</div>
+      <div style="font-size:16px;color:var(--fg);margin-bottom:16px;">Enter your username. An admin will verify you and send a one-time reset code (e.g. via Discord).</div>
+      <div class="field"><label class="lbl">Username</label><input id="fp-user" type="text" autocomplete="username" placeholder="username"></div>
+      <div class="err-msg" id="fp-err"></div>
+      <button class="btn btn-black" style="width:100%;justify-content:center;" onclick="doRequestReset()">Request reset</button>
+      <div style="margin-top:12px;font-size:18px;color:var(--fg);text-align:center;">
+        Already have a code? <span style="cursor:pointer;text-decoration:underline;" onclick="showAuth('reset')">Enter it</span>
+      </div>
+      <div style="margin-top:8px;font-size:18px;color:var(--fg);text-align:center;">
+        <span style="cursor:pointer;text-decoration:underline;" onclick="showAuth('signin')">Back to sign in</span>
+      </div>`;
+  } else { // reset
+    body = `
+      <div style="font-size:18px;font-weight:700;margin-bottom:6px;">Reset password</div>
+      <div style="font-size:16px;color:var(--fg);margin-bottom:16px;">Enter the one-time code your admin sent you and choose a new password.</div>
+      <div class="field"><label class="lbl">Username</label><input id="rp-user" type="text" autocomplete="username" value="${esc(authPrefillUser)}" placeholder="username"></div>
+      <div class="field"><label class="lbl">Reset code</label><input id="rp-code" type="text" placeholder="8-character code" style="text-transform:uppercase;letter-spacing:2px;"></div>
+      <div class="field"><label class="lbl">New password</label><input id="rp-new" type="password" autocomplete="new-password"></div>
+      <div class="field"><label class="lbl">Confirm new password</label><input id="rp-confirm" type="password" autocomplete="new-password"></div>
+      <div class="err-msg" id="rp-err"></div>
+      <button class="btn btn-black" style="width:100%;justify-content:center;" onclick="doCompleteReset()">Set new password</button>
+      <div style="margin-top:12px;font-size:18px;color:var(--fg);text-align:center;">
+        <span style="cursor:pointer;text-decoration:underline;" onclick="showAuth('signin')">Back to sign in</span>
+      </div>`;
+  }
   document.getElementById('root').innerHTML = `
     <div class="center-screen">
       <div class="auth-box">
         <div class="auth-logo">NAVYTRACK</div>
-        <div class="tabs">
+        ${showTabs?`<div class="tabs">
           <button class="tab-btn${tab==='signin'?' active':''}" onclick="showAuth('signin')">Sign In</button>
           <button class="tab-btn${tab==='signup'?' active':''}" onclick="showAuth('signup')">Sign Up</button>
-        </div>
-        ${tab==='signin'?`
-          <div class="field"><label class="lbl">Username</label><input id="si-user" type="text" autocomplete="username" placeholder="username"></div>
-          <div class="field"><label class="lbl">Password</label><input id="si-pass" type="password" autocomplete="current-password" placeholder="password"></div>
-          <div class="err-msg" id="si-err"></div>
-          <button class="btn btn-black" style="width:100%;justify-content:center;" onclick="doSignIn()">Sign In</button>
-          <div style="margin-top:12px;font-size:18px;color:var(--fg);text-align:center;">
-            Wrong URL? <span style="cursor:pointer;text-decoration:underline;" onclick="showSetup()">Change setup</span>
-          </div>
-        `:`
-          <div class="field"><label class="lbl">Username</label><input id="su-user" type="text" placeholder="choose a username"></div>
-          <div class="field"><label class="lbl">Password</label><input id="su-pass" type="password" placeholder="create a password"></div>
-          <div style="font-size:18px;color:var(--fg);margin-bottom:16px;padding:10px 14px;background:#f5f5f5;">
-            New accounts start as <strong>Recruit</strong>. An admin can promote your role.
-          </div>
-          <div class="err-msg" id="su-err"></div>
-          <button class="btn btn-black" style="width:100%;justify-content:center;" onclick="doSignUp()">Create Account</button>
-        `}
+        </div>`:''}
+        ${body}
       </div>
     </div>`;
   setTimeout(()=>{
-    const p=document.getElementById(tab==='signin'?'si-pass':'su-pass');
-    if(p) p.addEventListener('keydown',e=>{if(e.key==='Enter') tab==='signin'?doSignIn():doSignUp();});
+    if(tab==='signin'||tab==='signup'){
+      const p=document.getElementById(tab==='signin'?'si-pass':'su-pass');
+      if(p) p.addEventListener('keydown',e=>{if(e.key==='Enter') tab==='signin'?doSignIn():doSignUp();});
+    }
   },0);
+}
+
+async function doRequestReset() {
+  const username=(document.getElementById('fp-user')||{value:''}).value.trim();
+  if(!username){showErr('fp-err','Enter your username');return;}
+  try {
+    await convexMutation('passwordResets:request',{username});
+    authPrefillUser = username;
+    toast('If that account exists, an admin has been notified. They will send you a reset code.', 5000);
+    showAuth('reset');
+  } catch(e){ notifyError(e); }
+}
+
+async function doCompleteReset() {
+  const username=(document.getElementById('rp-user')||{value:''}).value.trim();
+  const code=(document.getElementById('rp-code')||{value:''}).value.trim();
+  const nw=(document.getElementById('rp-new')||{value:''}).value;
+  const cf=(document.getElementById('rp-confirm')||{value:''}).value;
+  if(!username||!code||!nw){showErr('rp-err','Fill in all fields');return;}
+  if(nw.length<6){showErr('rp-err','New password must be at least 6 characters');return;}
+  if(nw!==cf){showErr('rp-err','New passwords do not match');return;}
+  try {
+    await convexMutation('passwordResets:complete',{username,code,newPassword:nw});
+    authPrefillUser='';
+    toast('Password reset — you can sign in now.');
+    showAuth('signin');
+  } catch(e){
+    const m=(e&&e.message)||'';
+    const map = {
+      RESET_CODE_WRONG:'Incorrect code',
+      RESET_EXPIRED:'That code has expired — request a new one',
+      RESET_TOO_MANY:'Too many attempts — request a new code',
+      RESET_INVALID:'No active reset for that username — request one first',
+      PASSWORD_TOO_SHORT:'New password must be at least 6 characters',
+    };
+    const key = Object.keys(map).find(k=>m.includes(k));
+    showErr('rp-err', key?map[key]:friendlyError(e));
+  }
 }
 
 async function doSignIn() {
@@ -1222,7 +1300,7 @@ function renderNav() {
     const openLotteries=state.lotteries.filter(l=>l.status==='open'||l.status==='drawn').length;
     sub=`
       <div class="nav-sub-item${currentPage==='archive'?' active':''}" onclick="goTo('archive')">Log</div>
-      ${isAdmin(u)?`<div class="nav-sub-item${currentPage==='admin'?' active':''}" onclick="goTo('admin')">${(()=>{const pending=state.allUsers.filter(u=>isRecruit(u)).length;return `Admin${pending?` (${pending})`:''}`})()}</div>`:''}
+      ${isAdmin(u)?`<div class="nav-sub-item${currentPage==='admin'?' active':''}" onclick="goTo('admin')">${(()=>{const pending=state.allUsers.filter(u=>isRecruit(u)).length+state.passwordResets.length;return `Admin${pending?` (${pending})`:''}`})()}</div>`:''}
       ${canManageLottery(u)?`<div class="nav-sub-item${currentPage==='lottery'?' active':''}" onclick="goTo('lottery')">Lottery${openLotteries?' ('+openLotteries+')':''}</div>`:''}
       <div class="nav-sub-item${currentPage==='member'?' active':''}" onclick="goTo('member')">${esc(u.username)}</div>
       <div class="nav-sub-item" onclick="doLogout()">Sign out</div>`;
@@ -2341,7 +2419,7 @@ async function loadOlderArchive(){
 
 function renderMonthRows(entries){
   const admin=isAdmin(state.user);
-  const labels={user_joined:'Joined',role_approved:'Role Approved',role_denied:'Role Denied',admin_granted:'Admin Granted',member_removed:'Member Removed',member_restored:'Member Restored',task_created:'Task Created',task_closed:'Task Closed',item_added:'Item Added',item_removed:'Item Removed',item_handed_out:'Handed Out',item_used:'Item Used',items_used_for_project:'Items Used',lottery_opened:'Lottery Opened',lottery_drawn:'Lottery Drawn',lottery_pick:'Lottery Pick'};
+  const labels={user_joined:'Joined',role_approved:'Role Approved',role_denied:'Role Denied',admin_granted:'Admin Granted',member_removed:'Member Removed',member_restored:'Member Restored',task_created:'Task Created',task_closed:'Task Closed',item_added:'Item Added',item_removed:'Item Removed',item_handed_out:'Handed Out',item_used:'Item Used',items_used_for_project:'Items Used',password_reset_issued:'Reset Code Issued',password_reset_completed:'Password Reset',lottery_opened:'Lottery Opened',lottery_drawn:'Lottery Drawn',lottery_pick:'Lottery Pick'};
   return `<table>
     <thead><tr><th>Date</th><th>Action</th><th>User</th><th>Details</th>${admin?'<th></th>':''}</tr></thead>
     <tbody>${entries.map(e=>`<tr>
@@ -2361,6 +2439,8 @@ function fmtArchiveDetails(e){
     case 'admin_granted':    return `Granted admin to <strong>${esc(d.targetUsername)}</strong>`;
     case 'member_removed':   return `Removed <strong>${esc(d.targetUsername)}</strong>`;
     case 'member_restored':  return `Restored <strong>${esc(d.targetUsername)}</strong>`;
+    case 'password_reset_issued':    return `Issued a reset code to <strong>${esc(d.targetUsername)}</strong>`;
+    case 'password_reset_completed': return `<strong>${esc(d.username)}</strong> reset their password`;
     case 'task_created':     return `<strong>${esc(d.title)}</strong> &middot; ${esc(d.priority)}`;
     case 'task_closed':      return `Closed: <strong>${esc(d.title)}</strong>`;
     case 'item_added':       return `<strong>${esc(d.name)}</strong> &middot; ${itemCatLabel(d.category)} &middot; qty ${d.quantity}`;
@@ -2481,8 +2561,35 @@ function renderAdminContent() {
   const members=state.allUsers.filter(u=>!u.roles.includes('removed'));
   const removedMembers=state.allUsers.filter(u=>u.roles.includes('removed'));
   const pendingApps = state.applications.filter(a=>a.status==='pending');
+  const resets = (state.passwordResets||[]).slice().sort((a,b)=>b._creationTime-a._creationTime);
 
   return `
+    ${resets.length?`
+    <div style="margin-bottom:56px;">
+      <div style="font-size:18px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--red);display:flex;align-items:center;gap:12px;">
+        Password Reset Requests
+        <span style="background:var(--red);color:#fff;padding:1px 8px;font-size:18px;">${resets.length}</span>
+      </div>
+      <div style="font-size:15px;color:var(--fg);margin-bottom:14px;">Verify the person's identity (e.g. over Discord) before issuing a code. Relay the code to them privately — it expires in 30 minutes and works once.</div>
+      ${resets.map(r=>{
+        const issued = r.status==='issued';
+        const exp = r.expiresAt ? new Date(r.expiresAt) : null;
+        const expired = exp && Date.now() > r.expiresAt;
+        return `<div style="display:flex;align-items:center;gap:16px;padding:14px 0;border-bottom:1px solid var(--border-m);flex-wrap:wrap;">
+          <div style="min-width:180px;">
+            <div style="font-weight:700;font-size:18px;">${esc(r.username)}</div>
+            <div style="font-size:14px;color:var(--fg);margin-top:2px;">
+              ${issued?(expired?'<span style="color:var(--red);">code expired</span>':`code sent${exp?` · expires ${exp.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}`:''}`):'requested '+fmtDate(r._creationTime)}
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-left:auto;flex-wrap:wrap;">
+            <button class="btn btn-black btn-sm" onclick="adminIssueResetCode('${esc(r._id)}','${escJs(r.username)}')">${issued?'Regenerate code':'Generate code'}</button>
+            <button class="btn-del" onclick="adminDismissReset('${esc(r._id)}','${escJs(r.username)}')">Dismiss</button>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`:''}
+
     ${pendingApps.length?`
     <div style="margin-bottom:56px;">
       <div style="font-size:18px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--red);display:flex;align-items:center;gap:12px;">
@@ -2576,6 +2683,37 @@ async function adminRestoreMember(targetId, targetName){
     await refreshAll();
     const el=document.getElementById('admin-wrap'); if(el) el.innerHTML=renderAdminContent();
   } catch(e){notifyError(e);}
+}
+
+function copyText(t){
+  try { navigator.clipboard.writeText(t); toast('Copied'); }
+  catch(e){ toast('Copy not available — select the code manually'); }
+}
+
+async function adminIssueResetCode(resetId, username){
+  try {
+    const res = await convexMutation('passwordResets:issueCode',{sessionToken:state.sessionToken,resetId});
+    const code = (res && res.code) || '';
+    showModal(`
+      <div class="modal-title">Reset code for ${esc(username)}</div>
+      <p style="font-size:16px;color:var(--fg);margin-bottom:16px;">Send this one-time code to <strong>${esc(username)}</strong> privately (e.g. Discord DM). It expires in 30 minutes and works once.</p>
+      <div style="font-size:34px;font-weight:900;letter-spacing:6px;text-align:center;padding:18px;border:2px solid #000;background:var(--bg2);user-select:all;margin-bottom:16px;">${esc(code)}</div>
+      <div style="display:flex;gap:10px;">
+        <button class="btn btn-black" onclick="copyText('${escJs(code)}')">Copy code</button>
+        <button class="btn btn-outline" onclick="closeModal()">Done</button>
+      </div>`);
+    await refreshAll();
+  } catch(e){ notifyError(e); }
+}
+
+async function adminDismissReset(resetId, username){
+  if(!confirm(`Dismiss the password reset request from ${username}?`)) return;
+  try {
+    await convexMutation('passwordResets:dismiss',{sessionToken:state.sessionToken,resetId});
+    toast('Request dismissed');
+    await refreshAll();
+    const el=document.getElementById('admin-wrap'); if(el) el.innerHTML=renderAdminContent();
+  } catch(e){ notifyError(e); }
 }
 
 async function adminAcceptRecruit(appId, targetId, targetName) {

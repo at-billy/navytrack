@@ -107,6 +107,17 @@ export default defineSchema({
     status: v.string(),    // "pending" | "reviewed"
   }).index("by_userId", ["userId"]),
 
+  // Admin-mediated password resets (no email — admin verifies identity out-of-band)
+  passwordResets: defineTable({
+    userId: v.id("users"),
+    username: v.string(),
+    status: v.string(),               // "pending" | "issued"
+    codeHash: v.optional(v.string()), // PBKDF2 hash of the one-time code
+    expiresAt: v.optional(v.number()),
+    attempts: v.number(),             // wrong-code attempts (rate limit)
+    issuedByName: v.optional(v.string()),
+  }).index("by_userId", ["userId"]).index("by_status", ["status"]),
+
   // Logistics move tasks
   logistics: defineTable({
     status: v.string(), // "open" | "completed"
