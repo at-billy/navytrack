@@ -93,6 +93,42 @@ describe("items.handOut splitting", () => {
   });
 });
 
+// ── MG Scrip -> Wikelo Favor conversion ──────────────────────────────────────
+describe("items.convertMgScrip", () => {
+  test("converts at 50:1, leaves the remainder, stacks the favors", async () => {
+    const t = convexTest(schema, modules);
+    const { token } = await seedUserSession(t, ["member"]);
+    const id = await t.mutation(api.items.create, { sessionToken: token, name: "MG Scrip", category: "wikelo", quantity: 120, location: "Vault" });
+    await t.mutation(api.items.convertMgScrip, { sessionToken: token, itemId: id, favors: 2 });
+
+    const avail = await availableItems(t);
+    const scrip = avail.find((i: any) => i.name === "MG Scrip");
+    const favor = avail.find((i: any) => i.name === "Wikelo Favor");
+    expect(scrip.quantity).toBe(20);          // 120 - 2*50
+    expect(favor.quantity).toBe(2);
+    expect(favor.location).toBe("Vault");      // inherits source location
+  });
+
+  test("removes the scrip row when fully consumed", async () => {
+    const t = convexTest(schema, modules);
+    const { token } = await seedUserSession(t, ["member"]);
+    const id = await t.mutation(api.items.create, { sessionToken: token, name: "MG Scrip", category: "wikelo", quantity: 100, location: "Vault" });
+    await t.mutation(api.items.convertMgScrip, { sessionToken: token, itemId: id, favors: 2 });
+    const avail = await availableItems(t);
+    expect(avail.find((i: any) => i.name === "MG Scrip")).toBeUndefined();
+    expect(avail.find((i: any) => i.name === "Wikelo Favor").quantity).toBe(2);
+  });
+
+  test("rejects converting more than affordable, and non-MG-Scrip items", async () => {
+    const t = convexTest(schema, modules);
+    const { token } = await seedUserSession(t, ["member"]);
+    const scrip = await t.mutation(api.items.create, { sessionToken: token, name: "MG Scrip", category: "wikelo", quantity: 60, location: "V" });
+    await expect(t.mutation(api.items.convertMgScrip, { sessionToken: token, itemId: scrip, favors: 2 })).rejects.toThrow();
+    const other = await t.mutation(api.items.create, { sessionToken: token, name: "Carinite", category: "wikelo", quantity: 100, location: "V" });
+    await expect(t.mutation(api.items.convertMgScrip, { sessionToken: token, itemId: other, favors: 1 })).rejects.toThrow();
+  });
+});
+
 // ── Project allocation (tasks.useItems) ──────────────────────────────────────
 describe("tasks.useItems allocation", () => {
   test("consumes exactly N across multiple stacks, splitting the last one", async () => {

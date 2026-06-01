@@ -198,6 +198,53 @@ export const markUsed = mutation({
   },
 });
 
+// One-off conversion: MG Scrip -> Wikelo Favor at 50 : 1 (whole favors only).
+export const convertMgScrip = mutation({
+  args: { sessionToken: v.string(), itemId: v.id("items"), favors: v.number() },
+  handler: async (ctx, { sessionToken, itemId, favors }) => {
+    const user = await requireSession(ctx.db, sessionToken);
+    if (!user.roles.some(r => ["admin", "command", "core", "member"].includes(r))) throw new ConvexError("Not authorized");
+    if (!Number.isInteger(favors) || favors < 1) throw new ConvexError("Invalid amount");
+    const RATE = 50;
+    const item = await ctx.db.get(itemId);
+    if (!item) throw new ConvexError("Item not found");
+    if (item.name !== "MG Scrip" || item.category !== "wikelo") throw new ConvexError("Only MG Scrip can be converted");
+    if (item.status !== "available") throw new ConvexError("Item is not available");
+    const cost = favors * RATE;
+    if (cost > item.quantity) throw new ConvexError("Not enough MG Scrip");
+
+    // Spend the scrip (delete the row if fully consumed).
+    if (cost === item.quantity) await ctx.db.delete(itemId);
+    else await ctx.db.patch(itemId, { quantity: item.quantity - cost });
+
+    // Add favors to a matching available Wikelo Favor (same location/holder), else create one.
+    const available = await ctx.db.query("items").withIndex("by_status", q => q.eq("status", "available")).collect();
+    const match = available.find(i =>
+      i.name === "Wikelo Favor" && i.category === "wikelo" &&
+      i.location === item.location &&
+      (i.system ?? null) === (item.system ?? null) &&
+      (i.heldBy ?? null) === (item.heldBy ?? null)
+    );
+    if (match) {
+      await ctx.db.patch(match._id, { quantity: match.quantity + favors });
+    } else {
+      await ctx.db.insert("items", {
+        name: "Wikelo Favor", category: "wikelo", quantity: favors,
+        location: item.location, system: item.system,
+        addedBy: item.addedBy, addedByName: item.addedByName, heldBy: item.heldBy,
+        status: "available",
+      });
+    }
+
+    await ctx.db.insert("archive", {
+      type: "item_converted",
+      userId: user._id,
+      userName: user.username,
+      details: { from: "MG Scrip", to: "Wikelo Favor", used: cost, made: favors },
+    });
+  },
+});
+
 export const remove = mutation({
   args: { sessionToken: v.string(), itemId: v.id("items") },
   handler: async (ctx, { sessionToken, itemId }) => {

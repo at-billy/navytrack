@@ -1586,7 +1586,7 @@ const FPS_ARMOR_PRESETS = {
 
 // Wikelo preset item names
 const WIKELO_PRESETS = [
-  'Wikelo Favor','Wikelo Favors',
+  'Wikelo Favor',
   'DCHS-01','DCHS-02','DCHS-03','DCHS-04','DCHS-05','DCHS-06','DCHS-07',
   'Ace Interceptor Helmet',
   'ASD Secure Drive',
@@ -2019,6 +2019,7 @@ function renderInventoryList() {
           <td data-label="" style="white-space:nowrap;">
             ${showHandOut?`<button class="btn btn-outline btn-sm" style="margin-right:4px;" onclick="openHandOutModal('${esc(i._id)}')">Hand Out</button>`:''}
             ${isWikelo&&canEditAnyItem(u)?`<button class="btn btn-outline btn-sm" style="margin-right:4px;" onclick="openUsedModal('${esc(i._id)}')">Used</button>`:''}
+            ${i.name==='MG Scrip'&&i.category==='wikelo'&&canEditOwnItem(u)?`<button class="btn btn-outline btn-sm" style="margin-right:4px;" onclick="openConvertModal('${esc(i._id)}')">Convert</button>`:''}
             ${showDel?`<button class="btn-del" onclick="deleteNavItem('${esc(i._id)}')" aria-label="Delete item">&times;</button>`:''}
           </td>
         </tr>`;
@@ -2172,6 +2173,49 @@ async function confirmUsed(itemId) {
     closeModal(); toast('Marked as used');
     await refreshAll(); renderPage();
   } catch(e){notifyError(e);}
+}
+
+// ── CONVERT MODAL (MG Scrip -> Wikelo Favor, 50:1) ────────────────────────────
+const MG_SCRIP_RATE = 50;
+function openConvertModal(itemId){
+  const item = state.navItems.find(i=>i._id===itemId);
+  if(!item) return;
+  const max = Math.floor(item.quantity / MG_SCRIP_RATE);
+  if(max < 1){ toast(`Need at least ${MG_SCRIP_RATE} MG Scrip to convert (you have ${item.quantity})`); return; }
+  showModal(`
+    <div class="modal-title">Convert MG Scrip</div>
+    <div style="font-size:var(--text-md);color:var(--fg);line-height:1.6;margin-bottom:18px;">
+      You have <strong>${item.quantity}</strong> MG Scrip. Convert at <strong>${MG_SCRIP_RATE} : 1</strong> into Wikelo Favors.
+    </div>
+    <div class="field"><label class="lbl">Favors to make (max ${max})</label>
+      <input type="number" id="cv-favors" min="1" max="${max}" value="${max}" oninput="updateConvertPreview('${esc(itemId)}')">
+    </div>
+    <div id="cv-preview" style="font-size:var(--text-sm);color:var(--fg);margin-bottom:18px;"></div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-black" onclick="confirmConvert('${esc(itemId)}')">Convert</button>
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+    </div>`);
+  updateConvertPreview(itemId);
+}
+function updateConvertPreview(itemId){
+  const item = state.navItems.find(i=>i._id===itemId); if(!item) return;
+  const max = Math.floor(item.quantity / MG_SCRIP_RATE);
+  let f = parseInt((document.getElementById('cv-favors')||{value:'0'}).value)||0;
+  if(f<1) f=1; if(f>max) f=max;
+  const used=f*MG_SCRIP_RATE, left=item.quantity-used;
+  const el=document.getElementById('cv-preview');
+  if(el) el.textContent=`Uses ${used} MG Scrip → ${f} Wikelo Favor${f!==1?'s':''}. ${left} MG Scrip left.`;
+}
+async function confirmConvert(itemId){
+  const item = state.navItems.find(i=>i._id===itemId);
+  const max = item ? Math.floor(item.quantity / MG_SCRIP_RATE) : 0;
+  const f = parseInt((document.getElementById('cv-favors')||{value:'0'}).value)||0;
+  if(f<1 || f>max){ toast('Enter a valid number of favors'); return; }
+  try {
+    await convexMutation('items:convertMgScrip',{sessionToken:state.sessionToken,itemId,favors:f});
+    closeModal(); toast(`Converted to ${f} Wikelo Favor${f!==1?'s':''}`);
+    await refreshAll(); renderPage();
+  } catch(e){ notifyError(e); }
 }
 
 // ── ADD ITEM MODAL ────────────────────────────────────────────────────────────
@@ -2562,7 +2606,7 @@ async function loadOlderArchive(){
 
 function renderMonthRows(entries){
   const admin=isAdmin(state.user);
-  const labels={user_joined:'Joined',role_approved:'Role Approved',role_denied:'Role Denied',admin_granted:'Admin Granted',member_removed:'Member Removed',member_restored:'Member Restored',task_created:'Task Created',task_closed:'Task Closed',item_added:'Item Added',item_removed:'Item Removed',item_handed_out:'Handed Out',item_used:'Item Used',items_used_for_project:'Items Used',password_reset_issued:'Reset Code Issued',password_reset_completed:'Password Reset',lottery_opened:'Lottery Opened',lottery_drawn:'Lottery Drawn',lottery_pick:'Lottery Pick'};
+  const labels={user_joined:'Joined',role_approved:'Role Approved',role_denied:'Role Denied',admin_granted:'Admin Granted',member_removed:'Member Removed',member_restored:'Member Restored',task_created:'Task Created',task_closed:'Task Closed',item_added:'Item Added',item_removed:'Item Removed',item_handed_out:'Handed Out',item_used:'Item Used',item_converted:'Item Converted',items_used_for_project:'Items Used',password_reset_issued:'Reset Code Issued',password_reset_completed:'Password Reset',lottery_opened:'Lottery Opened',lottery_drawn:'Lottery Drawn',lottery_pick:'Lottery Pick'};
   return `<table class="cards">
     <thead><tr><th>Date</th><th>Action</th><th>User</th><th>Details</th>${admin?'<th></th>':''}</tr></thead>
     <tbody>${entries.map(e=>`<tr>
@@ -2591,6 +2635,7 @@ function fmtArchiveDetails(e){
     case 'item_handed_out':  return `<strong>${esc(d.name)}</strong> &middot; qty ${d.handedOutQty} &middot; to <strong>${esc(d.handedOutTo)}</strong>`;
     case 'item_used':               return `<strong>${esc(d.name)}</strong> &middot; ${esc(d.usedFor)}`;
     case 'items_used_for_project':  return `For <strong>${esc(d.taskTitle)}</strong> &middot; ${(d.items||[]).map(i=>`${esc(i.name)} ×${i.quantity}`).join(', ')}`;
+    case 'item_converted':          return `${d.used} ${esc(d.from)} → ${d.made} ${esc(d.to)}`;
     case 'lottery_opened':          return `<strong>${esc(d.title)}</strong> &middot; ${d.packages} package${d.packages!==1?'s':''}`;
     case 'lottery_drawn':           return `<strong>${esc(d.title)}</strong> &middot; ${d.packagesCount} package${d.packagesCount!==1?'s':''} drawn`;
     case 'lottery_pick':            return `<strong>${esc(d.lotteryTitle)}</strong> &middot; Package #${(d.pkgId||'').replace('pkg_','')} &middot; ${d.value} pts`;
