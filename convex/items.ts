@@ -41,9 +41,12 @@ export const create = mutation({
     if (rest.description) assertLen(rest.description, 1000, "description");
     if (rest.heldBy) assertLen(rest.heldBy, 120, "held by");
 
-    // Auto-stack: find an identical available item and increment its quantity
+    // Auto-stack: only merge into an existing row when EVERY tag matches — including
+    // the member who added it. Different members keep separate rows (preserves
+    // attribution; billy's and Syila's identical drives no longer merge).
     const all = await ctx.db.query("items").withIndex("by_status", q => q.eq("status", "available")).collect();
     const match = all.find(i =>
+      i.addedBy     === user._id &&
       i.name        === rest.name &&
       i.category    === rest.category &&
       (i.subcategory ?? null) === (rest.subcategory ?? null) &&

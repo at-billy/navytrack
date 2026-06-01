@@ -41,6 +41,17 @@ describe("items.create auto-stacking", () => {
     expect(items[0].quantity).toBe(8);
   });
 
+  test("identical items added by DIFFERENT members do NOT merge", async () => {
+    const t = convexTest(schema, modules);
+    const a = await seedUserSession(t, ["member"]);
+    const b = await seedUserSession(t, ["member"]);
+    await t.mutation(api.items.create, { sessionToken: a.token, name: "ASD Secure Drive", category: "wikelo", quantity: 15, location: "New Babbage", system: "Stanton" });
+    await t.mutation(api.items.create, { sessionToken: b.token, name: "ASD Secure Drive", category: "wikelo", quantity: 10, location: "New Babbage", system: "Stanton" });
+    const items = await availableItems(t);
+    expect(items.length).toBe(2);                 // separate rows per member
+    expect(sum(items)).toBe(25);
+  });
+
   test("items differing in any identity field do NOT merge", async () => {
     const t = convexTest(schema, modules);
     const { token } = await seedUserSession(t, ["member"]);
