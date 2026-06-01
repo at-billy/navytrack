@@ -152,6 +152,25 @@ export const removeMember = mutation({
   },
 });
 
+export const restoreMember = mutation({
+  args: { sessionToken: v.string(), targetUserId: v.id("users") },
+  handler: async (ctx, { sessionToken, targetUserId }) => {
+    const admin = await requireSession(ctx.db, sessionToken);
+    if (!admin.roles.includes("admin")) throw new ConvexError("Not authorized");
+    const target = await ctx.db.get(targetUserId);
+    if (!target) throw new ConvexError("User not found");
+    if (!target.roles.includes("removed")) throw new ConvexError("User is not removed");
+    // Bring them back as a plain member (clears the "removed" tombstone).
+    await ctx.db.patch(targetUserId, { roles: ["member"] });
+    await ctx.db.insert("archive", {
+      type: "member_restored",
+      userId: admin._id,
+      userName: admin.username,
+      details: { targetUsername: target.username },
+    });
+  },
+});
+
 export const requestRole = mutation({
   args: { sessionToken: v.string(), role: v.string() },
   handler: async (ctx, { sessionToken, role }) => {
