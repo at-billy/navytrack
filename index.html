@@ -1571,8 +1571,8 @@ function openNewLogisticsModal() {
         <select id="log-loc"><option value="">Select system first…</option></select>
       </div>
     </div>
-    <div class="field"><label class="lbl">Stored by <span style="font-weight:400;">(optional — defaults to you)</span></label>
-      <input type="text" id="log-storedby" placeholder="${esc(state.user.username)}">
+    <div class="field"><label class="lbl">Stored by <span style="font-weight:400;">(defaults to you)</span></label>
+      ${memberPickerHtml('log-storedby', state.user.username, 'member')}
     </div>
     <div style="display:flex;gap:10px;margin-top:8px;">
       <button class="btn btn-black" onclick="confirmCreateLogisticsTask()">Create Task</button>
@@ -1591,7 +1591,7 @@ async function confirmCreateLogisticsTask() {
   const destinationSystem=(document.getElementById('log-sys')||{value:''}).value||undefined;
   const destinationLocation=(document.getElementById('log-loc')||{value:''}).value;
   if(!destinationLocation){ toast('Select a destination location'); return; }
-  const storedBy=(document.getElementById('log-storedby')||{value:''}).value.trim()||state.user.username;
+  const storedBy=memberPickerValue('log-storedby')||state.user.username;
   try {
     await convexMutation('logistics:create',{sessionToken:state.sessionToken,destinationSystem,destinationLocation,storedBy,itemIds});
     closeModal(); toast('Logistics task created');
@@ -1607,8 +1607,8 @@ function openCompleteLogisticsModal(logisticsId) {
     <p style="font-size:18px;margin-bottom:16px;">
       Mark this move task as completed. The location of all ${t.items.length} item${t.items.length!==1?'s':''} will be updated to <strong>${esc(t.destinationLocation)}</strong>.
     </p>
-    <div class="field"><label class="lbl">Stored by <span style="font-weight:400;">(optional — leave blank to keep "${esc(t.storedBy)}")</span></label>
-      <input type="text" id="clog-storedby" placeholder="${esc(t.storedBy)}">
+    <div class="field"><label class="lbl">Stored by <span style="font-weight:400;">(leave unset to keep "${esc(t.storedBy)}")</span></label>
+      ${memberPickerHtml('clog-storedby', '', 'member')}
     </div>
     <div style="display:flex;gap:10px;margin-top:8px;">
       <button class="btn btn-black" onclick="confirmCompleteLogistics('${esc(logisticsId)}')">Complete</button>
@@ -1617,7 +1617,7 @@ function openCompleteLogisticsModal(logisticsId) {
 }
 
 async function confirmCompleteLogistics(logisticsId) {
-  const storedBy=(document.getElementById('clog-storedby')||{value:''}).value.trim()||undefined;
+  const storedBy=memberPickerValue('clog-storedby')||undefined;
   try {
     await convexMutation('logistics:complete',{sessionToken:state.sessionToken,logisticsId,storedBy});
     closeModal(); toast('Task completed — items updated');
@@ -1676,7 +1676,7 @@ function openEditLogisticsModal(logisticsId) {
       </div>
     </div>
     <div class="field"><label class="lbl">Stored by</label>
-      <input type="text" id="elog-storedby" value="${esc(t.storedBy)}">
+      ${memberPickerHtml('elog-storedby', t.storedBy, 'member')}
     </div>
     <div style="display:flex;gap:10px;margin-top:8px;">
       <button class="btn btn-black" onclick="confirmEditLogisticsTask('${esc(logisticsId)}',${allRows.length})">Save</button>
@@ -1699,7 +1699,7 @@ async function confirmEditLogisticsTask(logisticsId, rowCount) {
   const destinationSystem=(document.getElementById('elog-sys')||{value:''}).value||undefined;
   const destinationLocation=(document.getElementById('elog-loc')||{value:''}).value;
   if(!destinationLocation){ toast('Select a destination location'); return; }
-  const storedBy=(document.getElementById('elog-storedby')||{value:''}).value.trim()||state.user.username;
+  const storedBy=memberPickerValue('elog-storedby')||state.user.username;
   try {
     await convexMutation('logistics:update',{sessionToken:state.sessionToken,logisticsId,destinationSystem,destinationLocation,storedBy,itemIds});
     closeModal(); toast('Task updated');
@@ -1848,6 +1848,37 @@ function setItemsCat(cat){ itemsCatFilter=cat; itemsSubcat='all'; invCompType='a
 function setItemsSubcat(s){ itemsSubcat=s; document.getElementById('items-content').innerHTML=renderInventoryList(); }
 function toggleItemsSearch(){ itemsSearchActive=!itemsSearchActive; itemsSearch=''; document.getElementById('items-content').innerHTML=renderInventoryList(); setTimeout(()=>{const el=document.getElementById('items-search-inp');if(el)el.focus();},0); }
 
+// ── MEMBER PICKER (roster dropdown + "Other / external" free-text fallback) ────
+// Keeps recipient/holder fields consistent so per-person inventory stays reliable.
+function memberPickerHtml(idBase, currentValue = '', placeholder = 'member') {
+  const members = [...new Set(state.allUsers.filter(u => !u.roles.includes('removed')).map(u => u.username))]
+    .sort((a, b) => a.localeCompare(b));
+  const isKnown = !!currentValue && members.includes(currentValue);
+  const showOther = !!currentValue && !isKnown;
+  return `
+    <select id="${idBase}-sel" onchange="onMemberPickerChange('${idBase}')">
+      <option value="">Select ${placeholder}…</option>
+      ${members.map(m => `<option value="${esc(m)}"${m === currentValue ? ' selected' : ''}>${esc(m)}</option>`).join('')}
+      <option value="__other__"${showOther ? ' selected' : ''}>Other / external…</option>
+    </select>
+    <input type="text" id="${idBase}-other" placeholder="Name…" value="${showOther ? esc(currentValue) : ''}"
+      style="margin-top:6px;display:${showOther ? 'block' : 'none'};">`;
+}
+function onMemberPickerChange(idBase) {
+  const sel = document.getElementById(idBase + '-sel');
+  const other = document.getElementById(idBase + '-other');
+  if (!sel || !other) return;
+  if (sel.value === '__other__') { other.style.display = 'block'; other.focus(); }
+  else { other.style.display = 'none'; }
+}
+function memberPickerValue(idBase) {
+  const sel = document.getElementById(idBase + '-sel');
+  const other = document.getElementById(idBase + '-other');
+  if (!sel) return '';
+  if (sel.value === '__other__') return (other && other.value.trim()) || '';
+  return sel.value;
+}
+
 // ── HAND OUT MODAL ────────────────────────────────────────────────────────────
 function openHandOutModal(itemId) {
   const item = state.navItems.find(i=>i._id===itemId);
@@ -1856,7 +1887,7 @@ function openHandOutModal(itemId) {
     <div class="modal-title">Hand Out: ${esc(item.name)}</div>
     <div style="font-size:18px;color:var(--fg);margin-bottom:20px;">${itemCatLabel(item.category)} &middot; ${item.quantity} available</div>
     <div class="field"><label class="lbl">Hand out to</label>
-      <input type="text" id="ho-recipient" placeholder="Member name…" autofocus>
+      ${memberPickerHtml('ho-recipient', '', 'member')}
     </div>
     <div class="field"><label class="lbl">Quantity</label>
       <input type="number" id="ho-qty" value="${item.quantity}" min="1" max="${item.quantity}" step="1">
@@ -1869,9 +1900,9 @@ function openHandOutModal(itemId) {
 }
 
 async function confirmHandOut(itemId, maxQty) {
-  const recipient = (document.getElementById('ho-recipient')||{value:''}).value.trim();
+  const recipient = memberPickerValue('ho-recipient');
   const qty = parseInt((document.getElementById('ho-qty')||{value:'1'}).value)||1;
-  if(!recipient){toast('Enter a recipient name');return;}
+  if(!recipient){toast('Select or enter a recipient');return;}
   if(qty<1||qty>maxQty){toast(`Quantity must be between 1 and ${maxQty}`);return;}
   try {
     await convexMutation('items:handOut',{sessionToken:state.sessionToken,itemId,handedOutTo:recipient,handedOutQty:qty});
