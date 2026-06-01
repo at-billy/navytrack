@@ -179,6 +179,48 @@ export const remove = mutation({
   },
 });
 
+// Shared allocation planner — used by BOTH the preview query and the mutation,
+// so what the user sees is exactly what gets consumed (no drift).
+function computeUsePlan(
+  available: any[],
+  requiredItems: { name: string; category: string; quantityNeeded: number }[],
+) {
+  return requiredItems.map(req => {
+    const matching = available.filter(i => i.name === req.name && i.category === req.category);
+    let needed = req.quantityNeeded;
+    const sources: { itemId: any; location: string; system: string | null; take: number }[] = [];
+    for (const item of matching) {
+      if (needed <= 0) break;
+      const take = Math.min(item.quantity, needed);
+      sources.push({ itemId: item._id, location: item.location, system: item.system ?? null, take });
+      needed -= take;
+    }
+    return {
+      name: req.name,
+      category: req.category,
+      needed: req.quantityNeeded,
+      consumed: req.quantityNeeded - needed,
+      shortfall: needed,
+      sources,
+    };
+  });
+}
+
+export const previewUseItems = query({
+  args: { sessionToken: v.string(), taskId: v.id("tasks") },
+  handler: async (ctx, { sessionToken, taskId }) => {
+    const user = await requireSession(ctx.db, sessionToken);
+    if (!user.roles.some(r => ["admin", "command"].includes(r))) throw new ConvexError("Not authorized");
+    const task = await ctx.db.get(taskId);
+    if (!task) throw new ConvexError("Project not found");
+    if (!task.requiredItems?.length) return { plan: [], totalConsumed: 0 };
+    const available = await ctx.db.query("items").withIndex("by_status", q => q.eq("status", "available")).collect();
+    const plan = computeUsePlan(available, task.requiredItems);
+    const totalConsumed = plan.reduce((s, p) => s + p.consumed, 0);
+    return { plan, totalConsumed };
+  },
+});
+
 export const useItems = mutation({
   args: { sessionToken: v.string(), taskId: v.id("tasks") },
   handler: async (ctx, { sessionToken, taskId }) => {
@@ -190,31 +232,28 @@ export const useItems = mutation({
     if (!task.requiredItems?.length) throw new ConvexError("No required items on this project");
 
     const available = await ctx.db.query("items").withIndex("by_status", q => q.eq("status", "available")).collect();
+    const plan = computeUsePlan(available, task.requiredItems);
     const usedLog: { name: string; quantity: number }[] = [];
 
-    for (const req of task.requiredItems) {
-      const matching = available.filter(i => i.name === req.name && i.category === req.category);
-      let needed = req.quantityNeeded;
-      for (const item of matching) {
-        if (needed <= 0) break;
-        if (item.quantity <= needed) {
+    for (const p of plan) {
+      for (const src of p.sources) {
+        const item = available.find(i => i._id === src.itemId);
+        if (!item) continue;
+        if (item.quantity <= src.take) {
           await ctx.db.patch(item._id, { status: "used", usedFor: task.title });
-          usedLog.push({ name: item.name, quantity: item.quantity });
-          needed -= item.quantity;
         } else {
-          await ctx.db.patch(item._id, { quantity: item.quantity - needed });
+          await ctx.db.patch(item._id, { quantity: item.quantity - src.take });
           await ctx.db.insert("items", {
             name: item.name, category: item.category,
             subcategory: item.subcategory, description: item.description,
-            quantity: needed, quality: item.quality, location: item.location,
+            quantity: src.take, quality: item.quality, location: item.location,
             system: item.system, addedBy: item.addedBy, addedByName: item.addedByName,
             heldBy: item.heldBy, compType: item.compType, compGrade: item.compGrade,
             compSize: item.compSize, compTier: item.compTier,
             status: "used", usedFor: task.title,
           });
-          usedLog.push({ name: item.name, quantity: needed });
-          needed = 0;
         }
+        usedLog.push({ name: p.name, quantity: src.take });
       }
     }
 

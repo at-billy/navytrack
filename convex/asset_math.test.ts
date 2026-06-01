@@ -117,6 +117,27 @@ describe("tasks.useItems allocation", () => {
     expect(archive.some((a: any) => a.type === "items_used_for_project")).toBe(true);
   });
 
+  test("previewUseItems reports the plan + shortfall without mutating", async () => {
+    const t = convexTest(schema, modules);
+    const { token } = await seedUserSession(t, ["admin"]);
+    await t.mutation(api.items.create, { sessionToken: token, name: "Wikelo Favor", category: "wikelo", quantity: 3, location: "Hangar" });
+    await t.mutation(api.items.create, { sessionToken: token, name: "Wikelo Favor", category: "wikelo", quantity: 1, location: "Vault" });
+    const taskId = await t.mutation(api.tasks.create, {
+      sessionToken: token, title: "Build", priority: "normal", targetRoles: ["member"],
+      requiredItems: [{ name: "Wikelo Favor", category: "wikelo", quantityNeeded: 6 }],
+    });
+
+    const preview = await t.query(api.tasks.previewUseItems, { sessionToken: token, taskId });
+    expect(preview.totalConsumed).toBe(4);          // only 4 in stock
+    expect(preview.plan[0].consumed).toBe(4);
+    expect(preview.plan[0].shortfall).toBe(2);      // 6 needed - 4 available
+    expect(preview.plan[0].sources.length).toBe(2); // drawn from both stacks
+
+    // Preview must not consume anything
+    expect(sum(await availableItems(t))).toBe(4);
+    expect((await itemsByStatus(t, "used")).length).toBe(0);
+  });
+
   test("errors when no inventory matches the required item", async () => {
     const t = convexTest(schema, modules);
     const { token } = await seedUserSession(t, ["admin"]);

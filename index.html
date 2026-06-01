@@ -2837,11 +2837,44 @@ function renderTaskRequiredItems(task) {
 }
 
 async function useItemsForProject(taskId, taskTitle) {
-  if (!confirm(`Use available items from inventory for "${taskTitle}"? Matching items will be marked as used.`)) return;
+  let preview;
+  try {
+    preview = await convexQuery('tasks:previewUseItems',{sessionToken:state.sessionToken,taskId});
+  } catch(e){ notifyError(e); return; }
+
+  const plan = (preview && preview.plan) || [];
+  const totalConsumed = (preview && preview.totalConsumed) || 0;
+
+  const rows = plan.map(p=>{
+    const full = p.shortfall===0;
+    const head = `<div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;">
+      <span style="font-size:17px;font-weight:700;">${esc(p.name)} <span style="font-size:13px;color:var(--fg);font-weight:400;">(${esc(itemCatLabel(p.category))})</span></span>
+      <span style="font-size:16px;font-weight:700;color:${full?'#16a34a':'var(--red)'};">consume ${p.consumed}/${p.needed}${p.shortfall>0?` · ${p.shortfall} short`:''}</span>
+    </div>`;
+    const srcs = p.sources.length
+      ? `<div style="margin:4px 0 0 0;font-size:14px;color:var(--fg);">${p.sources.map(s=>`${s.take}× from ${esc(s.location)}${s.system?` (${esc(s.system)})`:''}`).join('<br>')}</div>`
+      : `<div style="margin:4px 0 0 0;font-size:14px;color:var(--red);">none available in inventory</div>`;
+    return `<div style="padding:10px 0;border-bottom:1px solid var(--border-m);">${head}${srcs}</div>`;
+  }).join('');
+
+  showModal(`
+    <div class="modal-title">Use items — ${esc(taskTitle)}</div>
+    <p style="font-size:15px;color:var(--fg);margin-bottom:12px;">The following items will be marked as <strong>used</strong> for this project and removed from inventory. This cannot be undone.</p>
+    <div style="max-height:320px;overflow-y:auto;">${rows||'<div class="empty">No required items.</div>'}</div>
+    <div style="display:flex;gap:10px;margin-top:16px;">
+      ${totalConsumed>0
+        ? `<button class="btn btn-black" onclick="doUseItems('${escJs(taskId)}')">Confirm — use ${totalConsumed} item${totalConsumed!==1?'s':''}</button>`
+        : `<button class="btn btn-black" disabled style="opacity:.5;cursor:not-allowed;">Nothing to use</button>`}
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+    </div>`);
+}
+
+async function doUseItems(taskId) {
   try {
     await convexMutation('tasks:useItems',{sessionToken:state.sessionToken,taskId});
-    toast('Items used for project'); await refreshAll(); renderPage();
-  } catch(e){notifyError(e);}
+    closeModal(); toast('Items used for project');
+    await refreshAll(); renderPage();
+  } catch(e){ notifyError(e); }
 }
 
 async function joinTask(taskId) {
