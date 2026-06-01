@@ -102,6 +102,24 @@ select{
   background-repeat:no-repeat;background-position:right var(--space-3) center;padding-right:34px;}
 body.dark select{
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23e0e0e0'/%3E%3C/svg%3E");}
+
+/* Custom select widget (enhances native <select> so the open list matches the design) */
+.cs-wrap{position:relative;display:block;width:100%;}
+select.cs-native{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;padding:0;}
+.cs-trigger{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;
+  border:1.5px solid var(--border);background:var(--bg);color:var(--fg);padding:9px var(--space-3);
+  font-size:var(--text-md);font-family:inherit;text-align:left;cursor:pointer;line-height:1.3;}
+.cs-trigger .cs-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cs-trigger::after{content:"";flex-shrink:0;margin-left:8px;width:0;height:0;
+  border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid currentColor;transition:transform .12s;}
+.cs-wrap.open .cs-trigger{border-color:var(--red);}
+.cs-wrap.open .cs-trigger::after{transform:rotate(180deg);}
+.cs-panel{box-sizing:border-box;border:1.5px solid var(--border);background:var(--bg);overflow-y:auto;
+  -webkit-overflow-scrolling:touch;z-index:700;box-shadow:0 6px 24px rgba(0,0,0,.18);}
+.cs-option{padding:10px var(--space-3);font-size:var(--text-md);color:var(--fg);cursor:pointer;}
+.cs-option.cs-active{background:var(--fg);color:var(--bg);}
+.cs-option[aria-selected="true"]{font-weight:700;}
+body.dark .cs-panel{box-shadow:0 6px 24px rgba(0,0,0,.6);}
 .field{margin-bottom:28px;}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-6);}
 .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:var(--space-5);}
@@ -2945,7 +2963,7 @@ function showModal(html) {
   // Move focus into the dialog (first real field, not the close button).
   setTimeout(()=>{
     if(!box) return;
-    const first=box.querySelector('input,select,textarea,[contenteditable="true"]')
+    const first=box.querySelector('input,textarea,select:not(.cs-native),.cs-trigger,[contenteditable="true"]')
       || box.querySelector('button:not([aria-label="Close"])') || box;
     try{ first.focus(); }catch(e){}
   },0);
@@ -3002,7 +3020,7 @@ document.addEventListener('keydown', e=>{
   if(modalOpen && e.key==='Tab'){
     const box=document.getElementById('modal-box');
     if(box){
-      const f=[...box.querySelectorAll('a[href],button,input,select,textarea,[tabindex]:not([tabindex="-1"])')]
+      const f=[...box.querySelectorAll('a[href],button,input,select:not(.cs-native),textarea,[tabindex]:not([tabindex="-1"])')]
         .filter(el=>!el.disabled && el.offsetParent!==null);
       if(f.length){
         const first=f[0], last=f[f.length-1];
@@ -4186,6 +4204,145 @@ async function claimBootstrapAdmin() {
 }
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
+// ─── CUSTOM SELECT WIDGET ───────────────────────────────────────────────────
+// Enhances every native <select> with a styled, themed dropdown whose open list
+// matches the design. The native <select> is kept (hidden) as the value-holder, so
+// all existing onchange handlers keep working. Panel renders to <body> (fixed) to
+// escape modal scroll-clipping. Auto-applies to dynamically-added selects.
+(function(){
+  let open=null; // { sel, wrap, trigger, panel, opts, active, reposition }
+
+  function labelOf(sel){ const o=sel.options[sel.selectedIndex]; return o?o.textContent:''; }
+
+  function closeOpen(refocus){
+    if(!open) return;
+    const o=open; open=null;
+    o.panel.remove();
+    o.wrap.classList.remove('open');
+    o.trigger.setAttribute('aria-expanded','false');
+    window.removeEventListener('scroll', o.reposition, true);
+    window.removeEventListener('resize', o.reposition);
+    if(refocus){ try{ o.trigger.focus(); }catch(e){} }
+  }
+
+  function reposition(trigger, panel){
+    const r=trigger.getBoundingClientRect();
+    panel.style.position='fixed';
+    panel.style.left=r.left+'px';
+    panel.style.width=r.width+'px';
+    const below=window.innerHeight-r.bottom;
+    if(below < 220 && r.top > below){
+      panel.style.top='auto';
+      panel.style.bottom=(window.innerHeight-r.top+2)+'px';
+      panel.style.maxHeight=Math.min(300, r.top-12)+'px';
+    } else {
+      panel.style.bottom='auto';
+      panel.style.top=(r.bottom-1)+'px';
+      panel.style.maxHeight=Math.min(300, below-12)+'px';
+    }
+  }
+
+  function setActive(i){
+    if(!open) return;
+    const opts=open.panel.children;
+    if(i<0) i=0; if(i>=opts.length) i=opts.length-1;
+    if(open.active>=0 && opts[open.active]) opts[open.active].classList.remove('cs-active');
+    open.active=i;
+    if(opts[i]){ opts[i].classList.add('cs-active'); opts[i].scrollIntoView({block:'nearest'}); }
+  }
+
+  function choose(i){
+    if(!open) return;
+    const sel=open.sel;
+    if(i>=0 && i<sel.options.length){
+      sel.selectedIndex=i;
+      sel.dispatchEvent(new Event('change',{bubbles:true}));
+    }
+    closeOpen(true);
+  }
+
+  function openPanel(sel, wrap, trigger){
+    closeOpen(false);
+    const panel=document.createElement('div');
+    panel.className='cs-panel'; panel.setAttribute('role','listbox');
+    const opts=[...sel.options];
+    opts.forEach((o,i)=>{
+      const el=document.createElement('div');
+      el.className='cs-option'; el.setAttribute('role','option');
+      el.setAttribute('aria-selected', o.selected?'true':'false');
+      el.textContent=o.textContent;
+      el.addEventListener('mousedown',(e)=>{ e.preventDefault(); choose(i); });
+      el.addEventListener('mousemove',()=>setActive(i));
+      panel.appendChild(el);
+    });
+    document.body.appendChild(panel);
+    wrap.classList.add('open');
+    trigger.setAttribute('aria-expanded','true');
+    const rep=()=>reposition(trigger,panel);
+    open={ sel, wrap, trigger, panel, active:-1, reposition:rep };
+    rep();
+    setActive(sel.selectedIndex<0?0:sel.selectedIndex);
+    window.addEventListener('scroll', rep, true);
+    window.addEventListener('resize', rep);
+  }
+
+  function enhance(sel){
+    if(sel.dataset.csOn || sel.multiple) return;
+    sel.dataset.csOn='1';
+    const wrap=document.createElement('div'); wrap.className='cs-wrap';
+    sel.parentNode.insertBefore(wrap, sel);
+    wrap.appendChild(sel);
+    sel.classList.add('cs-native'); sel.setAttribute('aria-hidden','true'); sel.tabIndex=-1;
+    const trigger=document.createElement('button');
+    trigger.type='button'; trigger.className='cs-trigger';
+    trigger.setAttribute('aria-haspopup','listbox'); trigger.setAttribute('aria-expanded','false');
+    const lbl=document.createElement('span'); lbl.className='cs-label'; lbl.textContent=labelOf(sel)||' ';
+    trigger.appendChild(lbl);
+    wrap.appendChild(trigger);
+
+    const isOpen=()=> open && open.trigger===trigger;
+    trigger.addEventListener('click',(e)=>{ e.preventDefault(); isOpen()?closeOpen(false):openPanel(sel,wrap,trigger); });
+    trigger.addEventListener('keydown',(e)=>{
+      if(e.key==='ArrowDown'||e.key==='ArrowUp'){
+        e.preventDefault();
+        if(!isOpen()){ openPanel(sel,wrap,trigger); return; }
+        setActive(open.active + (e.key==='ArrowDown'?1:-1));
+      } else if(e.key==='Enter'||e.key===' '){
+        e.preventDefault();
+        if(!isOpen()) openPanel(sel,wrap,trigger); else choose(open.active);
+      } else if(e.key==='Escape'){ if(isOpen()){ e.preventDefault(); closeOpen(true); } }
+      else if(e.key==='Home'){ if(isOpen()){ e.preventDefault(); setActive(0); } }
+      else if(e.key==='End'){ if(isOpen()){ e.preventDefault(); setActive(sel.options.length-1); } }
+      else if(e.key.length===1){ // type-ahead
+        const ch=e.key.toLowerCase();
+        for(let k=0;k<sel.options.length;k++){
+          if((sel.options[k].textContent||'').trim().toLowerCase().startsWith(ch)){
+            if(isOpen()) setActive(k); else { sel.selectedIndex=k; sel.dispatchEvent(new Event('change',{bubbles:true})); }
+            break;
+          }
+        }
+      }
+    });
+    // Keep the trigger label in sync when the value or options change in code.
+    sel.addEventListener('change',()=>{ lbl.textContent=labelOf(sel)||' '; });
+    new MutationObserver(()=>{ lbl.textContent=labelOf(sel)||' '; }).observe(sel,{childList:true});
+  }
+
+  document.addEventListener('mousedown',(e)=>{
+    if(open && !open.panel.contains(e.target) && !open.wrap.contains(e.target)) closeOpen(false);
+  });
+
+  function enhanceAll(root){ (root||document).querySelectorAll('select:not([data-cs-on])').forEach(enhance); }
+  new MutationObserver((muts)=>{
+    for(const m of muts) for(const n of m.addedNodes){
+      if(n.nodeType!==1) continue;
+      if(n.tagName==='SELECT') enhance(n);
+      else if(n.querySelectorAll) n.querySelectorAll('select:not([data-cs-on])').forEach(enhance);
+    }
+  }).observe(document.documentElement,{childList:true,subtree:true});
+  enhanceAll();
+})();
+
 async function init(){
   if(!CONVEX_URL){showSetup();return;}
   const token=localStorage.getItem('navytrack_token');
