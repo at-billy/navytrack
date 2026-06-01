@@ -319,6 +319,57 @@ details.log-month[open] .log-month-arrow{transform:rotate(90deg);}
 .log-month-name{font-size:24px;font-weight:900;letter-spacing:-.3px;}
 .log-month-count{font-size:18px;color:#000;margin-left:auto;font-weight:700;letter-spacing:.06em;}
 details.log-month>div{padding-bottom:48px;}
+
+/* ── RESPONSIVE (tablet / phone) ─────────────────────────────────── */
+@media (max-width:768px){
+  /* Tighter horizontal padding everywhere */
+  #nav-topbar{padding:7px 16px;}
+  #nav-primary{padding:8px 16px 0;}
+  #nav-sub{padding:4px 16px 0;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+  #nav-sub::-webkit-scrollbar{display:none;}
+  .page{padding:32px 16px 100px;}
+
+  /* Nav scales down so 4 words + sub-tabs fit a phone */
+  .nav-main{font-size:clamp(22px,7vw,52px);}
+  .nav-sub-item{font-size:clamp(18px,5vw,30px);margin-right:26px;white-space:nowrap;}
+
+  /* Page header can wrap its action button */
+  .page-head{flex-wrap:wrap;gap:16px;margin-bottom:36px;}
+  .page-title{font-size:30px;}
+  .page-sub{margin-bottom:36px;}
+
+  /* Stack multi-column layouts */
+  .grid2,.grid3{grid-template-columns:1fr;gap:20px;}
+  .ov-stats{grid-template-columns:1fr 1fr;}
+  .ov-body,.ov-bottom{grid-template-columns:1fr;}
+  .ov-col+.ov-col{padding-left:0;}
+  .ov-col-head{font-size:26px;}
+  .ov-stat{padding:24px 0;}
+
+  /* Wide tables scroll horizontally instead of overflowing the page */
+  table{display:block;width:max-content;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  thead th{padding:12px 10px;font-size:14px;}
+  tbody td{padding:14px 10px;font-size:15px;}
+
+  /* Modals go near-full-width with comfortable padding */
+  #modal-overlay{padding:12px;}
+  .modal-box{padding:24px 18px;max-width:100%;}
+  .modal-title{margin-bottom:24px;font-size:22px;}
+
+  .panel{padding:24px;}
+  .craft-box{padding:24px;}
+  .center-screen{padding:20px;}
+  .filter-tabs{gap:28px;margin-bottom:36px;}
+  #toast{left:16px;right:16px;bottom:16px;text-align:center;}
+}
+@media (max-width:480px){
+  .ov-stats{grid-template-columns:1fr;}
+  .nav-sub-item{margin-right:20px;}
+  .field{margin-bottom:20px;}
+  .page-title{font-size:26px;}
+  .task-card{padding:24px 0;padding-left:16px;}
+  .task-card-title{font-size:21px;}
+}
 </style>
 </head>
 <body>
