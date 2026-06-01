@@ -41,21 +41,28 @@ export const signUp = mutation({
   args: {
     username: v.string(),
     passwordHash: v.string(),
-    roles: v.array(v.string()),
   },
   handler: async (ctx, args) => {
+    // Validate username server-side: trim, length, charset. Never trust client formatting.
+    const username = args.username.trim();
+    if (username.length < 2 || username.length > 32) throw new ConvexError("USERNAME_INVALID");
+    if (!/^[A-Za-z0-9 _.\-]+$/.test(username)) throw new ConvexError("USERNAME_INVALID");
+
     const existing = await ctx.db
       .query("users")
-      .withIndex("by_username", q => q.eq("username", args.username))
+      .withIndex("by_username", q => q.eq("username", username))
       .first();
     if (existing) throw new ConvexError("USERNAME_TAKEN");
-    const id = await ctx.db.insert("users", args);
+
+    // Role is forced server-side — new accounts are always recruits, regardless of client input.
+    const roles = ["recruit"];
+    const id = await ctx.db.insert("users", { username, passwordHash: args.passwordHash, roles });
     const user = await ctx.db.get(id);
     await ctx.db.insert("archive", {
       type: "user_joined",
       userId: id,
-      userName: args.username,
-      details: { roles: args.roles },
+      userName: username,
+      details: { roles },
     });
     const token = crypto.randomUUID();
     await ctx.db.insert("sessions", { userId: id, token, createdAt: Date.now() });

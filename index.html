@@ -787,6 +787,20 @@ async function hashPwd(pw) {
   return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
 const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+// Escape a value for safe use inside a SINGLE-quoted JS string that itself sits inside a
+// DOUBLE-quoted HTML attribute (e.g. onclick="fn('${escJs(x)}')"). Neutralises both the JS
+// string delimiter (') and the HTML attribute delimiter (") so user text cannot break out.
+const escJs = s => String(s==null?'':s)
+  .replace(/\\/g,'\\\\')
+  .replace(/'/g,"\\'")
+  .replace(/\r/g,'\\r')
+  .replace(/\n/g,'\\n')
+  .replace(/\u2028/g,'\\u2028')
+  .replace(/\u2029/g,'\\u2029')
+  .replace(/&/g,'&amp;')
+  .replace(/</g,'&lt;')
+  .replace(/>/g,'&gt;')
+  .replace(/"/g,'&quot;');
 const fmtDate = d => new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
 const fmtDT   = d => new Date(d).toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
 function toast(msg, dur=2800) {
@@ -1002,12 +1016,14 @@ async function doSignUp() {
   if(!username||!password){showErr('su-err','Fill in all fields');return;}
   try {
     const ph=await hashPwd(password);
-    const roles=['recruit'];
-    const res=await convexMutation('users:signUp',{username,passwordHash:ph,roles});
+    const res=await convexMutation('users:signUp',{username,passwordHash:ph});
     state.user=res; state.sessionToken=res.token;
     localStorage.setItem('navytrack_token',res.token); showApp();
   } catch(e){
-    showErr('su-err',e.message.includes('USERNAME_TAKEN')?'Username already taken':e.message);
+    const msg = e.message.includes('USERNAME_TAKEN') ? 'Username already taken'
+      : e.message.includes('USERNAME_INVALID') ? 'Username must be 2–32 chars: letters, numbers, space, _ . -'
+      : e.message;
+    showErr('su-err',msg);
   }
 }
 
@@ -2257,7 +2273,7 @@ function renderAdminContent() {
               <div style="font-size:15px;color:var(--fg);margin-top:2px;">Applied ${fmtDate(app._creationTime)}</div>
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
-              ${member&&!member.roles.includes('member')?`<button class="btn btn-black btn-sm" onclick="adminAcceptRecruit('${esc(app._id)}','${esc(app.userId)}','${esc(app.userName)}')">Accept as Member</button>`:''}
+              ${member&&!member.roles.includes('member')?`<button class="btn btn-black btn-sm" onclick="adminAcceptRecruit('${esc(app._id)}','${esc(app.userId)}','${escJs(app.userName)}')">Accept as Member</button>`:''}
             </div>
           </div>
           <div style="display:grid;gap:14px;">
@@ -2292,13 +2308,13 @@ function renderAdminContent() {
           ${!removed?`<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;flex:1;">
             ${MANAGEABLE.map(role=>{
               const has=m.roles.includes(role);
-              if(has) return `<button class="btn-ghost btn-sm" style="border-color:#fca5a5;color:#ef4444;" onclick="adminRevokeRole('${esc(m._id)}','${esc(m.username)}','${role}')">− ${role.charAt(0).toUpperCase()+role.slice(1)}</button>`;
-              return `<button class="btn-ghost btn-sm" onclick="adminGrantRole('${esc(m._id)}','${esc(m.username)}','${role}')">+ ${role.charAt(0).toUpperCase()+role.slice(1)}</button>`;
+              if(has) return `<button class="btn-ghost btn-sm" style="border-color:#fca5a5;color:#ef4444;" onclick="adminRevokeRole('${esc(m._id)}','${escJs(m.username)}','${role}')">− ${role.charAt(0).toUpperCase()+role.slice(1)}</button>`;
+              return `<button class="btn-ghost btn-sm" onclick="adminGrantRole('${esc(m._id)}','${escJs(m.username)}','${role}')">+ ${role.charAt(0).toUpperCase()+role.slice(1)}</button>`;
             }).join('')}
-            ${!m.roles.includes('admin')&&!isMe?`<button class="btn-ghost btn-sm" onclick="adminGrantAdmin('${esc(m._id)}','${esc(m.username)}')">+ Admin</button>`:''}
+            ${!m.roles.includes('admin')&&!isMe?`<button class="btn-ghost btn-sm" onclick="adminGrantAdmin('${esc(m._id)}','${escJs(m.username)}')">+ Admin</button>`:''}
           </div>
           <div style="margin-left:auto;">
-            ${!isMe?`<button class="btn-del" onclick="adminRemoveMember('${esc(m._id)}','${esc(m.username)}')">Remove</button>`:''}
+            ${!isMe?`<button class="btn-del" onclick="adminRemoveMember('${esc(m._id)}','${escJs(m.username)}')">Remove</button>`:''}
           </div>`:`<div style="color:#ef4444;font-size:18px;align-self:center;">Removed</div>`}
         </div>`;
       }).join('')}
@@ -2484,7 +2500,7 @@ function renderTasksList() {
     const buttons=`
       ${t.status==='open'&&!isMember?`<button class="btn btn-black btn-sm" onclick="event.stopPropagation();joinTask('${esc(t._id)}')">Join</button>`:''}
       ${t.status==='open'&&isMember?`<button class="btn btn-outline btn-sm" onclick="event.stopPropagation();leaveTask('${esc(t._id)}')">Leave</button>`:''}
-      ${(()=>{if(!canManage||t.status!=='open'||!t.requiredItems?.length)return'';const hasAvail=t.requiredItems.some(req=>state.navItems.some(i=>i.status==='available'&&i.name===req.name&&i.category===req.category));return hasAvail?`<button class="btn btn-black btn-sm" onclick="event.stopPropagation();useItemsForProject('${esc(t._id)}','${esc(t.title)}')">Use items</button>`:'';})()}
+      ${(()=>{if(!canManage||t.status!=='open'||!t.requiredItems?.length)return'';const hasAvail=t.requiredItems.some(req=>state.navItems.some(i=>i.status==='available'&&i.name===req.name&&i.category===req.category));return hasAvail?`<button class="btn btn-black btn-sm" onclick="event.stopPropagation();useItemsForProject('${esc(t._id)}','${escJs(t.title)}')">Use items</button>`:'';})()}
       ${(canManage||t.createdBy===u._id)?`<button class="btn-ghost btn-sm" onclick="event.stopPropagation();openEditTaskModal('${esc(t._id)}')">Edit</button>`:''}
       ${canManage&&t.status==='open'?`<button class="btn-ghost btn-sm" onclick="event.stopPropagation();closeTask('${esc(t._id)}')">Close</button>`:''}
       ${canManage&&t.status==='closed'?`<button class="btn-ghost btn-sm" onclick="event.stopPropagation();reopenTask('${esc(t._id)}')">Reopen</button>`:''}
@@ -2494,7 +2510,7 @@ function renderTasksList() {
       ${t.status==='open'&&!isMember?`<button class="btn btn-black btn-sm" onclick="event.stopPropagation();joinTask('${esc(t._id)}')">Join</button>`:''}
       ${t.status==='open'&&isMember?`<button class="btn btn-outline btn-sm" onclick="event.stopPropagation();leaveTask('${esc(t._id)}')">Leave</button>`:''}`;
     const mgmtBtns=`
-      ${(()=>{if(!canManage||t.status!=='open'||!t.requiredItems?.length)return'';const hasAvail=t.requiredItems.some(req=>state.navItems.some(i=>i.status==='available'&&i.name===req.name&&i.category===req.category));return hasAvail?`<button class="btn btn-black btn-sm" onclick="event.stopPropagation();useItemsForProject('${esc(t._id)}','${esc(t.title)}')">Use items</button>`:'';})()}
+      ${(()=>{if(!canManage||t.status!=='open'||!t.requiredItems?.length)return'';const hasAvail=t.requiredItems.some(req=>state.navItems.some(i=>i.status==='available'&&i.name===req.name&&i.category===req.category));return hasAvail?`<button class="btn btn-black btn-sm" onclick="event.stopPropagation();useItemsForProject('${esc(t._id)}','${escJs(t.title)}')">Use items</button>`:'';})()}
       ${(canManage||t.createdBy===u._id)?`<button class="btn-ghost btn-sm" onclick="event.stopPropagation();openEditTaskModal('${esc(t._id)}')">Edit</button>`:''}
       ${canManage&&t.status==='open'?`<button class="btn-ghost btn-sm" onclick="event.stopPropagation();closeTask('${esc(t._id)}')">Close</button>`:''}
       ${canManage&&t.status==='closed'?`<button class="btn-ghost btn-sm" onclick="event.stopPropagation();reopenTask('${esc(t._id)}')">Reopen</button>`:''}
@@ -3134,15 +3150,15 @@ function renderExtNameRow(l, pkgs, name) {
     <span style="font-size:18px;font-weight:700;min-width:160px;">${esc(name)}</span>
     <span style="font-size:18px;color:var(--fg);">${entered.length?'Entered: '+entered.map(p=>'Pkg '+p.pkgId.replace('pkg_','')).join(', '):'Not entered yet'}</span>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-left:auto;">
-      ${notEntered.length?`<button class="btn btn-black btn-sm" onclick="doEnterAllPackages('${esc(l._id)}','${esc(name)}')">Enter All</button>`:''}
+      ${notEntered.length?`<button class="btn btn-black btn-sm" onclick="doEnterAllPackages('${esc(l._id)}','${escJs(name)}')">Enter All</button>`:''}
       ${pkgs.map(p=>{
         const isIn=(p.interested||[]).some(i=>i.id==='ext_'+name);
         const n=p.pkgId.replace('pkg_','');
         return isIn
-          ? `<button class="btn-del" style="padding:3px 8px;" onclick="doRemoveHat('${esc(l._id)}','${esc(p.pkgId)}','ext_${esc(name)}')">Leave Pkg ${n}</button>`
-          : `<button class="btn-ghost btn-sm" onclick="doThrowHat('${esc(l._id)}','${esc(p.pkgId)}','${esc(name)}')">Enter Pkg ${n}</button>`;
+          ? `<button class="btn-del" style="padding:3px 8px;" onclick="doRemoveHat('${esc(l._id)}','${esc(p.pkgId)}','ext_${escJs(name)}')">Leave Pkg ${n}</button>`
+          : `<button class="btn-ghost btn-sm" onclick="doThrowHat('${esc(l._id)}','${esc(p.pkgId)}','${escJs(name)}')">Enter Pkg ${n}</button>`;
       }).join('')}
-      <button class="btn-del" onclick="doRemoveExternalName('${esc(l._id)}','${esc(name)}')">Remove</button>
+      <button class="btn-del" onclick="doRemoveExternalName('${esc(l._id)}','${escJs(name)}')">Remove</button>
     </div>
   </div>`;
 }
