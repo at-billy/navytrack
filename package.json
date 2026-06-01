@@ -4,9 +4,16 @@
   "description": "Shared material database with real-time Convex backend",
   "scripts": {
     "dev": "npx convex dev",
-    "deploy": "npx convex deploy"
+    "deploy": "npx convex deploy",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "convex": "^1.17.0"
+  },
+  "devDependencies": {
+    "@edge-runtime/vm": "^5.0.0",
+    "convex-test": "^0.0.53",
+    "vitest": "^2.1.9"
   }
 }
