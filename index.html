@@ -768,23 +768,54 @@ let lotteryCompSearch = ''; // search in add-item UI
 let lotteryPkgCount = 2;   // persists across renders so input doesn't reset
 
 // ─── CONVEX HTTP HELPERS ──────────────────────────────────────────────────────
+// Detect a session error from a string, Error, or ConvexError-like object.
+function isSessionError(e) {
+  const msg = typeof e === 'string' ? e : (e && (e.message || ''));
+  const data = e && e.data;
+  return (typeof data === 'string' && (data === 'SESSION_INVALID' || data === 'SESSION_EXPIRED')) ||
+         (!!msg && (msg.includes('SESSION_INVALID') || msg.includes('SESSION_EXPIRED')));
+}
+
+// Central handler: any session error anywhere logs the user out cleanly to sign-in.
+function handleSessionError(e) {
+  if (!isSessionError(e)) return false;
+  if (!state.sessionToken) return true; // already logged out — avoid repeat toasts/redirects
+  stopData();
+  state.user = null; state.sessionToken = null;
+  localStorage.removeItem('navytrack_token');
+  showAuth();
+  toast('Session expired — please sign in again');
+  return true;
+}
+
+// Turn a raw error into user-facing text (never an internal code / request id).
+function friendlyError(e) {
+  const msg = typeof e === 'string' ? e : (e && (e.message || ''));
+  if (!msg) return 'Something went wrong. Please try again.';
+  if (isSessionError(msg)) return 'Session expired — please sign in again';
+  if (/Request ID:.*Server Error/i.test(msg)) return 'Something went wrong. Please try again.';
+  return msg; // ConvexError messages are already user-friendly
+}
+
+// Show an error to the user (toast). Session errors are handled centrally and skipped here.
+function notifyError(e) {
+  if (e && e.__sessionHandled) return;
+  if (handleSessionError(e)) return;
+  toast(friendlyError(e));
+}
+
 async function convexQuery(path, args = {}) {
   const r = await fetch(`${CONVEX_URL}/api/query`, {
     method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({ path, args, format:'json' }),
   });
   const d = await r.json();
-  if (d.status !== 'success') throw new Error(d.errorMessage || 'Query failed');
-  return d.value;
-}
-function handleSessionError(e) {
-  if(e.message&&(e.message.includes('SESSION_INVALID')||e.message.includes('SESSION_EXPIRED'))) {
-    state.user=null; state.sessionToken=null;
-    localStorage.removeItem('navytrack_token');
-    showAuth(); toast('Session expired — please sign in again');
-    return true;
+  if (d.status !== 'success') {
+    const msg = (typeof d.errorData === 'string' ? d.errorData : null) || d.errorMessage || 'Query failed';
+    if (handleSessionError(msg)) { const err = new Error(msg); err.__sessionHandled = true; throw err; }
+    throw new Error(msg);
   }
-  return false;
+  return d.value;
 }
 
 async function convexMutation(path, args = {}) {
@@ -795,6 +826,7 @@ async function convexMutation(path, args = {}) {
   const d = await r.json();
   if (d.status !== 'success') {
     const msg = (typeof d.errorData === 'string' ? d.errorData : null) || d.errorMessage || 'Server error';
+    if (handleSessionError(msg)) { const err = new Error(msg); err.__sessionHandled = true; throw err; }
     throw new Error(msg);
   }
   return d.value;
@@ -914,7 +946,7 @@ function initReactive() {
           if (fresh) state.user = fresh;
         }
         updateLiveView(true); // background push: nav-only, never clobbers the active page
-      }, () => { /* query error (e.g. recruit unauthorized) — keep existing state */ });
+      }, (err) => { handleSessionError(err); /* other errors (e.g. recruit unauthorized) are expected — keep state */ });
       convexSubs.push(unsub);
     }
   } catch (e) {
@@ -1555,16 +1587,16 @@ async function confirmCreateLogisticsTask() {
     const cb=document.getElementById(`log-item-${i}`);
     if(cb&&cb.checked) itemIds.push(item._id);
   });
-  if(!itemIds.length){ alert('Select at least one item'); return; }
+  if(!itemIds.length){ toast('Select at least one item'); return; }
   const destinationSystem=(document.getElementById('log-sys')||{value:''}).value||undefined;
   const destinationLocation=(document.getElementById('log-loc')||{value:''}).value;
-  if(!destinationLocation){ alert('Select a destination location'); return; }
+  if(!destinationLocation){ toast('Select a destination location'); return; }
   const storedBy=(document.getElementById('log-storedby')||{value:''}).value.trim()||state.user.username;
   try {
     await convexMutation('logistics:create',{sessionToken:state.sessionToken,destinationSystem,destinationLocation,storedBy,itemIds});
     closeModal(); toast('Logistics task created');
     await refreshAll(); renderPage();
-  } catch(e){ alert(e.message); }
+  } catch(e){ notifyError(e); }
 }
 
 function openCompleteLogisticsModal(logisticsId) {
@@ -1590,7 +1622,7 @@ async function confirmCompleteLogistics(logisticsId) {
     await convexMutation('logistics:complete',{sessionToken:state.sessionToken,logisticsId,storedBy});
     closeModal(); toast('Task completed — items updated');
     await refreshAll(); logisticsDetailId=null; renderPage();
-  } catch(e){ alert(e.message); }
+  } catch(e){ notifyError(e); }
 }
 
 async function deleteLogisticsTask(logisticsId) {
@@ -1599,7 +1631,7 @@ async function deleteLogisticsTask(logisticsId) {
     await convexMutation('logistics:deleteTask',{sessionToken:state.sessionToken,logisticsId});
     toast('Task deleted');
     await refreshAll(); logisticsDetailId=null; renderPage();
-  } catch(e){ alert(e.message); }
+  } catch(e){ notifyError(e); }
 }
 
 function openEditLogisticsModal(logisticsId) {
@@ -1663,16 +1695,16 @@ async function confirmEditLogisticsTask(logisticsId, rowCount) {
     const cb=document.getElementById(`elog-item-${idx}`);
     if(cb&&cb.checked) itemIds.push(item._id);
   });
-  if(!itemIds.length){ alert('Select at least one item'); return; }
+  if(!itemIds.length){ toast('Select at least one item'); return; }
   const destinationSystem=(document.getElementById('elog-sys')||{value:''}).value||undefined;
   const destinationLocation=(document.getElementById('elog-loc')||{value:''}).value;
-  if(!destinationLocation){ alert('Select a destination location'); return; }
+  if(!destinationLocation){ toast('Select a destination location'); return; }
   const storedBy=(document.getElementById('elog-storedby')||{value:''}).value.trim()||state.user.username;
   try {
     await convexMutation('logistics:update',{sessionToken:state.sessionToken,logisticsId,destinationSystem,destinationLocation,storedBy,itemIds});
     closeModal(); toast('Task updated');
     await refreshAll(); renderPage();
-  } catch(e){ alert(e.message); }
+  } catch(e){ notifyError(e); }
 }
 
 function renderInventoryList() {
@@ -1839,13 +1871,13 @@ function openHandOutModal(itemId) {
 async function confirmHandOut(itemId, maxQty) {
   const recipient = (document.getElementById('ho-recipient')||{value:''}).value.trim();
   const qty = parseInt((document.getElementById('ho-qty')||{value:'1'}).value)||1;
-  if(!recipient){alert('Enter a recipient name');return;}
-  if(qty<1||qty>maxQty){alert(`Quantity must be between 1 and ${maxQty}`);return;}
+  if(!recipient){toast('Enter a recipient name');return;}
+  if(qty<1||qty>maxQty){toast(`Quantity must be between 1 and ${maxQty}`);return;}
   try {
     await convexMutation('items:handOut',{sessionToken:state.sessionToken,itemId,handedOutTo:recipient,handedOutQty:qty});
     closeModal(); toast(`Handed out to ${recipient}`);
     await refreshAll(); renderPage();
-  } catch(e){alert(e.message);}
+  } catch(e){notifyError(e);}
 }
 
 // ── USED MODAL (Wikelo) ───────────────────────────────────────────────────────
@@ -1880,12 +1912,12 @@ function openUsedModal(itemId) {
 
 async function confirmUsed(itemId) {
   const usedFor = (document.getElementById('used-for')||{value:''}).value.trim();
-  if(!usedFor){alert('Enter what the item was used for');return;}
+  if(!usedFor){toast('Enter what the item was used for');return;}
   try {
     await convexMutation('items:markUsed',{sessionToken:state.sessionToken,itemId,usedFor});
     closeModal(); toast('Marked as used');
     await refreshAll(); renderPage();
-  } catch(e){alert(e.message);}
+  } catch(e){notifyError(e);}
 }
 
 // ── ADD ITEM MODAL ────────────────────────────────────────────────────────────
@@ -2112,7 +2144,7 @@ async function confirmAddItem() {
   // ── FPS Armor: bulk-add checked presets ──
   if(category==='fps_armor'){
     const subcat=(document.getElementById('ai-subcat')||{value:''}).value;
-    if(!subcat){alert('Select a subcategory');return;}
+    if(!subcat){toast('Select a subcategory');return;}
     const presets=FPS_ARMOR_PRESETS[subcat]||[];
     const toAdd=[];
     for(let i=0;i<presets.length;i++){
@@ -2122,7 +2154,7 @@ async function confirmAddItem() {
         toAdd.push({name:presets[i],qty});
       }
     }
-    if(!toAdd.length){alert('Select at least one item');return;}
+    if(!toAdd.length){toast('Select at least one item');return;}
     const armorQualityRaw=(document.getElementById('ai-quality')||{value:''}).value;
     const armorQuality=armorQualityRaw?parseInt(armorQualityRaw):undefined;
     try{
@@ -2131,28 +2163,28 @@ async function confirmAddItem() {
       }
       closeModal(); toast(`${toAdd.length} item${toAdd.length>1?'s':''} added`);
       await refreshAll(); renderPage();
-    }catch(e){alert(e.message);}
+    }catch(e){notifyError(e);}
     return;
   }
 
   let name,compType,compGrade,compSize,compTier;
 
   if(category==='ship_component'){
-    if(!aiSelectedComp){alert('Select a component from the list');return;}
+    if(!aiSelectedComp){toast('Select a component from the list');return;}
     name=aiSelectedComp.name; compType=aiSelectedComp.type; compGrade=aiSelectedComp.grade; compSize=aiSelectedComp.size; compTier=aiSelectedComp.tier;
   } else if(category==='wikelo'){
     const preset=(document.getElementById('ai-wikelo-preset')||{value:''}).value;
-    if(!preset){alert('Select an item or choose Custom');return;}
+    if(!preset){toast('Select an item or choose Custom');return;}
     if(preset==='__custom__'){
       name=(document.getElementById('ai-name')||{value:''}).value.trim();
-      if(!name){alert('Enter an item name');return;}
+      if(!name){toast('Enter an item name');return;}
     } else {
       name=preset;
     }
   } else {
     // fps_weapon, ship_weapon, other
     name=(document.getElementById('ai-name')||{value:''}).value.trim();
-    if(!name){alert('Enter an item name');return;}
+    if(!name){toast('Enter an item name');return;}
   }
 
   const subcategory=(document.getElementById('ai-subcat')||{value:''}).value||undefined;
@@ -2164,7 +2196,7 @@ async function confirmAddItem() {
     await convexMutation('items:create',{sessionToken:state.sessionToken,name,category,subcategory,description,quantity,quality,system,location,compType,compGrade,compSize,compTier});
     closeModal(); toast('Item added');
     await refreshAll(); renderPage();
-  }catch(e){alert(e.message);}
+  }catch(e){notifyError(e);}
 }
 
 async function deleteNavItem(itemId) {
@@ -2173,7 +2205,7 @@ async function deleteNavItem(itemId) {
     await convexMutation('items:remove',{sessionToken:state.sessionToken,itemId});
     toast('Item removed');
     await refreshAll(); renderPage();
-  } catch(e){alert(e.message);}
+  } catch(e){notifyError(e);}
 }
 
 
@@ -2459,7 +2491,7 @@ async function adminAcceptRecruit(appId, targetId, targetName) {
     toast(`${targetName} accepted as Member`);
     await refreshAll();
     document.getElementById('admin-wrap').innerHTML=renderAdminContent();
-  } catch(e){alert(e.message);}
+  } catch(e){notifyError(e);}
 }
 
 async function adminRemoveApp(appId, userName) {
@@ -2469,7 +2501,7 @@ async function adminRemoveApp(appId, userName) {
     toast('Application deleted');
     await refreshAll();
     document.getElementById('admin-wrap').innerHTML=renderAdminContent();
-  } catch(e){alert(e.message);}
+  } catch(e){notifyError(e);}
 }
 
 async function adminMarkAppReviewed(appId) {
@@ -2478,7 +2510,7 @@ async function adminMarkAppReviewed(appId) {
     toast('Application marked as reviewed');
     await refreshAll();
     document.getElementById('admin-wrap').innerHTML=renderAdminContent();
-  } catch(e){alert(e.message);}
+  } catch(e){notifyError(e);}
 }
 
 async function adminGrantRole(targetId, targetName, role) {
@@ -2489,7 +2521,7 @@ async function adminGrantRole(targetId, targetName, role) {
     toast(`${label} role granted to ${targetName}`);
     await refreshAll();
     document.getElementById('admin-wrap').innerHTML=renderAdminContent();
-  } catch(e){alert(e.message);}
+  } catch(e){notifyError(e);}
 }
 
 async function adminRevokeRole(targetId, targetName, role) {
@@ -2500,7 +2532,7 @@ async function adminRevokeRole(targetId, targetName, role) {
     toast(`${label} role revoked from ${targetName}`);
     await refreshAll();
     document.getElementById('admin-wrap').innerHTML=renderAdminContent();
-  } catch(e){alert(e.message);}
+  } catch(e){notifyError(e);}
 }
 
 async function adminGrantAdmin(targetId, targetName) {
@@ -2510,7 +2542,7 @@ async function adminGrantAdmin(targetId, targetName) {
     toast(`Admin role granted to ${targetName}`);
     await refreshAll();
     document.getElementById('admin-wrap').innerHTML=renderAdminContent();
-  } catch(e){alert(e.message);}
+  } catch(e){notifyError(e);}
 }
 
 async function adminRemoveMember(targetId, targetName) {
@@ -2520,7 +2552,7 @@ async function adminRemoveMember(targetId, targetName) {
     toast(`${targetName} removed`);
     await refreshAll();
     document.getElementById('admin-wrap').innerHTML=renderAdminContent();
-  } catch(e){alert(e.message);}
+  } catch(e){notifyError(e);}
 }
 
 async function adminDeleteLog(id) {
@@ -2529,7 +2561,7 @@ async function adminDeleteLog(id) {
     await convexMutation('archive:removeLog',{id,sessionToken:state.sessionToken});
     toast('Log entry deleted');
     await refreshAll();
-  } catch(e){alert(e.message);}
+  } catch(e){notifyError(e);}
 }
 
 // ─── SHARED HELPERS ───────────────────────────────────────────────────────────
@@ -2739,14 +2771,14 @@ async function confirmEditTask(taskId) {
   const priorityEl=document.querySelector('input[name="et-priority"]:checked');
   const priority=priorityEl?priorityEl.value:'normal';
   const targetRoles=[...document.querySelectorAll('.et-role:checked')].map(c=>c.value);
-  if(!title){alert('Enter a project title');return;}
-  if(!targetRoles.length){alert('Select at least one role');return;}
+  if(!title){toast('Enter a project title');return;}
+  if(!targetRoles.length){toast('Select at least one role');return;}
   const requiredItems = ctNeedsItems && ctRequiredItems.length ? ctRequiredItems : [];
   try {
     await convexMutation('tasks:update',{sessionToken:state.sessionToken,taskId,title,description,goal,priority,targetRoles,requiredItems});
     closeModal(); toast('Project updated');
     await refreshAll(); renderPage();
-  } catch(e){alert(e.message);}
+  } catch(e){notifyError(e);}
 }
 
 function toggleTaskExpand(taskId) {
@@ -2778,26 +2810,26 @@ async function useItemsForProject(taskId, taskTitle) {
   try {
     await convexMutation('tasks:useItems',{sessionToken:state.sessionToken,taskId});
     toast('Items used for project'); await refreshAll(); renderPage();
-  } catch(e){alert(e.message);}
+  } catch(e){notifyError(e);}
 }
 
 async function joinTask(taskId) {
-  try { await convexMutation('tasks:join',{taskId,sessionToken:state.sessionToken}); toast('Joined'); await refreshAll(); } catch(e){alert(e.message);}
+  try { await convexMutation('tasks:join',{taskId,sessionToken:state.sessionToken}); toast('Joined'); await refreshAll(); } catch(e){notifyError(e);}
 }
 async function leaveTask(taskId) {
   if(!confirm('Leave this project?')) return;
-  try { await convexMutation('tasks:leave',{taskId,sessionToken:state.sessionToken}); toast('Left project'); await refreshAll(); } catch(e){alert(e.message);}
+  try { await convexMutation('tasks:leave',{taskId,sessionToken:state.sessionToken}); toast('Left project'); await refreshAll(); } catch(e){notifyError(e);}
 }
 async function closeTask(taskId) {
   if(!confirm('Close this project?')) return;
-  try { await convexMutation('tasks:close',{taskId,sessionToken:state.sessionToken}); toast('Project closed'); await refreshAll(); } catch(e){alert(e.message);}
+  try { await convexMutation('tasks:close',{taskId,sessionToken:state.sessionToken}); toast('Project closed'); await refreshAll(); } catch(e){notifyError(e);}
 }
 async function reopenTask(taskId) {
-  try { await convexMutation('tasks:reopen',{taskId,sessionToken:state.sessionToken}); toast('Project reopened'); await refreshAll(); } catch(e){alert(e.message);}
+  try { await convexMutation('tasks:reopen',{taskId,sessionToken:state.sessionToken}); toast('Project reopened'); await refreshAll(); } catch(e){notifyError(e);}
 }
 async function deleteTask(taskId) {
   if(!confirm('Delete this project permanently?')) return;
-  try { await convexMutation('tasks:remove',{taskId,sessionToken:state.sessionToken}); toast('Deleted'); await refreshAll(); } catch(e){alert(e.message);}
+  try { await convexMutation('tasks:remove',{taskId,sessionToken:state.sessionToken}); toast('Deleted'); await refreshAll(); } catch(e){notifyError(e);}
 }
 
 function openCreateTaskModal() {
@@ -2855,14 +2887,14 @@ async function confirmCreateTask() {
   const priorityEl=document.querySelector('input[name="ct-priority"]:checked');
   const priority=priorityEl?priorityEl.value:'normal';
   const targetRoles=[...document.querySelectorAll('.ct-role:checked')].map(c=>c.value);
-  if(!title){alert('Enter a project title');return;}
-  if(!targetRoles.length){alert('Select at least one role');return;}
+  if(!title){toast('Enter a project title');return;}
+  if(!targetRoles.length){toast('Select at least one role');return;}
   try {
     const requiredItems = ctNeedsItems && ctRequiredItems.length ? ctRequiredItems : undefined;
     await convexMutation('tasks:create',{sessionToken:state.sessionToken,title,description,goal,priority,targetRoles,requiredItems});
     closeModal(); toast('Project created'); tasksFilter='open';
     await refreshAll(); goTo('tasks');
-  } catch(e){alert(e.message);}
+  } catch(e){notifyError(e);}
 }
 
 
@@ -2953,7 +2985,7 @@ function ctAddRequired(idx) {
   const t = ctFilteredTypes[idx];
   if (!t) return;
   const qty = parseInt((document.getElementById(`ctqty${idx}`)||{value:'1'}).value);
-  if (!qty || qty < 1) { alert('Enter a valid quantity'); return; }
+  if (!qty || qty < 1) { toast('Enter a valid quantity'); return; }
   ctRequiredItems.push({ name: t.name, category: t.category, quantityNeeded: qty });
   renderCtItemResults();
 }
@@ -2966,9 +2998,9 @@ function ctRemoveRequired(idx) {
 function ctAddCustom() {
   const name = (document.getElementById('ct-custom-name')||{value:''}).value.trim();
   const qty  = parseInt((document.getElementById('ct-custom-qty')||{value:'1'}).value);
-  if (!name) { alert('Enter an item name'); return; }
-  if (!qty || qty < 1) { alert('Enter a valid quantity'); return; }
-  if (ctRequiredItems.some(r=>r.name===name)) { alert('Already added'); return; }
+  if (!name) { toast('Enter an item name'); return; }
+  if (!qty || qty < 1) { toast('Enter a valid quantity'); return; }
+  if (ctRequiredItems.some(r=>r.name===name)) { toast('Already added'); return; }
   ctRequiredItems.push({ name, category: 'other', quantityNeeded: qty });
   document.getElementById('ct-custom-name').value = '';
   document.getElementById('ct-custom-qty').value = '1';
@@ -3449,7 +3481,7 @@ function openCreateLotteryModal() {
 
 async function confirmCreateLottery() {
   const title=(document.getElementById('nl-title')||{value:''}).value.trim();
-  if(!title){alert('Enter a lottery title');return;}
+  if(!title){toast('Enter a lottery title');return;}
   try {
     const id=await convexMutation('lotteries:create',{sessionToken:state.sessionToken,title});
     closeModal();
@@ -3458,7 +3490,7 @@ async function confirmCreateLottery() {
     lotteryDetailId=id;
     lotteryView='detail';
     renderPage();
-  } catch(e){alert(e.message);}
+  } catch(e){notifyError(e);}
 }
 
 async function addLotteryItem(lotteryId, itemId, name, type, typeName, grade, size, tier) {
@@ -3472,7 +3504,7 @@ async function addLotteryItem(lotteryId, itemId, name, type, typeName, grade, si
     // Re-render the detail page in place
     const pw=document.getElementById('page-wrap');
     if(pw) pw.innerHTML=`<div class="page">${pageLottery()}</div>`;
-  } catch(e){alert(e.message);}
+  } catch(e){notifyError(e);}
 }
 
 async function removeLotteryItem(lotteryId, itemId) {
@@ -3481,13 +3513,13 @@ async function removeLotteryItem(lotteryId, itemId) {
     await refreshAll();
     const pw=document.getElementById('page-wrap');
     if(pw) pw.innerHTML=`<div class="page">${pageLottery()}</div>`;
-  } catch(e){alert(e.message);}
+  } catch(e){notifyError(e);}
 }
 
 
 async function doGeneratePackages(lotteryId) {
   const n=lotteryPkgCount;
-  if(n<2||n>20){alert('Package count must be 2–20');return;}
+  if(n<2||n>20){toast('Package count must be 2–20');return;}
   try {
     await convexMutation('lotteries:generatePackages',{sessionToken:state.sessionToken,lotteryId,packageCount:n});
     toast(`${n} packages generated`);
@@ -3509,7 +3541,7 @@ async function doGeneratePackages(lotteryId) {
       const pw=document.getElementById('page-wrap');
       if(pw) pw.innerHTML=`<div class="page">${pageLottery()}</div>`;
     }
-  } catch(e){alert(e.message);}
+  } catch(e){notifyError(e);}
 }
 
 async function confirmOpenLottery(lotteryId) {
@@ -3519,7 +3551,7 @@ async function confirmOpenLottery(lotteryId) {
     toast('Lottery opened');
     await refreshAll();
     renderPage();
-  } catch(e){alert(e.message);}
+  } catch(e){notifyError(e);}
 }
 
 async function confirmCloseLottery(lotteryId) {
@@ -3529,7 +3561,7 @@ async function confirmCloseLottery(lotteryId) {
     toast('Lottery closed');
     await refreshAll();
     renderPage();
-  } catch(e){alert(e.message);}
+  } catch(e){notifyError(e);}
 }
 
 async function confirmBackToDraft(lotteryId) {
@@ -3539,7 +3571,7 @@ async function confirmBackToDraft(lotteryId) {
     toast('Reverted to draft');
     await refreshAll();
     renderPage();
-  } catch(e){alert(e.message);}
+  } catch(e){notifyError(e);}
 }
 
 async function doPickPackage(lotteryId, pkgId) {
@@ -3549,7 +3581,7 @@ async function doPickPackage(lotteryId, pkgId) {
     toast('Package picked');
     await refreshAll();
     renderPage();
-  } catch(e){alert(e.message);}
+  } catch(e){notifyError(e);}
 }
 
 async function doThrowHat(lotteryId, pkgId, externalName) {
@@ -3559,7 +3591,7 @@ async function doThrowHat(lotteryId, pkgId, externalName) {
     await convexMutation('lotteries:throwHat',args);
     await refreshAll();
     refreshLotteryOpenView(lotteryId);
-  } catch(e){alert(e.message);}
+  } catch(e){notifyError(e);}
 }
 
 async function doRemoveHat(lotteryId, pkgId, participantId) {
@@ -3567,25 +3599,25 @@ async function doRemoveHat(lotteryId, pkgId, participantId) {
     await convexMutation('lotteries:removeHat',{sessionToken:state.sessionToken,lotteryId,pkgId,participantId});
     await refreshAll();
     refreshLotteryOpenView(lotteryId);
-  } catch(e){alert(e.message);}
+  } catch(e){notifyError(e);}
 }
 
 async function doAddExternalName(lotteryId) {
   const inp=document.getElementById('ext-name-input');
   const name=inp?inp.value.trim():'';
-  if(!name){alert('Enter a name');return;}
+  if(!name){toast('Enter a name');return;}
   try {
     await convexMutation('lotteries:addExternalName',{sessionToken:state.sessionToken,lotteryId,name});
     if(inp) inp.value='';
     await refreshAll();
     refreshLotteryOpenView(lotteryId);
-  } catch(e){alert(e.message);}
+  } catch(e){notifyError(e);}
 }
 
 async function doBulkAddNames(lotteryId, rawText) {
   const text = rawText !== undefined ? rawText : (document.getElementById('ext-bulk-input')?.value || '');
   const names = text.split('\n').map(n => n.trim()).filter(n => n.length > 0);
-  if(!names.length){ alert('No names found.'); return; }
+  if(!names.length){ toast('No names found.'); return; }
   try {
     const added = await convexMutation('lotteries:bulkAddExternalNames', {sessionToken:state.sessionToken, lotteryId, names});
     const inp = document.getElementById('ext-bulk-input');
@@ -3593,7 +3625,7 @@ async function doBulkAddNames(lotteryId, rawText) {
     await refreshAll();
     refreshLotteryOpenView(lotteryId);
     toast(`Added ${added} name${added!==1?'s':''}.`);
-  } catch(e){ alert(e.message); }
+  } catch(e){ notifyError(e); }
 }
 
 async function doBulkAddFromFile(lotteryId, input) {
@@ -3609,7 +3641,7 @@ async function doRemoveExternalName(lotteryId, name) {
     await convexMutation('lotteries:removeExternalName',{sessionToken:state.sessionToken,lotteryId,name});
     await refreshAll();
     refreshLotteryOpenView(lotteryId);
-  } catch(e){alert(e.message);}
+  } catch(e){notifyError(e);}
 }
 
 async function doEnterAllPackages(lotteryId, externalName) {
@@ -3650,7 +3682,7 @@ async function doRunDraw(lotteryId) {
     toast('Lottery draw complete');
     await refreshAll();
     renderPage();
-  } catch(e){alert(e.message);}
+  } catch(e){notifyError(e);}
 }
 
 async function deleteLottery(lotteryId) {
@@ -3661,7 +3693,7 @@ async function deleteLottery(lotteryId) {
     lotteryView='list'; lotteryDetailId=null;
     await refreshAll();
     renderPage();
-  } catch(e){alert(e.message);}
+  } catch(e){notifyError(e);}
 }
 
 async function claimBootstrapAdmin() {
@@ -3675,7 +3707,7 @@ async function claimBootstrapAdmin() {
     goTo('admin');
   } catch(e){
     if(e.message.includes('ADMIN_EXISTS')) toast('An admin already exists — cannot claim.');
-    else alert(e.message);
+    else notifyError(e);
   }
 }
 
