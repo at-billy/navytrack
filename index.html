@@ -84,6 +84,24 @@ input,select,textarea,button{border-radius:0;}
 textarea{appearance:none;-webkit-appearance:none;}
 input:focus,select:focus,textarea:focus{border-color:var(--red);}
 input::placeholder,textarea::placeholder{color:#000;}
+
+/* Custom checkboxes & radios — squared, monochrome, themed */
+input[type=checkbox],input[type=radio]{
+  appearance:none;-webkit-appearance:none;
+  width:18px;height:18px;flex-shrink:0;margin:0;vertical-align:middle;
+  border:1.5px solid var(--border);background:var(--bg);cursor:pointer;position:relative;}
+input[type=checkbox]:checked{background:var(--fg);border-color:var(--fg);}
+input[type=checkbox]:checked::after{content:"";position:absolute;left:5px;top:1px;width:4px;height:9px;
+  border:solid var(--bg);border-width:0 2px 2px 0;transform:rotate(45deg);}
+input[type=radio]:checked{border-color:var(--fg);}
+input[type=radio]:checked::after{content:"";position:absolute;left:3px;top:3px;right:3px;bottom:3px;background:var(--fg);}
+
+/* Custom select caret (native arrow is removed by appearance:none above) */
+select{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23000'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right var(--space-3) center;padding-right:34px;}
+body.dark select{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23e0e0e0'/%3E%3C/svg%3E");}
 .field{margin-bottom:28px;}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-6);}
 .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:var(--space-5);}
@@ -156,7 +174,7 @@ tbody tr:hover{background:#f9f9f9;}
 .tab-btn.active{border-bottom-color:#000;color:#000;}
 .err-msg{font-size:var(--text-md);color:var(--red);margin-bottom:var(--space-3);display:none;}
 .chk-row{display:flex;align-items:center;gap:var(--space-2);margin-bottom:var(--space-2);cursor:pointer;}
-.chk-row input{width:auto;flex-shrink:0;}
+.chk-row input{flex-shrink:0;}
 .chk-row span{font-size:var(--text-md);}
 .setup-note{font-size:var(--text-md);color:#000;margin-top:var(--space-4);line-height:1.7;}
 .code-block{background:#f5f5f5;padding:var(--space-2) var(--space-3);font-family:monospace;font-size:var(--text-md);margin:var(--space-2) 0;}
@@ -1740,7 +1758,7 @@ function openNewLogisticsModal() {
       <div style="max-height:220px;overflow-y:auto;border:1px solid var(--border);padding:4px 0;">
         ${inventory.map((item,i)=>`
           <div style="display:flex;align-items:center;gap:10px;padding:7px 12px;border-bottom:1px solid var(--border);">
-            <input type="checkbox" id="log-item-${i}" value="${esc(item._id)}" style="width:18px;height:18px;flex-shrink:0;cursor:pointer;">
+            <input type="checkbox" id="log-item-${i}" value="${esc(item._id)}">
             <label for="log-item-${i}" style="flex:1;cursor:pointer;">
               <div style="font-size:var(--text-md);font-weight:700;">${esc(item.name)}</div>
               <div style="font-size:var(--text-xs);color:var(--fg);">${itemCatLabel(item.category)} &middot; ${esc(item.location)}${item.system?` (${esc(item.system)})`:''}</div>
@@ -1844,7 +1862,7 @@ function openEditLogisticsModal(logisticsId) {
       <div style="max-height:220px;overflow-y:auto;border:1px solid var(--border);padding:4px 0;">
         ${allRows.map(({item,idx,inTask,fromTask})=>`
           <div style="display:flex;align-items:center;gap:10px;padding:7px 12px;border-bottom:1px solid var(--border);">
-            <input type="checkbox" id="elog-item-${idx}" value="${esc(item._id)}" ${inTask?'checked':''} style="width:18px;height:18px;flex-shrink:0;cursor:pointer;">
+            <input type="checkbox" id="elog-item-${idx}" value="${esc(item._id)}" ${inTask?'checked':''}>
             <label for="elog-item-${idx}" style="flex:1;cursor:pointer;">
               <div style="font-size:var(--text-md);font-weight:700;">${esc(item.name)}${fromTask?` <span style="font-size:var(--text-xs);color:var(--fg);">(not in inventory)</span>`:''}</div>
               <div style="font-size:var(--text-xs);color:var(--fg);">${itemCatLabel(item.category)} &middot; ${esc(item.location||'—')}${item.system?` (${esc(item.system)})`:''}</div>
@@ -2333,7 +2351,7 @@ function renderArmorPresets(subcat) {
   const items = FPS_ARMOR_PRESETS[subcat]||[];
   return `<div style="margin-bottom:4px;">`+items.map((name,i)=>`
     <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);">
-      <input type="checkbox" id="armor-preset-${i}" value="${esc(name)}" style="width:18px;height:18px;flex-shrink:0;cursor:pointer;">
+      <input type="checkbox" id="armor-preset-${i}" value="${esc(name)}">
       <label for="armor-preset-${i}" style="flex:1;font-size:var(--text-md);cursor:pointer;">${esc(name)}</label>
       <div style="display:flex;align-items:center;gap:4px;">
         <label style="font-size:var(--text-sm);color:var(--fg);">Qty</label>
@@ -3161,11 +3179,11 @@ function openEditTaskModal(taskId) {
     </div>
     <div class="field"><label class="lbl">Visible to (roles)</label>
       <div style="display:flex;gap:12px;margin-top:4px;flex-wrap:wrap;">
-        ${NAVY_ROLES.map(r=>`<label class="chk-row" style="margin:0;"><input type="checkbox" class="et-role" value="${r.id}" style="width:auto;"${t.targetRoles.includes(r.id)?' checked':''}> <span style="font-size:var(--text-md);">${r.label}</span></label>`).join('')}
+        ${NAVY_ROLES.map(r=>`<label class="chk-row" style="margin:0;"><input type="checkbox" class="et-role" value="${r.id}"${t.targetRoles.includes(r.id)?' checked':''}> <span style="font-size:var(--text-md);">${r.label}</span></label>`).join('')}
       </div>
     </div>
     <div class="field">
-      <label class="chk-row" style="margin:0;"><input type="checkbox" id="ct-needs-items" style="width:auto;"${ctNeedsItems?' checked':''} onchange="ctNeedsItems=this.checked;renderCtItemsSection()"> <span style="font-size:var(--text-md);font-weight:700;">Needs items to complete</span></label>
+      <label class="chk-row" style="margin:0;"><input type="checkbox" id="ct-needs-items"${ctNeedsItems?' checked':''} onchange="ctNeedsItems=this.checked;renderCtItemsSection()"> <span style="font-size:var(--text-md);font-weight:700;">Needs items to complete</span></label>
     </div>
     <div id="ct-items-wrap" style="display:${ctNeedsItems?'':'none'};">
       <div class="field" style="margin-top:0;">
@@ -3311,11 +3329,11 @@ function openCreateTaskModal() {
     </div>
     <div class="field"><label class="lbl">Visible to (roles)</label>
       <div style="display:flex;gap:12px;margin-top:4px;flex-wrap:wrap;">
-        ${NAVY_ROLES.map(r=>`<label class="chk-row" style="margin:0;"><input type="checkbox" class="ct-role" value="${r.id}" style="width:auto;" checked> <span style="font-size:var(--text-md);">${r.label}</span></label>`).join('')}
+        ${NAVY_ROLES.map(r=>`<label class="chk-row" style="margin:0;"><input type="checkbox" class="ct-role" value="${r.id}" checked> <span style="font-size:var(--text-md);">${r.label}</span></label>`).join('')}
       </div>
     </div>
     <div class="field">
-      <label class="chk-row" style="margin:0;"><input type="checkbox" id="ct-needs-items" style="width:auto;" onchange="ctNeedsItems=this.checked;renderCtItemsSection()"> <span style="font-size:var(--text-md);font-weight:700;">Needs items to complete</span></label>
+      <label class="chk-row" style="margin:0;"><input type="checkbox" id="ct-needs-items" onchange="ctNeedsItems=this.checked;renderCtItemsSection()"> <span style="font-size:var(--text-md);font-weight:700;">Needs items to complete</span></label>
     </div>
     <div id="ct-items-wrap" style="display:none;">
       <div class="field" style="margin-top:0;">
