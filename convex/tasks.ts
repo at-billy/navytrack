@@ -1,6 +1,20 @@
 import { mutation, query } from "./_generated/server";
 import { v, ConvexError } from "convex/values";
 import { requireSession, requireMember } from "./_helpers";
+import {
+  TASK_PRIORITIES, TASK_TARGET_ROLES, ITEM_CATEGORIES,
+  assertIn, assertSubset, assertLen, assertPositiveInt,
+} from "./_constants";
+
+// Shared validation for a project's required-items list.
+function validateRequiredItems(items?: { name: string; category: string; quantityNeeded: number }[]) {
+  if (!items) return;
+  for (const it of items) {
+    assertLen(it.name, 120, "item name");
+    assertIn(it.category, ITEM_CATEGORIES, "category");
+    assertPositiveInt(it.quantityNeeded, "quantity");
+  }
+}
 
 export const getAll = query({
   args: { sessionToken: v.string() },
@@ -28,6 +42,13 @@ export const create = mutation({
     const user = await requireSession(ctx.db, sessionToken);
     const canCreate = user.roles.some(r => ["admin", "command"].includes(r));
     if (!canCreate) throw new ConvexError("Not authorized");
+    if (!rest.title.trim()) throw new ConvexError("Title is required");
+    assertLen(rest.title, 200, "title");
+    if (rest.description) assertLen(rest.description, 2000, "description");
+    if (rest.goal) assertLen(rest.goal, 2000, "goal");
+    assertIn(rest.priority, TASK_PRIORITIES, "priority");
+    assertSubset(rest.targetRoles, TASK_TARGET_ROLES, "target role");
+    validateRequiredItems(rest.requiredItems);
     const id = await ctx.db.insert("tasks", {
       ...rest,
       status: "open",
@@ -132,6 +153,15 @@ export const update = mutation({
     const isAdmin = user.roles.some(r => ["admin", "command"].includes(r));
     const isCreator = task.createdBy === user._id;
     if (!isAdmin && !isCreator) throw new ConvexError("Not authorized");
+    if (fields.title !== undefined) {
+      if (!fields.title.trim()) throw new ConvexError("Title is required");
+      assertLen(fields.title, 200, "title");
+    }
+    if (fields.description !== undefined) assertLen(fields.description, 2000, "description");
+    if (fields.goal !== undefined) assertLen(fields.goal, 2000, "goal");
+    if (fields.priority !== undefined) assertIn(fields.priority, TASK_PRIORITIES, "priority");
+    if (fields.targetRoles !== undefined) assertSubset(fields.targetRoles, TASK_TARGET_ROLES, "target role");
+    if (fields.requiredItems !== undefined) validateRequiredItems(fields.requiredItems);
     const patch: Record<string, any> = {};
     for (const [k, v] of Object.entries(fields)) {
       if (v !== undefined) patch[k] = v;

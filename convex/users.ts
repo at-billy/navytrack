@@ -2,6 +2,7 @@ import { mutation, query } from "./_generated/server";
 import { v, ConvexError } from "convex/values";
 import { requireSession } from "./_helpers";
 import { hashPassword, verifyPassword, isLegacyHash } from "./_password";
+import { GRANTABLE_ROLES, FUNCTION_ROLES, assertIn } from "./_constants";
 
 export const authenticate = mutation({
   args: { username: v.string(), password: v.string() },
@@ -100,6 +101,7 @@ export const approveRole = mutation({
   handler: async (ctx, { sessionToken, targetUserId, pendingRole, fullRole }) => {
     const admin = await requireSession(ctx.db, sessionToken);
     if (!admin.roles.includes("admin")) throw new ConvexError("Not authorized");
+    assertIn(fullRole, GRANTABLE_ROLES, "role");
     const target = await ctx.db.get(targetUserId);
     if (!target) throw new ConvexError("User not found");
     const newRoles = target.roles.filter(r => r !== pendingRole);
@@ -153,8 +155,7 @@ export const removeMember = mutation({
 export const requestRole = mutation({
   args: { sessionToken: v.string(), role: v.string() },
   handler: async (ctx, { sessionToken, role }) => {
-    const REQUESTABLE = ["crafter", "logistics", "provider"];
-    if (!REQUESTABLE.includes(role)) throw new ConvexError("Role not requestable");
+    if (!FUNCTION_ROLES.includes(role)) throw new ConvexError("Role not requestable");
     const user = await requireSession(ctx.db, sessionToken);
     const pendingRole = role === "provider" ? role : role + "_pending";
     if (user.roles.includes(role)) throw new ConvexError("Already have this role");
@@ -168,6 +169,7 @@ export const grantRole = mutation({
   handler: async (ctx, { sessionToken, targetUserId, role }) => {
     const admin = await requireSession(ctx.db, sessionToken);
     if (!admin.roles.includes("admin")) throw new ConvexError("Not authorized");
+    assertIn(role, GRANTABLE_ROLES, "role"); // never "admin"/"recruit"/"removed"/junk
     const target = await ctx.db.get(targetUserId);
     if (!target) throw new ConvexError("User not found");
     const pendingRole = role + "_pending";
@@ -189,6 +191,7 @@ export const revokeRole = mutation({
   handler: async (ctx, { sessionToken, targetUserId, role }) => {
     const admin = await requireSession(ctx.db, sessionToken);
     if (!admin.roles.includes("admin")) throw new ConvexError("Not authorized");
+    assertIn(role, GRANTABLE_ROLES, "role"); // cannot revoke "admin" here
     const target = await ctx.db.get(targetUserId);
     if (!target) throw new ConvexError("User not found");
     const pendingRole = role + "_pending";

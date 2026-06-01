@@ -1,6 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v, ConvexError } from "convex/values";
 import { requireSession, requireMember } from "./_helpers";
+import { ITEM_CATEGORIES, assertIn, assertLen, assertPositiveInt } from "./_constants";
 
 export const getAll = query({
   args: { sessionToken: v.string() },
@@ -31,6 +32,14 @@ export const create = mutation({
     const user = await requireSession(ctx.db, sessionToken);
     const canAdd = user.roles.some(r => ["admin", "command", "core", "member"].includes(r));
     if (!canAdd) throw new ConvexError("Not authorized");
+    if (!rest.name.trim()) throw new ConvexError("Item name is required");
+    assertLen(rest.name, 120, "item name");
+    assertIn(rest.category, ITEM_CATEGORIES, "category");
+    assertPositiveInt(rest.quantity, "quantity");
+    if (!rest.location.trim()) throw new ConvexError("Location is required");
+    assertLen(rest.location, 120, "location");
+    if (rest.description) assertLen(rest.description, 1000, "description");
+    if (rest.heldBy) assertLen(rest.heldBy, 120, "held by");
 
     // Auto-stack: find an identical available item and increment its quantity
     const all = await ctx.db.query("items").withIndex("by_status", q => q.eq("status", "available")).collect();
@@ -101,6 +110,12 @@ export const update = mutation({
       if (!item) throw new ConvexError("Item not found");
       if (item.addedBy !== user._id) throw new ConvexError("Not authorized — you can only edit items you added");
     }
+    if (rest.category !== undefined) assertIn(rest.category, ITEM_CATEGORIES, "category");
+    if (rest.quantity !== undefined) assertPositiveInt(rest.quantity, "quantity");
+    if (rest.name !== undefined) { if (!rest.name.trim()) throw new ConvexError("Item name is required"); assertLen(rest.name, 120, "item name"); }
+    if (rest.location !== undefined) { if (!rest.location.trim()) throw new ConvexError("Location is required"); assertLen(rest.location, 120, "location"); }
+    if (rest.description !== undefined) assertLen(rest.description, 1000, "description");
+    if (rest.status !== undefined) assertIn(rest.status, ["available", "handed_out", "used", "removed"], "status");
     const patch: Record<string, any> = {};
     for (const [k, v] of Object.entries(rest)) {
       if (v !== undefined) patch[k] = v;
