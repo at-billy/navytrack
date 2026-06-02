@@ -249,6 +249,9 @@ tbody tr:hover{background:#f9f9f9;}
 .fp-red .fp-head{color:var(--red);}
 .fp-box{padding:22px 24px;}
 .fp-dots{background-color:var(--bg);background-image:radial-gradient(#000 1.2px, transparent 1.2px),radial-gradient(#000 1.2px, transparent 1.2px);background-size:8px 8px;background-position:0 0,4px 4px;}
+/* On dotted boxes, give each glyph a soft background-colour halo so the dots
+   don't cut into the letters (reads cleaner than a box behind the text). */
+.fp-dots .fp-head,.fp-dots .fp-kicker,.fp-dots .fp-foot{text-shadow:0 0 3px var(--bg),0 0 3px var(--bg),0 0 5px var(--bg);}
 .fp-bd{border:3px solid #000;}
 .fp-bd-red{border:3px solid var(--red);}
 body.dark .fp-head{color:#e0e0e0;}
