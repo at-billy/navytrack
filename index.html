@@ -239,6 +239,26 @@ tbody tr:hover{background:#f9f9f9;}
 .hint-box{background:#f5f5f5;border-left:3px solid #000;padding:var(--space-4) 20px;font-size:var(--text-md);color:#000;margin-top:var(--space-4);line-height:1.8;}
 .hint-box strong{color:#000;}
 
+/* ── FRONT PAGE (editorial headline grid) ────────────────────────── */
+.fp{display:grid;grid-template-columns:repeat(12,1fr);gap:40px 28px;padding:8px 0 40px;align-items:start;}
+.fp-item{min-width:0;}
+.fp-kicker{font-size:var(--text-sm);font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--red);margin-bottom:6px;}
+.fp-head{font-weight:900;line-height:1.04;letter-spacing:-.5px;color:#000;}
+.fp-foot{font-size:var(--text-sm);font-weight:700;letter-spacing:.04em;text-transform:uppercase;margin-top:10px;}
+.fp-xl .fp-head{font-size:clamp(30px,4.2vw,56px);}
+.fp-lg .fp-head{font-size:clamp(23px,2.6vw,36px);}
+.fp-md .fp-head{font-size:clamp(19px,1.6vw,26px);}
+.fp-red .fp-head{color:var(--red);}
+.fp-box{padding:18px 20px;}
+.fp-solid{background:var(--bg2);}
+.fp-dots{background-color:var(--bg);background-image:radial-gradient(var(--border-l) 1.5px, transparent 1.5px);background-size:7px 7px;}
+body.dark .fp-head{color:#e0e0e0;}
+body.dark .fp-red .fp-head{color:var(--red);}
+@media(max-width:760px){
+  .fp{grid-template-columns:1fr;gap:28px 0;}
+  .fp-item{grid-column:1 / -1 !important;}
+}
+
 /* ── OVERVIEW / LANDING ──────────────────────────────────────────── */
 .ov-wrap{}
 .ov-header{display:flex;justify-content:space-between;align-items:flex-end;padding-bottom:28px;border-bottom:2px solid #000;}
@@ -1470,65 +1490,101 @@ function renderPage() {
 }
 
 // ─── OVERVIEW PAGE ────────────────────────────────────────────────────────────
+function fpDate(ts){ return new Date(ts).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}); }
+
+// Turn an archive entry into a newspaper-style headline (or null to skip).
+function fpActivityHeadline(e){
+  const d=e.details||{};
+  const dt=fpDate(e._creationTime);
+  switch(e.type){
+    case 'item_added':              return {kicker:dt, text:`${e.userName} added ${d.quantity}× ${d.name}`, foot:'Databank'};
+    case 'item_handed_out':         return {kicker:dt, text:`${d.handedOutQty}× ${d.name} handed to ${d.handedOutTo}`, foot:'Logistics'};
+    case 'items_used_for_project':  return {kicker:dt, text:`Materials consumed for "${d.taskTitle}"`, foot:'Project'};
+    case 'item_converted':          return {kicker:dt, text:`${d.used} ${d.from} converted into ${d.made} ${d.to}`, foot:'Wikelo'};
+    case 'item_removed':            return {kicker:dt, text:`${d.name} pulled from the databank`, foot:'Databank'};
+    case 'task_created':            return {kicker:dt, text:`New project opened: "${d.title}"`, foot:'Projects'};
+    case 'task_closed':             return {kicker:dt, text:`"${d.title}" wrapped up`, foot:'Projects'};
+    case 'user_joined':             return {kicker:'New recruit', text:`${e.userName} signed up to the wing`, foot:'Roster'};
+    case 'member_restored':         return {kicker:dt, text:`${d.targetUsername} is back on the roster`, foot:'Roster'};
+    case 'role_approved':           return {kicker:dt, text:`${d.targetUsername} is now ${d.role}`, foot:'Roster'};
+    default: return null;
+  }
+}
+
+// Build the pool of headlines from live data. Order is stable (no reshuffle on
+// re-render); the "scattered" feel comes from the layout slots, not the content.
+function buildHeadlines(){
+  const out=[];
+  const openTasks=state.tasks.filter(t=>t.status==='open');
+  const itemsCnt=state.navItems.filter(i=>i.status==='available').reduce((s,i)=>s+i.quantity,0);
+  const memberCnt=state.allUsers.filter(x=>!x.roles.includes('removed')).length;
+  const urgentCnt=openTasks.filter(t=>t.priority==='urgent').length;
+
+  // Lead
+  out.push({kicker:'The Wing Today', text:`${openTasks.length} project${openTasks.length!==1?'s':''} underway, ${itemsCnt} items in the databank`, foot:'Overview'});
+
+  // Project progress (urgent first)
+  const prio={urgent:0,high:1,normal:2,whenever:3};
+  openTasks.slice().sort((a,b)=>(prio[a.priority]??2)-(prio[b.priority]??2)).forEach(t=>{
+    let text, foot=`${t.members.length} on it`;
+    if(t.requiredItems?.length){
+      const total=t.requiredItems.reduce((s,r)=>s+r.quantityNeeded,0);
+      const collected=t.requiredItems.reduce((s,r)=>{
+        const inStock=state.navItems.filter(i=>i.status==='available'&&i.name===r.name&&i.category===r.category).reduce((s2,i)=>s2+i.quantity,0);
+        return s+Math.min(inStock,r.quantityNeeded);
+      },0);
+      const pct=total?Math.round(collected/total*100):0;
+      text = pct>=100 ? `"${t.title}" is fully supplied` : `"${t.title}" is ${pct}% supplied`;
+    } else {
+      text = `"${t.title}" is looking for hands`;
+    }
+    out.push({kicker: t.priority==='urgent'?'Urgent':'Project', text, foot});
+  });
+
+  // Recent activity (skip lottery + password events)
+  state.archive
+    .filter(e=>!LOTTERY_LOG_TYPES.has(e.type) && e.type!=='password_reset_issued' && e.type!=='password_reset_completed' && e.type!=='member_removed')
+    .slice(0,7)
+    .forEach(e=>{ const h=fpActivityHeadline(e); if(h) out.push(h); });
+
+  // Closing facts
+  out.push({kicker:'The Roster', text:`${memberCnt} member${memberCnt!==1?'s':''} strong`, foot:'Members'});
+  if(urgentCnt) out.push({kicker:'Heads Up', text:`${urgentCnt} project${urgentCnt!==1?'s':''} flagged urgent`, foot:'Projects'});
+
+  return out.slice(0, 10);
+}
+
+// Editorial layout slots — varied size / tone / box / column, cycled across headlines.
+const FP_SLOTS = [
+  { size:'fp-xl', tone:'',       box:'',                col:'1 / span 7'  },
+  { size:'fp-lg', tone:'fp-red', box:'fp-box fp-dots',  col:'9 / span 4'  },
+  { size:'fp-lg', tone:'fp-red', box:'',                col:'1 / span 6'  },
+  { size:'fp-md', tone:'',       box:'fp-box fp-solid', col:'8 / span 5'  },
+  { size:'fp-lg', tone:'',       box:'',                col:'2 / span 6'  },
+  { size:'fp-md', tone:'fp-red', box:'fp-box fp-dots',  col:'9 / span 4'  },
+  { size:'fp-md', tone:'fp-red', box:'',                col:'1 / span 5'  },
+  { size:'fp-md', tone:'',       box:'fp-box fp-solid', col:'7 / span 5'  },
+  { size:'fp-lg', tone:'fp-red', box:'',                col:'4 / span 6'  },
+  { size:'fp-md', tone:'',       box:'fp-box fp-dots',  col:'1 / span 4'  },
+];
+
 function pageOverview() {
   const u = state.user;
-
-  // Recruits see the application form
   if(isRecruit(u)) return pageRecruitOverview(u);
 
-  const openTasks  = state.tasks.filter(t=>t.status==='open');
-  const urgentCnt  = openTasks.filter(t=>t.priority==='urgent').length;
-  const memberCnt  = state.allUsers.filter(u=>!u.roles.includes('removed')).length;
-  const itemsCnt   = state.navItems.filter(i=>i.status==='available').reduce((s,i)=>s+i.quantity,0);
-  const prioOrder  = {urgent:0,high:1,normal:2,whenever:3};
-  const topTasks   = openTasks.slice().sort((a,b)=>(prioOrder[a.priority]??2)-(prioOrder[b.priority]??2)).slice(0,6);
-  const recentLog  = state.archive.filter(e=>!LOTTERY_LOG_TYPES.has(e.type)).slice(0,7);
-  function shortDate(ts){const d=new Date(ts);return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});}
+  const headlines = buildHeadlines();
+  if(!headlines.length) return `<div class="empty" style="padding:120px 0;">Nothing to report yet.</div>`;
 
-  return `<div class="ov-wrap">
-    <div class="ov-stats">
-      <div class="ov-stat" style="padding-right:28px;">
-        <div class="ov-stat-num${urgentCnt>0?' red':''}">${openTasks.length}</div>
-        <div class="ov-stat-label">Open Projects</div>
-        <div class="ov-stat-sub">${urgentCnt>0?`<span style="color:var(--red);font-weight:700;">${urgentCnt} urgent</span>`:'none urgent'}</div>
-      </div>
-      <div class="ov-stat" style="padding-left:28px;padding-right:28px;">
-        <div class="ov-stat-num">${itemsCnt}</div>
-        <div class="ov-stat-label">Items</div>
-        <div class="ov-stat-sub">in inventory</div>
-      </div>
-      <div class="ov-stat" style="padding-left:28px;">
-        <div class="ov-stat-num">${memberCnt}</div>
-        <div class="ov-stat-label">Members</div>
-        <div class="ov-stat-sub">&nbsp;</div>
-      </div>
-    </div>
-    <div style="border-top:2px solid var(--border);padding:60px 0;">
-      <div class="ov-col-head">Open Projects</div>
-      ${topTasks.length ? topTasks.map(t=>{
-        const pb=TASK_PRIORITIES.find(p=>p.id===t.priority)||TASK_PRIORITIES[2];
-        return `<div onclick="openProjectFromOverview('${esc(t._id)}')" role="button" tabindex="0" aria-label="Open project: ${esc(t.title)}" style="display:flex;align-items:baseline;gap:28px;padding:14px 0;border-bottom:1px solid var(--border-l);cursor:pointer;">
-          <div style="flex:1;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;">
-            <span class="p-badge ${pb.cls}">${pb.label}</span>
-            <span style="font-size:var(--text-lg);font-weight:900;">${esc(t.title)}</span>
-            ${t.description?`<span style="font-size:var(--text-md);color:var(--fg);">${esc(t.description)}</span>`:''}
-          </div>
-          <div style="font-size:var(--text-md);white-space:nowrap;">${t.members.length} joined</div>
-        </div>`;
-      }).join('')
-      : `<div class="ov-empty" style="padding:40px 0;">No open projects.</div>`}
-      ${openTasks.length>6?`<div style="padding-top:20px;"><span style="font-size:var(--text-md);cursor:pointer;text-decoration:underline;" onclick="goTo('tasks')">All projects (${openTasks.length}) →</span></div>`:''}
-    </div>
-    <div style="border-top:2px solid var(--border);padding:60px 0;">
-      <div class="ov-col-head">Recent Activity</div>
-      ${recentLog.length?recentLog.map(e=>`
-        <div style="display:flex;align-items:baseline;gap:20px;padding:12px 0;border-bottom:1px solid var(--border-l);">
-          <span style="font-size:var(--text-md);color:var(--fg);white-space:nowrap;min-width:72px;">${shortDate(e._creationTime)}</span>
-          <span style="font-size:var(--text-md);font-weight:700;">${esc(e.userName)}</span>
-          <span style="font-size:var(--text-md);color:var(--fg);">${fmtArchiveDetails(e)}</span>
-        </div>`).join('')
-      :`<div class="ov-empty" style="padding:40px 0;">No activity yet.</div>`}
-    </div>
+  return `<div class="fp">
+    ${headlines.map((h,i)=>{
+      const s=FP_SLOTS[i % FP_SLOTS.length];
+      const footColor = s.tone==='fp-red' ? 'var(--red)' : 'var(--fg)';
+      return `<div class="fp-item ${s.size} ${s.tone} ${s.box}" style="grid-column:${s.col};">
+        <div class="fp-kicker">${esc(h.kicker)}</div>
+        <div class="fp-head">${esc(h.text)}</div>
+        ${h.foot?`<div class="fp-foot" style="color:${footColor};">→ ${esc(h.foot)}</div>`:''}
+      </div>`;
+    }).join('')}
   </div>`;
 }
 
