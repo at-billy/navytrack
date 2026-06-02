@@ -1717,7 +1717,7 @@ function pageOverview() {
   const slotOffset = fpSeed % FP_SLOTS.length;
   const grid = `<div class="fp">${headlines.map((h,i)=>{
     // Colophon is always rendered as a full-width solo box, never clickable.
-    const s = h.credits ? {tone:'', box:'fp-box fp-bd', col:'1 / span 12'} : FP_SLOTS[(i + slotOffset) % FP_SLOTS.length];
+    const s = h.credits ? {tone:'fp-red', box:'fp-box fp-dots', col:'1 / span 12'} : FP_SLOTS[(i + slotOffset) % FP_SLOTS.length];
     const footColor = s.tone==='fp-red' ? 'var(--red)' : 'var(--fg)';
     const go = h.credits ? '' : fpGoFor(h);
     const clickAttrs = go ? ` role="button" tabindex="0" aria-label="${esc(h.text)}" onclick="${go}"` : '';
