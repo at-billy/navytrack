@@ -166,6 +166,11 @@ tbody tr:hover{background:#f9f9f9;}
 .tc-mid{display:flex;align-items:flex-start;gap:16px;}
 .tc-mid-info{flex:1 1 auto;min-width:0;}
 .tc-right{display:flex;align-items:center;gap:12px;margin-left:auto;flex-shrink:0;}
+/* Required-items grid: 4 columns, stepping down on smaller screens */
+.req-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:0 28px;}
+@media(max-width:1100px){.req-grid{grid-template-columns:repeat(3,1fr);}}
+@media(max-width:760px){.req-grid{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:460px){.req-grid{grid-template-columns:1fr;}}
 @media(max-width:900px){
   .task-card{min-height:0;}
   .tc-head{grid-template-columns:1fr;gap:10px 0;}
@@ -3317,7 +3322,7 @@ function renderTaskRequiredItems(task) {
   });
   return `<div style="margin:8px 0;padding:12px 14px;background:var(--bg2);border:1px solid var(--border-m);">
     <div style="font-size:var(--text-xs);font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--fg);margin-bottom:8px;">Required Items</div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:0 28px;">${rows.join('')}</div>
+    <div class="req-grid">${rows.join('')}</div>
   </div>`;
 }
 
