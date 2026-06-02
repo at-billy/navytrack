@@ -155,18 +155,22 @@ tbody tr:hover{background:#f9f9f9;}
 
 /* ── TASKS ───────────────────────────────────────────────────────── */
 .task-list{border-top:2px solid #000;}
-.task-card{min-height:230px;display:flex;flex-direction:column;justify-content:center;padding:var(--space-5) 0;margin-bottom:0;position:relative;}
+.task-card{min-height:230px;display:flex;flex-direction:column;justify-content:flex-start;padding:var(--space-5) 0;margin-bottom:0;position:relative;}
 .task-card:hover{background:#fafafa;}
 .task-card.completed{opacity:.5;}
 .task-card.cancelled{opacity:.35;}
 .task-card-title{font-size:var(--text-lg);font-weight:900;letter-spacing:-.3px;line-height:1.2;}
-/* Fixed left column anchors the middle (Members) column at the same x on every card */
-.tc-head{display:grid;grid-template-columns:360px 300px minmax(160px,1fr);gap:0 24px;align-items:center;}
-.tc-right{display:flex;align-items:center;justify-content:flex-end;gap:12px;}
+/* Two halves: left = title/goal, right half starts at the centreline and holds
+   members (at the centreline) plus the by/join/expand block flush-right. */
+.tc-head{display:grid;grid-template-columns:1fr 1fr;gap:0 24px;align-items:start;}
+.tc-mid{display:flex;align-items:flex-start;gap:16px;}
+.tc-mid-info{flex:1 1 auto;min-width:0;}
+.tc-right{display:flex;align-items:center;gap:12px;margin-left:auto;flex-shrink:0;}
 @media(max-width:900px){
   .task-card{min-height:0;}
   .tc-head{grid-template-columns:1fr;gap:10px 0;}
-  .tc-right{justify-content:flex-start;flex-wrap:wrap;}
+  .tc-mid{flex-direction:column;gap:8px;}
+  .tc-right{margin-left:0;flex-wrap:wrap;}
 }
 .p-badge{display:inline-block;padding:2px 7px;font-size:var(--text-md);font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-right:6px;}
 .p-urgent{background:var(--red);color:#fff;}
@@ -3200,14 +3204,16 @@ function renderTasksList() {
           ${t.goal?`<div style="font-size:var(--text-md);color:var(--fg);">${esc(t.goal)}</div>`:''}
           ${t.description&&!t.goal?`<div style="font-size:var(--text-md);color:var(--fg);">${esc(t.description)}</div>`:''}
         </div>
-        <div style="min-width:0;font-size:var(--text-md);">
-          <div style="margin-bottom:4px;">${membersLine}</div>
-          ${itemsSummary?`<div>${itemsSummary}</div>`:''}
-        </div>
-        <div class="tc-right">
-          <span style="font-size:var(--text-sm);color:var(--fg);white-space:nowrap;">by ${esc(t.createdByName)}</span>
-          ${joinLeaveBtn}
-          <span class="caret${isExpanded?' open':''}" aria-hidden="true"></span>
+        <div class="tc-mid">
+          <div class="tc-mid-info" style="font-size:var(--text-md);">
+            <div style="margin-bottom:4px;">${membersLine}</div>
+            ${itemsSummary?`<div>${itemsSummary}</div>`:''}
+          </div>
+          <div class="tc-right">
+            <span style="font-size:var(--text-sm);color:var(--fg);white-space:nowrap;">by ${esc(t.createdByName)}</span>
+            ${joinLeaveBtn}
+            <span class="caret${isExpanded?' open':''}" aria-hidden="true"></span>
+          </div>
         </div>
       </div>
       <!-- Expanded detail -->
