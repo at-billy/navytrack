@@ -271,7 +271,7 @@ body.dark .fp-dots{background-image:radial-gradient(#e0e0e0 0.8px, transparent 0
    a gap. */
 .fp-stage{position:relative;}
 .fp-bg{position:absolute;top:0;left:0;right:0;bottom:0;z-index:0;overflow:hidden;}
-.fp-band{width:100%;height:clamp(560px,78vh,860px);background-size:cover;background-position:center;background-repeat:no-repeat;}
+.fp-img{display:block;margin:0 auto;max-width:100%;height:auto;}
 .fp-gap{width:100%;}
 .fp-stage .fp{position:relative;z-index:1;}
 /* Over the imagery the nav simply inverts to white. */
@@ -1692,7 +1692,7 @@ function pageOverview() {
   let bg = '<div class="fp-bg" aria-hidden="true">';
   FP_IMAGES.forEach((src,i)=>{
     if(i>0) bg += `<div class="fp-gap" style="height:${fpGap(i)}px"></div>`;
-    bg += `<div class="fp-band" style="background-image:url('${src}')"></div>`;
+    bg += `<img class="fp-img" src="${src}" alt="">`;
   });
   bg += '</div>';
 
