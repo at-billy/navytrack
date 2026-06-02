@@ -240,14 +240,12 @@ tbody tr:hover{background:#f9f9f9;}
 .hint-box strong{color:#000;}
 
 /* ── FRONT PAGE (editorial headline grid) ────────────────────────── */
-.fp{display:grid;grid-template-columns:repeat(12,1fr);gap:160px 36px;padding:24px 0 120px;align-items:start;}
+.fp{display:grid;grid-template-columns:repeat(12,1fr);gap:230px 36px;padding:24px 0 140px;align-items:start;}
 .fp-item{min-width:0;}
+.fp-item[role="button"]{cursor:pointer;}
 .fp-kicker{font-size:var(--text-sm);font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--red);margin-bottom:8px;}
-.fp-head{font-weight:900;line-height:1.04;letter-spacing:-.5px;color:#000;}
+.fp-head{font-size:clamp(23px,2.6vw,36px);font-weight:900;line-height:1.06;letter-spacing:-.5px;color:#000;}
 .fp-foot{font-size:var(--text-sm);font-weight:700;letter-spacing:.04em;text-transform:uppercase;margin-top:12px;}
-.fp-xl .fp-head{font-size:clamp(30px,4.2vw,56px);}
-.fp-lg .fp-head{font-size:clamp(23px,2.6vw,36px);}
-.fp-md .fp-head{font-size:clamp(19px,1.6vw,26px);}
 .fp-red .fp-head{color:var(--red);}
 .fp-box{padding:22px 24px;}
 .fp-dots{background-color:var(--bg);background-image:radial-gradient(var(--border-l) 1.5px, transparent 1.5px);background-size:7px 7px;}
@@ -1550,12 +1548,13 @@ function buildHeadlines(){
     return {t,pct:total?Math.round(got/total*100):0};
   });
   progress.slice().sort((a,b)=>(prio[a.t.priority]??2)-(prio[b.t.priority]??2)).forEach(p=>{
-    const k=p.t.priority==='urgent'?'Urgent':'Project', f=`${p.t.members.length} on it`;
-    if(p.pct===null) push(k,`"${p.t.title}" is looking for hands`,f);
-    else push(k, p.pct>=100?`"${p.t.title}" is fully supplied`:`"${p.t.title}" is ${p.pct}% supplied`, f);
+    const k=p.t.priority==='urgent'?'Urgent':'Project';
+    const text = p.pct===null ? `"${p.t.title}" is looking for hands`
+      : p.pct>=100 ? `"${p.t.title}" is fully supplied` : `"${p.t.title}" is ${p.pct}% supplied`;
+    out.push({kicker:k, text, foot:'Project', go:`openProjectFromOverview('${escJs(p.t._id)}')`});
   });
   const racing=progress.filter(p=>p.pct!==null&&p.pct>0&&p.pct<100);
-  if(racing.length>1){ const top=racing.reduce((a,b)=>b.pct>a.pct?b:a); push('Almost There',`"${top.t.title}" is closest to ready at ${top.pct}%`,'Projects'); }
+  if(racing.length>1){ const top=racing.reduce((a,b)=>b.pct>a.pct?b:a); out.push({kicker:'Almost There',text:`"${top.t.title}" is closest to ready at ${top.pct}%`,foot:'Project',go:`openProjectFromOverview('${escJs(top.t._id)}')`}); }
   const gaps={};
   openTasks.forEach(t=>(t.requiredItems||[]).forEach(r=>{const n=avail.filter(i=>i.name===r.name&&i.category===r.category).reduce((s,i)=>s+i.quantity,0);const g=r.quantityNeeded-n;if(g>0)gaps[r.name]=(gaps[r.name]||0)+g;}));
   const gapTop=Object.entries(gaps).sort((a,b)=>b[1]-a[1])[0];
@@ -1607,26 +1606,34 @@ function buildHeadlines(){
   if(weekActs) push('This Week', `${weekActs} action${weekActs!==1?'s':''} logged in the last 7 days`, 'Archive');
   state.archive
     .filter(e=>!LOTTERY_LOG_TYPES.has(e.type) && !e.type.startsWith('password_reset') && e.type!=='member_removed')
-    .slice(0,6)
+    .slice(0,12)
     .forEach(e=>{ const h=fpActivityHeadline(e); if(h) out.push(h); });
 
-  // Shuffle (seeded once per page load) and pick a dozen for the front page.
-  return fpShuffle(out, fpSeed).slice(0, 12);
+  // Shuffle (seeded once per page load) and pick ~20 for the front page.
+  return fpShuffle(out, fpSeed).slice(0, 20);
 }
 
-// Editorial layout slots — varied size / tone / box / column, cycled across headlines.
+// Editorial layout slots — uniform headline size; varied tone / box / column.
 const FP_SLOTS = [
-  { size:'fp-xl', tone:'',       box:'',                       col:'1 / span 7'  },
-  { size:'fp-lg', tone:'fp-red', box:'fp-box fp-dots',         col:'9 / span 4'  },
-  { size:'fp-lg', tone:'',       box:'fp-box fp-bd',           col:'1 / span 6'  },
-  { size:'fp-md', tone:'fp-red', box:'fp-box fp-bd-red',       col:'8 / span 5'  },
-  { size:'fp-lg', tone:'fp-red', box:'',                       col:'3 / span 6'  },
-  { size:'fp-md', tone:'',       box:'fp-box fp-dots',         col:'9 / span 4'  },
-  { size:'fp-md', tone:'fp-red', box:'',                       col:'1 / span 5'  },
-  { size:'fp-lg', tone:'',       box:'fp-box fp-bd',           col:'7 / span 6'  },
-  { size:'fp-md', tone:'fp-red', box:'fp-box fp-bd-red',       col:'2 / span 5'  },
-  { size:'fp-md', tone:'',       box:'fp-box fp-bd',           col:'8 / span 4'  },
+  { tone:'',       box:'',                  col:'1 / span 7'  },
+  { tone:'fp-red', box:'fp-box fp-dots',    col:'9 / span 4'  },
+  { tone:'',       box:'fp-box fp-bd',      col:'1 / span 6'  },
+  { tone:'fp-red', box:'fp-box fp-bd-red',  col:'8 / span 5'  },
+  { tone:'fp-red', box:'',                  col:'3 / span 6'  },
+  { tone:'',       box:'fp-box fp-dots',    col:'9 / span 4'  },
+  { tone:'fp-red', box:'',                  col:'1 / span 5'  },
+  { tone:'',       box:'fp-box fp-bd',      col:'7 / span 6'  },
+  { tone:'fp-red', box:'fp-box fp-bd-red',  col:'2 / span 5'  },
+  { tone:'',       box:'fp-box fp-dots',    col:'8 / span 4'  },
 ];
+
+// Map a headline to a navigation action (clicking the card jumps there).
+function fpGoFor(h){
+  if(h.go) return h.go; // project headlines carry an explicit target
+  const map={Projects:"goTo('tasks')",Inventory:"goTo('items')",Databank:"goTo('items')",Hangar:"goTo('items')",Wikelo:"goTo('items')",Logistics:"goToLogistics()",Lottery:"goTo('lottery')",Archive:"goTo('archive')",Admin:"goTo('admin')"};
+  return map[h.foot]||'';
+}
+function goToLogistics(){ itemsView='logistics'; logisticsDetailId=null; currentPage='items'; renderNav(); renderPage(); }
 
 function pageOverview() {
   const u = state.user;
@@ -1640,10 +1647,12 @@ function pageOverview() {
     ${headlines.map((h,i)=>{
       const s=FP_SLOTS[(i + slotOffset) % FP_SLOTS.length];
       const footColor = s.tone==='fp-red' ? 'var(--red)' : 'var(--fg)';
-      return `<div class="fp-item ${s.size} ${s.tone} ${s.box}" style="grid-column:${s.col};">
+      const go = fpGoFor(h);
+      const clickAttrs = go ? ` role="button" tabindex="0" aria-label="${esc(h.text)}" onclick="${go}"` : '';
+      return `<div class="fp-item ${s.tone} ${s.box}" style="grid-column:${s.col};"${clickAttrs}>
         <div class="fp-kicker">${esc(h.kicker)}</div>
         <div class="fp-head">${esc(h.text)}</div>
-        ${h.foot?`<div class="fp-foot" style="color:${footColor};">→ ${esc(h.foot)}</div>`:''}
+        ${h.foot?`<div class="fp-foot" style="color:${footColor};">${go?'→ ':''}${esc(h.foot)}</div>`:''}
       </div>`;
     }).join('')}
   </div>`;
