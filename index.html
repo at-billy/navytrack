@@ -414,7 +414,9 @@ body.dark .comp-type-badge{background:#e0e0e0;color:#111;}
 
 /* ── ARCHIVE MONTH GROUPS ────────────────────────────────────────── */
 details.log-month{}
-details.log-month>summary{display:flex;align-items:center;gap:14px;padding:28px 0;cursor:pointer;user-select:none;list-style:none;}
+/* Match ITEM's filter-row height so the month column-header line lands at the
+   same depth as the ITEM/TASK lines (tunable). */
+details.log-month>summary{display:flex;align-items:center;gap:14px;padding:var(--log-summary-pad,10px) 0;cursor:pointer;user-select:none;list-style:none;}
 details.log-month>summary::-webkit-details-marker{display:none;}
 details.log-month>summary::marker{display:none;}
 /* ── ACCESSIBILITY ───────────────────────────────────────────────── */
