@@ -924,6 +924,12 @@ let archiveOlder = [];
 let archiveAllLoaded = false;
 let archiveLoading = false;
 const ARCHIVE_PAGE_SIZE = 200;
+// Log table controls (mirror the ITEM table: month box-filters, search, column sort).
+let archiveMonthFilter = 'all';   // 'all' | 'this' | 'last' | 'back' | 'forward'
+let archiveSearch = '';
+let archiveSearchActive = false;
+let archiveSortCol = 'date';
+let archiveSortDir = 'desc';
 let adminShowRemoved = false;
 let tasksFilter = 'open';
 let tasksSearchActive = false;
@@ -1162,9 +1168,8 @@ function updateLiveView(silent=false) {
     if(el) el.innerHTML=renderInventoryList();
   }
   if (currentPage==='archive') {
-    const openMonths=new Set([...document.querySelectorAll('details.log-month[open]')].map(d=>d.dataset.key));
     const el=document.getElementById('archive-table');
-    if(el) el.innerHTML=renderArchiveTable(openMonths);
+    if(el) el.innerHTML=renderArchiveTable();
     const s=document.getElementById('archive-count'); if(s) s.textContent=archiveCountLabel();
   }
   if (currentPage==='admin') {
@@ -2740,51 +2745,80 @@ function combinedArchive(){
   return all;
 }
 
-function renderArchiveTable(openMonths){
-  const entries = combinedArchive().filter(e => !LOTTERY_LOG_TYPES.has(e.type));
-  if(!entries.length) return `<div class="empty">No actions logged yet.</div>`;
+// Action-type → human label (shared by the table and the search/sort).
+const ARCHIVE_LABELS={user_joined:'Joined',role_approved:'Role Approved',role_denied:'Role Denied',admin_granted:'Admin Granted',member_removed:'Member Removed',member_restored:'Member Restored',task_created:'Task Created',task_closed:'Task Closed',item_added:'Item Added',item_removed:'Item Removed',item_handed_out:'Handed Out',item_used:'Item Used',item_converted:'Item Converted',items_used_for_project:'Items Used',password_reset_issued:'Reset Code Issued',password_reset_completed:'Password Reset',lottery_opened:'Lottery Opened',lottery_drawn:'Lottery Drawn',lottery_pick:'Lottery Pick'};
+function archiveActionLabel(e){ return ARCHIVE_LABELS[e.type]||e.type; }
+function stripTags(html){ return String(html).replace(/<[^>]*>/g,''); }
 
-  const groups = {};
-  const now = new Date();
-  const currentKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+// Log controls — same template as the ITEM table: month box-filters, search on the
+// right, sortable columns. Re-renders #archive-table on every interaction.
+function setArchiveMonth(f){ archiveMonthFilter=f; const el=document.getElementById('archive-table'); if(el) el.innerHTML=renderArchiveTable(); }
+function setArchiveSort(col){ archiveSortDir=(archiveSortCol===col&&archiveSortDir==='asc')?'desc':'asc'; archiveSortCol=col; const el=document.getElementById('archive-table'); if(el) el.innerHTML=renderArchiveTable(); }
+function toggleArchiveSearch(){ archiveSearchActive=!archiveSearchActive; if(!archiveSearchActive) archiveSearch=''; const el=document.getElementById('archive-table'); if(el) el.innerHTML=renderArchiveTable(); if(archiveSearchActive){ const inp=document.getElementById('archive-search-inp'); if(inp) inp.focus(); } }
+function archiveSearchInput(val){ archiveSearch=val; const el=document.getElementById('archive-table'); if(el) el.innerHTML=renderArchiveTable(); const inp=document.getElementById('archive-search-inp'); if(inp){ inp.focus(); try{ inp.setSelectionRange(val.length,val.length); }catch(e){} } }
 
-  for(const e of entries){
-    const d = new Date(e._creationTime);
-    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-    if(!groups[key]){
-      groups[key] = {
-        label: d.toLocaleDateString('en-GB',{month:'long',year:'numeric'}),
-        entries: []
-      };
-    }
-    groups[key].entries.push(e);
+function renderArchiveTable(){
+  const admin=isAdmin(state.user);
+  let entries = combinedArchive().filter(e => !LOTTERY_LOG_TYPES.has(e.type));
+
+  // Month box-filter (relative to the current month).
+  if(archiveMonthFilter!=='all'){
+    const off={this:0,last:-1,back:-2,forward:1}[archiveMonthFilter];
+    const d=new Date(); d.setDate(1); d.setMonth(d.getMonth()+off);
+    const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    entries=entries.filter(e=>{ const x=new Date(e._creationTime); return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}`===key; });
   }
+  // Search across user, action and details.
+  if(archiveSearch.trim()){
+    const q=archiveSearch.trim().toLowerCase();
+    entries=entries.filter(e => (e.userName||'').toLowerCase().includes(q) || archiveActionLabel(e).toLowerCase().includes(q) || stripTags(fmtArchiveDetails(e)).toLowerCase().includes(q));
+  }
+  // Column sort.
+  entries=[...entries].sort((a,b)=>{
+    let av,bv;
+    switch(archiveSortCol){
+      case 'action':  av=archiveActionLabel(a); bv=archiveActionLabel(b); break;
+      case 'user':    av=a.userName||''; bv=b.userName||''; break;
+      case 'details': av=stripTags(fmtArchiveDetails(a)); bv=stripTags(fmtArchiveDetails(b)); break;
+      default:        av=a._creationTime; bv=b._creationTime;
+    }
+    const cmp = typeof av==='number' ? av-bv : String(av).localeCompare(String(bv));
+    return archiveSortDir==='asc'?cmp:-cmp;
+  });
 
-  const months = Object.keys(groups).sort().reverse().map(key=>{
-    const {label,entries} = groups[key];
-    // Open if: current month, OR was manually opened before re-poll
-    const isOpen = key===currentKey || (openMonths&&openMonths.has(key));
-    return `<details class="log-month"${isOpen?' open':''} data-key="${key}">
-      <summary>
-        <span class="log-month-arrow" aria-hidden="true"></span>
-        <span class="log-month-name">${label}</span>
-        <span class="log-month-count">${entries.length} entr${entries.length===1?'y':'ies'}</span>
-      </summary>
-      <div>${renderMonthRows(entries)}</div>
-    </details>`;
-  }).join('');
+  const filterRow = `
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;align-items:center;">
+      ${[['all','All'],['this','This Month'],['last','Last Month'],['back','One Month Back'],['forward','One Month Forward']].map(([id,label])=>
+        `<button class="btn-ghost btn-sm${archiveMonthFilter===id?' active':''}" onclick="setArchiveMonth('${id}')">${label}</button>`).join('')}
+      <div style="flex:1;"></div>
+      <button class="btn-ghost btn-sm${archiveSearchActive?' active':''}" onclick="toggleArchiveSearch()">${archiveSearchActive?'Close Search':'Search'}</button>
+    </div>
+    ${archiveSearchActive?`<div style="margin-bottom:20px;"><input type="text" id="archive-search-inp" placeholder="Search log…" value="${esc(archiveSearch)}" style="width:100%;max-width:400px;" oninput="archiveSearchInput(this.value)"></div>`:''}`;
 
-  // "Load older" appears while more history may exist (we've filled the recent window
-  // and haven't yet hit the end of the table).
+  if(!entries.length) return filterRow + `<div class="empty">${archiveMonthFilter!=='all'||archiveSearch.trim()?'No actions match this filter.':'No actions logged yet.'}</div>`;
+
+  const cols=[['date','Date'],['action','Action'],['user','User'],['details','Details']];
+  const table = `
+    <table class="cards">
+      <thead><tr>
+        ${cols.map(([col,label])=>`<th onclick="setArchiveSort('${col}')" style="cursor:pointer;user-select:none;white-space:nowrap;">${label}${archiveSortCol===col?(archiveSortDir==='asc'?' &uarr;':' &darr;'):''}</th>`).join('')}
+        ${admin?'<th></th>':''}
+      </tr></thead>
+      <tbody>${entries.map(e=>`<tr>
+        <td data-label="Date" style="font-size:var(--text-md);color:var(--fg);white-space:nowrap;">${fmtDT(e._creationTime)}</td>
+        <td data-label="Action"><span class="badge badge-${e.type}">${archiveActionLabel(e)}</span></td>
+        <td data-label="User" style="font-weight:600;font-size:var(--text-md);">${esc(e.userName)}</td>
+        <td data-label="Details" style="font-size:var(--text-md);color:var(--fg);">${fmtArchiveDetails(e)}</td>
+        ${admin?`<td data-label=""><button class="btn-del" onclick="adminDeleteLog('${esc(e._id)}')" aria-label="Delete log entry">&times;</button></td>`:''}
+      </tr>`).join('')}</tbody>
+    </table>`;
+
+  // "Load older" while more history may exist (recent window filled, not yet at the end).
   const mayHaveMore = !archiveAllLoaded && (state.archive.length >= ARCHIVE_PAGE_SIZE);
   const loadMore = mayHaveMore
-    ? `<div style="padding:24px 0;text-align:center;">
-         <button class="btn btn-outline" onclick="loadOlderArchive()"${archiveLoading?' disabled':''}>
-           ${archiveLoading?'Loading…':'Load older entries'}
-         </button>
-       </div>`
+    ? `<div style="padding:24px 0;text-align:center;"><button class="btn btn-outline" onclick="loadOlderArchive()"${archiveLoading?' disabled':''}>${archiveLoading?'Loading…':'Load older entries'}</button></div>`
     : '';
-  return months + loadMore;
+  return filterRow + table + loadMore;
 }
 
 async function loadOlderArchive(){
@@ -2793,30 +2827,14 @@ async function loadOlderArchive(){
   if(!current.length) return;
   const oldest = current[current.length-1]._creationTime;
   archiveLoading = true;
-  const el=document.getElementById('archive-table');
-  if(el){ const openMonths=new Set([...el.querySelectorAll('details.log-month[open]')].map(d=>d.dataset.key)); el.innerHTML=renderArchiveTable(openMonths); }
+  let el=document.getElementById('archive-table'); if(el) el.innerHTML=renderArchiveTable();
   try {
     const older = await convexQuery('archive:loadOlder', { sessionToken: state.sessionToken, before: oldest, limit: ARCHIVE_PAGE_SIZE });
     if(!older || older.length < ARCHIVE_PAGE_SIZE) archiveAllLoaded = true;
     if(older && older.length) archiveOlder = [...archiveOlder, ...older];
   } catch(e){ toast('Could not load older entries'); }
   archiveLoading = false;
-  const el2=document.getElementById('archive-table');
-  if(el2){ const openMonths=new Set([...el2.querySelectorAll('details.log-month[open]')].map(d=>d.dataset.key)); el2.innerHTML=renderArchiveTable(openMonths); }
-}
-
-function renderMonthRows(entries){
-  const admin=isAdmin(state.user);
-  const labels={user_joined:'Joined',role_approved:'Role Approved',role_denied:'Role Denied',admin_granted:'Admin Granted',member_removed:'Member Removed',member_restored:'Member Restored',task_created:'Task Created',task_closed:'Task Closed',item_added:'Item Added',item_removed:'Item Removed',item_handed_out:'Handed Out',item_used:'Item Used',item_converted:'Item Converted',items_used_for_project:'Items Used',password_reset_issued:'Reset Code Issued',password_reset_completed:'Password Reset',lottery_opened:'Lottery Opened',lottery_drawn:'Lottery Drawn',lottery_pick:'Lottery Pick'};
-  return `<table class="cards">
-    <thead><tr><th>Date</th><th>Action</th><th>User</th><th>Details</th>${admin?'<th></th>':''}</tr></thead>
-    <tbody>${entries.map(e=>`<tr>
-      <td data-label="Date" style="font-size:var(--text-md);color:var(--fg);white-space:nowrap;">${fmtDT(e._creationTime)}</td>
-      <td data-label="Action"><span class="badge badge-${e.type}">${labels[e.type]||e.type}</span></td>
-      <td data-label="User" style="font-weight:600;font-size:var(--text-md);">${esc(e.userName)}</td>
-      <td data-label="Details" style="font-size:var(--text-md);color:var(--fg);">${fmtArchiveDetails(e)}</td>
-      ${admin?`<td data-label=""><button class="btn-del" onclick="adminDeleteLog('${esc(e._id)}')" aria-label="Delete log entry">&times;</button></td>`:''}
-    </tr>`).join('')}</tbody></table>`;
+  el=document.getElementById('archive-table'); if(el) el.innerHTML=renderArchiveTable();
 }
 function fmtArchiveDetails(e){
   const d=e.details||{};
