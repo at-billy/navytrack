@@ -248,7 +248,7 @@ tbody tr:hover{background:#f9f9f9;}
 .fp-foot{font-size:var(--text-sm);font-weight:700;letter-spacing:.04em;text-transform:uppercase;margin-top:12px;}
 .fp-red{color:var(--red);}
 .fp-red .fp-head{color:var(--red);}
-.fp-box{padding:22px 24px;}
+.fp-box{padding:22px 24px;background-color:var(--bg);}
 .fp-dots{background-color:var(--bg);background-image:radial-gradient(#000 0.8px, transparent 0.8px),radial-gradient(#000 0.8px, transparent 0.8px);background-size:8px 8px;background-position:0 0,4px 4px;}
 /* On dotted boxes, give each glyph a soft background-colour halo so the dots
    don't cut into the letters (reads cleaner than a box behind the text). */
@@ -261,6 +261,25 @@ body.dark .fp-dots{background-image:radial-gradient(#e0e0e0 0.8px, transparent 0
 @media(max-width:760px){
   .fp{grid-template-columns:1fr;gap:44px 0;padding-top:48px;}
   .fp-item{grid-column:1 / -1 !important;}
+}
+
+/* ── FRONT PAGE MEDIA (full-bleed image bands, headlines overlaid) ── */
+/* Bands run edge to edge; the first sits under the (fixed, transparent)
+   nav. Headline boxes are absolutely positioned IN FRONT of the photos,
+   with background-colour gaps between images. */
+.fp-media{}
+.fp-band{position:relative;width:100%;height:clamp(520px,80vh,880px);background-size:cover;background-position:center;background-repeat:no-repeat;}
+.fp-band.fp-hero{height:clamp(620px,92vh,1000px);}
+.fp-gap{width:100%;}
+.fp-tail{height:120px;}
+.fp-ov{position:absolute;max-width:min(44%,480px);z-index:2;}
+/* nav text stays legible where it floats over the hero image */
+body.fp-on .nav-main,body.fp-on .nav-sub-item{text-shadow:0 0 4px var(--bg),0 0 8px var(--bg),0 1px 2px var(--bg),0 -1px 2px var(--bg),1px 0 2px var(--bg),-1px 0 2px var(--bg);}
+@media(max-width:760px){
+  .fp-band,.fp-band.fp-hero{height:auto;min-height:300px;display:flex;flex-direction:column;justify-content:center;gap:16px;padding:28px 0;}
+  .fp-ov{position:static!important;inset:auto!important;max-width:none;margin:0 16px;}
+  .fp-gap{height:60px!important;}
+  .fp-tail{height:60px;}
 }
 
 /* ── OVERVIEW / LANDING ──────────────────────────────────────────── */
@@ -1163,10 +1182,7 @@ function updateLiveView(silent=false) {
   if (currentPage==='overview') {
     const active = document.activeElement;
     const typing = active && (active.tagName==='INPUT'||active.tagName==='TEXTAREA') && document.getElementById('page-wrap')?.contains(active);
-    if(!typing) {
-      const pw=document.getElementById('page-wrap');
-      if(pw) pw.innerHTML=`<div class="page">${pageOverview()}</div>`;
-    }
+    if(!typing) renderPageContent();
   }
   if (currentPage==='items' && itemsView==='logistics' && !logisticsDetailId) {
     const pw=document.getElementById('page-wrap');
@@ -1488,9 +1504,26 @@ function renderPage() {
   if(isRecruit(state.user) && currentPage!=='overview') {
     currentPage='overview';
   }
-  const pages={overview:pageOverview,items:pageItems,tasks:pageTasks,archive:pageArchive,admin:pageAdmin,member:pageMember,lottery:pageLottery};
-  const pw=document.getElementById('page-wrap');
-  if(pw) pw.innerHTML=`<div class="page">${(pages[currentPage]||pageOverview)()}</div>`;
+  renderPageContent();
+}
+
+// The non-recruit overview is a full-bleed image front page (no .page wrapper,
+// image runs under the nav). Everything else stays inside the padded .page.
+function fpFullBleed(){ return currentPage==='overview' && !isRecruit(state.user); }
+function renderPageContent() {
+  const pw=document.getElementById('page-wrap'); if(!pw) return;
+  const nav=document.getElementById('nav');
+  const navH=nav?nav.offsetHeight:0;
+  if(fpFullBleed()){
+    document.body.classList.add('fp-on');
+    pw.style.marginTop='0px';      // image sits under the fixed nav
+    pw.innerHTML=pageOverview();
+  } else {
+    document.body.classList.remove('fp-on');
+    pw.style.marginTop=navH+'px';
+    const pages={overview:pageOverview,items:pageItems,tasks:pageTasks,archive:pageArchive,admin:pageAdmin,member:pageMember,lottery:pageLottery};
+    pw.innerHTML=`<div class="page">${(pages[currentPage]||pageOverview)()}</div>`;
+  }
 }
 
 // ─── OVERVIEW PAGE ────────────────────────────────────────────────────────────
@@ -1635,6 +1668,16 @@ const FP_SLOTS = [
   { tone:'fp-red', box:'fp-box fp-bd',      col:'8 / span 5'  },
 ];
 
+// Full-bleed front-page imagery (fixed order) + overlay anchor positions.
+const FP_IMAGES = ['media/front-1.jpg','media/front-2.jpg','media/front-3.jpg','media/front-4.jpg'];
+// Anchor spots for overlaid headline boxes. Left/right columns + three vertical
+// bands so two boxes never collide. Hero (first) band keeps clear of the nav.
+const FP_OV_POS = ['top:6%;left:3%','top:8%;right:4%','top:39%;left:6%','top:42%;right:7%','bottom:9%;left:4%','bottom:11%;right:5%'];
+const FP_OV_POS_HERO = ['top:46%;left:4%','top:50%;right:6%','top:70%;left:6%','bottom:18%;right:5%','bottom:9%;left:4%','bottom:11%;right:6%'];
+// Deterministic background-colour gap height between images: 80–240px, stable
+// per page load (seeded), independent per gap.
+function fpGap(i){ let s=(fpSeed ^ (i*0x9e3779b1))>>>0; s=(s*1664525+1013904223)>>>0; return 80 + (s % 161); }
+
 // Map a headline to a navigation action (clicking the card jumps there).
 function fpGoFor(h){
   if(h.go) return h.go; // project headlines carry an explicit target
@@ -1648,22 +1691,37 @@ function pageOverview() {
   if(isRecruit(u)) return pageRecruitOverview(u);
 
   const headlines = buildHeadlines();
-  if(!headlines.length) return `<div class="empty" style="padding:120px 0;">Nothing to report yet.</div>`;
+  if(!headlines.length) return `<div style="padding:160px 40px;font-size:var(--text-lg);font-weight:900;">Nothing to report yet.</div>`;
 
-  const slotOffset = fpSeed % FP_SLOTS.length;
-  return `<div class="fp">
-    ${headlines.map((h,i)=>{
-      const s=FP_SLOTS[(i + slotOffset) % FP_SLOTS.length];
+  // Spread the (shuffled) headlines across the fixed-order image bands, then
+  // overlay each as a positioned box. Images stay put; headlines reshuffle.
+  const nb = FP_IMAGES.length;
+  const bands = Array.from({length:nb}, ()=>[]);
+  headlines.forEach((h,i)=>bands[i % nb].push(h));
+  const boxOffset = fpSeed % FP_SLOTS.length;
+
+  let html = '<div class="fp-media">';
+  bands.forEach((group, bi)=>{
+    if(bi>0) html += `<div class="fp-gap" style="height:${fpGap(bi)}px"></div>`;
+    const pos = bi===0 ? FP_OV_POS_HERO : FP_OV_POS;
+    const posOff = (bi + (fpSeed >>> (bi+1))) % pos.length;
+    html += `<section class="fp-band${bi===0?' fp-hero':''}" style="background-image:url('${FP_IMAGES[bi]}')">`;
+    group.forEach((h,j)=>{
+      const s = FP_SLOTS[(j + bi + boxOffset) % FP_SLOTS.length];
       const footColor = s.tone==='fp-red' ? 'var(--red)' : 'var(--fg)';
       const go = fpGoFor(h);
       const clickAttrs = go ? ` role="button" tabindex="0" aria-label="${esc(h.text)}" onclick="${go}"` : '';
-      return `<div class="fp-item ${s.tone} ${s.box}" style="grid-column:${s.col};"${clickAttrs}>
+      const p = pos[(j + posOff) % pos.length];
+      html += `<div class="fp-item fp-ov ${s.tone} ${s.box}" style="${p};"${clickAttrs}>
         <div class="fp-kicker">${esc(h.kicker)}</div>
         <div class="fp-head">${esc(h.text)}</div>
         ${h.foot?`<div class="fp-foot" style="color:${footColor};">${go?'→ ':''}${esc(h.foot)}</div>`:''}
       </div>`;
-    }).join('')}
-  </div>`;
+    });
+    html += `</section>`;
+  });
+  html += `<div class="fp-tail"></div></div>`;
+  return html;
 }
 
 function pageRecruitOverview(u) {
@@ -4593,8 +4651,10 @@ init();
     primary.style.height = HEADER_H + 'px';
 
     if(updateMargin || !pageWrap.style.marginTop){
-      pageWrap.style.marginTop = nav.offsetHeight + 'px';
+      // Full-bleed front page: image runs under the nav (no top margin).
+      pageWrap.style.marginTop = document.body.classList.contains('fp-on') ? '0px' : nav.offsetHeight + 'px';
     }
+    document.documentElement.style.setProperty('--nav-h', nav.offsetHeight + 'px');
   }
 
   function setPrimaryTranslate(translateY, withTransition){
