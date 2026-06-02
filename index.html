@@ -12,7 +12,7 @@
 :root{--text-xs:13px;--text-sm:15px;--text-md:18px;--text-lg:24px;--text-xl:38px;--text-2xl:52px;}
 /* Spacing scale (P3-2). Applied to structural layout spacing; micro insets stay literal. */
 :root{--space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:24px;--space-6:32px;--space-7:48px;--space-8:60px;}
-body{font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;background:#fff;color:#000;font-size:var(--text-md);line-height:1.5;}
+body{margin:0;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;background:#fff;color:#000;font-size:var(--text-md);line-height:1.5;}
 
 /* ── NAV WRAPPER ─────────────────────────────────────────────────── */
 /* transparent so only letter slivers show when items translate up   */
@@ -270,10 +270,10 @@ body.dark .fp-dots{background-image:radial-gradient(#e0e0e0 0.8px, transparent 0
    spacing on top and simply land wherever they land — on an image or in
    a gap. */
 .fp-stage{position:relative;}
-.fp-bg{position:absolute;top:0;left:0;right:0;bottom:0;z-index:0;overflow:hidden;}
-.fp-img{display:block;margin:0 auto;max-width:100%;height:auto;}
+.fp-bg{position:relative;z-index:0;}                  /* full-bleed images drive the page height */
+.fp-img{display:block;width:100%;height:auto;}        /* full bleed, native aspect ratio, never cropped */
 .fp-gap{width:100%;}
-.fp-stage .fp{position:relative;z-index:1;}
+.fp-stage .fp{position:absolute;top:0;left:0;right:0;z-index:1;}  /* headlines overlaid on top */
 /* Over the imagery the nav simply inverts to white. */
 body.fp-on .nav-main{color:#ffffff;}
 body.fp-on .nav-main.outline{-webkit-text-stroke:2px #ffffff;color:transparent;}
