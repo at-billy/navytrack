@@ -1533,6 +1533,7 @@ function renderPageContent() {
     document.body.classList.add('fp-on');
     pw.style.marginTop='0px';      // image sits under the fixed nav
     pw.innerHTML=pageOverview();
+    requestAnimationFrame(fpFitImages);
   } else {
     document.body.classList.remove('fp-on');
     pw.style.marginTop=navH+'px';
@@ -1701,6 +1702,32 @@ function fpGoFor(h){
 }
 function goToLogistics(){ itemsView='logistics'; logisticsDetailId=null; currentPage='items'; renderNav(); renderPage(); }
 
+// Only render as many full-bleed images as the headlines reach: hide any image
+// that starts below the last headline (keep the one the last headline sits on,
+// uncut). Re-run on render, image load and resize since image heights are
+// width-driven while the headline grid height is not.
+function fpFitImages(){
+  const stage=document.querySelector('.fp-stage'); if(!stage) return;
+  const grid=stage.querySelector('.fp'); const bg=stage.querySelector('.fp-bg');
+  if(!grid||!bg) return;
+  const items=grid.querySelectorAll('.fp-item'); if(!items.length) return;
+  const last=items[items.length-1];
+  const limit=last.offsetTop+last.offsetHeight;          // bottom of last headline
+  const imgs=[...bg.querySelectorAll('.fp-img')];
+  const gaps=[...bg.querySelectorAll('.fp-gap')];
+  imgs.forEach(im=>im.style.display='');                 // reset (window may have grown)
+  gaps.forEach(g=>g.style.display='');
+  const tops=imgs.map(im=>im.offsetTop);                 // snapshot with all visible
+  imgs.forEach((im,i)=>{
+    if(tops[i] >= limit){                                // starts past the last headline
+      im.style.display='none';
+      const prev=im.previousElementSibling;
+      if(prev && prev.classList.contains('fp-gap')) prev.style.display='none';
+    }
+  });
+}
+window.addEventListener('resize', ()=>{ if(document.body.classList.contains('fp-on')) fpFitImages(); });
+
 function pageOverview() {
   const u = state.user;
   if(isRecruit(u)) return pageRecruitOverview(u);
@@ -1712,7 +1739,7 @@ function pageOverview() {
   let bg = '<div class="fp-bg" aria-hidden="true">';
   FP_IMAGES.forEach((src,i)=>{
     if(i>0) bg += `<div class="fp-gap" style="height:${fpGap(i)}px"></div>`;
-    bg += `<img class="fp-img" src="${src}" alt="">`;
+    bg += `<img class="fp-img" src="${src}" alt="" onload="fpFitImages()">`;
   });
   bg += '</div>';
 
