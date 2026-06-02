@@ -407,6 +407,65 @@ body.dark .pkg-card.mine{background:#052e16;}
 .pkg-item-row:last-child{border-bottom:none;}
 .comp-type-badge{display:inline-block;padding:1px 6px;font-size:var(--text-md);font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:#000;color:#fff;}
 body.dark .comp-type-badge{background:#e0e0e0;color:#111;}
+
+/* ── BILLY MODE ───────────────────────────────────────────────────────
+   A light theme: black ink → #3a57a4, red → #ab443a, white stays white.
+   Mirrors the dark-mode overrides (ink #e0e0e0→#3a57a4, base #111→#fff). */
+body.billy{background:#fff;color:#3a57a4;--fg:#3a57a4;--bg:#fff;--bg2:#eef1f9;--border:#3a57a4;--border-l:#c9d3ec;--border-m:#e3e9f6;--red:#ab443a;}
+body.billy .page-lead{color:#3a57a4;}
+body.billy #nav-topbar{background:#fff;border-bottom-color:#c9d3ec;}
+body.billy .nav-main{color:#3a57a4;}
+body.billy .nav-main.outline{-webkit-text-stroke:2px #3a57a4;color:transparent;}
+body.billy .nav-sub-item{color:#3a57a4;}
+body.billy .nav-sub-item.active{border-bottom-color:#3a57a4;}
+body.billy .nav-divider{border-top-color:#3a57a4;}
+body.billy hr.thick{border-top-color:#3a57a4;}
+body.billy hr.thin{border-top-color:#c9d3ec;}
+body.billy .page-sub{color:#3a57a4;}
+body.billy input[type=text],body.billy input[type=password],body.billy input[type=number],body.billy select{background:#fff;border-color:#3a57a4;color:#3a57a4;}
+body.billy input::placeholder{color:#8e9fcb;}
+body.billy select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%233a57a4'/%3E%3C/svg%3E");}
+body.billy .panel{border-color:#3a57a4;}
+body.billy .btn-black{background:#3a57a4;color:#fff;}
+body.billy .btn-black:hover{background:#2f4684;}
+body.billy .btn-outline{background:#fff;color:#3a57a4;border-color:#3a57a4;}
+body.billy .btn-outline:hover{background:#eef1f9;}
+body.billy .btn-ghost{background:none;color:#3a57a4;border-color:#c9d3ec;}
+body.billy .btn-ghost:hover{border-color:#3a57a4;color:#3a57a4;}
+body.billy .btn-ghost.active{background:#3a57a4;color:#fff;border-color:#3a57a4;}
+body.billy .btn-max{background:#3a57a4;color:#fff;border-color:#3a57a4;}
+body.billy .btn-max:hover{background:#2f4684;}
+body.billy .btn-del{border-color:#c98a82;color:var(--red);}
+body.billy .btn-del:hover{background:var(--red);color:#fff;}
+body.billy label.lbl{color:#3a57a4;}
+body.billy thead th{border-bottom-color:#3a57a4;color:#3a57a4;}
+body.billy tbody tr:hover{background:#eef1f9;}
+body.billy .empty{color:#3a57a4;}
+body.billy .q{background:#3a57a4;color:#fff;}
+body.billy .cat-tag{background:#e3e9f6;color:#3a57a4;}
+body.billy .item-cat-tag{background:#3a57a4;color:#fff;}
+body.billy .craft-box{border-color:#3a57a4;}
+body.billy .task-list{border-top-color:#3a57a4;}
+body.billy .task-card:hover{background:#eef1f9;}
+body.billy .role-badge{border-color:#3a57a4;}
+body.billy .rb-admin{background:#3a57a4;color:#fff;}
+body.billy .role-tag{border-color:#3a57a4;color:#3a57a4;}
+body.billy .role-tag.admin{background:#3a57a4;color:#fff;}
+body.billy .badge{color:#3a57a4;}
+body.billy #toast{background:#3a57a4;color:#fff;}
+body.billy .tabs{border-bottom-color:#3a57a4;}
+body.billy .tab-btn{color:#3a57a4;}
+body.billy .tab-btn.active{border-bottom-color:#3a57a4;color:#3a57a4;}
+body.billy .filter-tab{color:#3a57a4;}
+body.billy .filter-tab.active{border-bottom-color:#3a57a4;color:#3a57a4;}
+body.billy .hint-box{background:#eef1f9;border-left-color:#3a57a4;}
+body.billy .unit-tag{color:#3a57a4;}
+body.billy .loc-display{color:#3a57a4;}
+body.billy .comp-type-badge{background:#3a57a4;color:#fff;}
+/* Front page: blue ink + new red (it otherwise forces light tokens). */
+body.billy .fp-stage{--fg:#3a57a4;}
+body.billy .fp-dots{background-image:radial-gradient(#3a57a4 0.8px,transparent 0.8px),radial-gradient(#3a57a4 0.8px,transparent 0.8px);}
+
 .comp-grade-mil{color:#cc0000;}
 .comp-grade-sth{color:#7c3aed;}
 .comp-grade-cmp{color:#0ea5e9;}
@@ -1216,15 +1275,28 @@ function goTo(tab) {
   currentPage=tab; renderNav(); renderPage();
 }
 
-// ─── DARK MODE ────────────────────────────────────────────────────────────────
-function toggleDark() {
-  const on=document.body.classList.toggle('dark');
-  localStorage.setItem('navytrack_dark', on?'1':'0');
-  const b=document.getElementById('dark-toggle-btn'); if(b) b.textContent = on?'LIGHT':'DARK';
+// ─── THEME (light → dark → billy → light) ─────────────────────────────────────
+function currentTheme(){ return document.body.classList.contains('billy')?'billy':document.body.classList.contains('dark')?'dark':'light'; }
+// The toggle button names the theme you'll switch to next.
+function themeBtnLabel(t){ return t==='light'?'DARK':t==='dark'?'@BILLY':'LIGHT'; }
+function applyTheme(t){
+  document.body.classList.remove('dark','billy');
+  if(t==='dark') document.body.classList.add('dark');
+  else if(t==='billy') document.body.classList.add('billy');
+  localStorage.setItem('navytrack_theme', t);
+  const b=document.getElementById('dark-toggle-btn'); if(b) b.textContent=themeBtnLabel(t);
   renderNav();
 }
-(function initDark(){
-  if(localStorage.getItem('navytrack_dark')==='1') document.body.classList.add('dark');
+// Kept the name toggleDark so existing onclick="toggleDark()" hooks still work.
+function toggleDark(){
+  const next={light:'dark',dark:'billy',billy:'light'};
+  applyTheme(next[currentTheme()]);
+}
+(function initTheme(){
+  let t=localStorage.getItem('navytrack_theme');
+  if(!t) t = localStorage.getItem('navytrack_dark')==='1' ? 'dark' : 'light'; // migrate old key
+  if(t==='dark') document.body.classList.add('dark');
+  else if(t==='billy') document.body.classList.add('billy');
 })();
 
 // ─── SETUP ────────────────────────────────────────────────────────────────────
@@ -1454,10 +1526,9 @@ function renderNav() {
 
   // Recruits: nav is locked — only NAVY visible, rest shown as lock
   if(recruit){
-    const dark=document.body.classList.contains('dark');
     const sub=`
       <div class="nav-sub-item" style="cursor:default;">Welcome, ${esc(u.username)}</div>
-      <div class="nav-sub-item" onclick="toggleDark()">${dark?'DAYTIME':'NIGHTTIME'}</div>
+      <div class="nav-sub-item" onclick="toggleDark()">${themeBtnLabel(currentTheme())}</div>
       <div class="nav-sub-item" onclick="doLogout()">Sign out</div>`;
     const el=document.getElementById('nav');
     el.innerHTML=`
@@ -2764,7 +2835,7 @@ function pageArchive(){
       <div class="page-head-left">
         <div class="page-lead" id="archive-count">${archiveCountLabel()}</div>
       </div>
-      <button class="btn btn-black" id="dark-toggle-btn" onclick="toggleDark()">${document.body.classList.contains('dark')?'LIGHT':'DARK'}</button>
+      <button class="btn btn-black" id="dark-toggle-btn" onclick="toggleDark()">${themeBtnLabel(currentTheme())}</button>
     </div>
     <div id="archive-table">${renderArchiveTable()}</div>`;
 }
