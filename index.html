@@ -156,9 +156,11 @@ tbody tr:hover{background:#f9f9f9;}
 
 
 /* ── TASKS ───────────────────────────────────────────────────────── */
-/* TASK has no filter/column-header row above its rule, so push the rule down
-   to the same depth as the ITEM/LOG column-header underline (tunable). */
-.task-list{border-top:2px solid var(--border);margin-top:var(--list-line-gap,170px);}
+/* TASK has no filter/column-header row above its rule. A fixed-height pre-zone
+   pushes the rule down to the ITEM/LOG column-header depth (tunable) AND holds
+   the optional search bar, so toggling search never moves the rule. */
+.task-pre{min-height:calc(var(--list-line-gap,170px) - var(--space-8));}
+.task-list{border-top:2px solid var(--border);}
 .task-card{min-height:230px;display:flex;flex-direction:column;justify-content:flex-start;padding:var(--space-5) 0;margin-bottom:0;position:relative;}
 .task-card:hover{background:#fafafa;}
 .task-card.completed{opacity:.5;}
@@ -3335,9 +3337,11 @@ function pageTasks() {
       </div>
       ${canCreate?`<button class="btn btn-black" onclick="openCreateTaskModal()">+ Create Project</button>`:''}
     </div>
-    <div id="task-search-bar" class="task-search-bar" style="${tasksSearchActive?'':'display:none;'}">
-      <input type="text" id="task-search-inp" placeholder="Search projects…" value="${esc(tasksSearch)}"
-        oninput="tasksSearch=this.value;document.getElementById('tasks-list').innerHTML=renderTasksList();">
+    <div class="task-pre">
+      <div id="task-search-bar" class="task-search-bar" style="${tasksSearchActive?'':'display:none;'}">
+        <input type="text" id="task-search-inp" placeholder="Search projects…" value="${esc(tasksSearch)}"
+          oninput="tasksSearch=this.value;document.getElementById('tasks-list').innerHTML=renderTasksList();">
+      </div>
     </div>
     <div id="tasks-list" class="task-list">${renderTasksList()}</div>`;
 }
@@ -3526,7 +3530,7 @@ function renderTaskRequiredItems(task) {
       <span style="font-size:var(--text-md);">${esc(req.name)}</span>
     </div>`;
   });
-  return `<div style="margin:8px 0;padding:12px 14px;background:var(--bg2);border:1px solid var(--border-m);">
+  return `<div style="margin:8px 0;padding:12px 14px;border:1px solid var(--border);">
     <div style="font-size:var(--text-xs);font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--fg);margin-bottom:8px;">Required Items</div>
     <div class="req-grid">${rows.join('')}</div>
   </div>`;
