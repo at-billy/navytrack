@@ -1664,8 +1664,8 @@ function buildHeadlines(){
     .slice(0,12)
     .forEach(e=>{ const h=fpActivityHeadline(e); if(h) out.push(h); });
 
-  // Shuffle (seeded once per page load) and pick ~20 for the front page.
-  const list = fpShuffle(out, fpSeed).slice(0, 20);
+  // Shuffle (seeded once per page load) and pick ~22 for the front page.
+  const list = fpShuffle(out, fpSeed).slice(0, 22);
   // Colophon — always the very last headline, always solo (see pageOverview).
   list.push({ kicker:'The Fine Print', text:'billy made this with ai and no clue what he was doing.', foot:'it works. mostly. handle with care.', credits:true });
   return list;
