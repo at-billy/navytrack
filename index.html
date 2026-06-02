@@ -2865,7 +2865,6 @@ function stripTags(html){ return String(html).replace(/<[^>]*>/g,''); }
 function rerenderArchiveTable(){ const el=document.getElementById('archive-table'); if(el) el.innerHTML=renderArchiveTable(); }
 function setArchiveMonthOffset(o){ archiveMonthOffset=o; rerenderArchiveTable(); }
 function stepArchiveMonth(d){ const eff=(archiveMonthOffset==null?0:archiveMonthOffset); let n=eff+d; if(n>0) n=0; archiveMonthOffset=n; rerenderArchiveTable(); }
-function archiveMonthName(off){ const d=new Date(); d.setDate(1); d.setMonth(d.getMonth()+off); return d.toLocaleDateString('en-GB',{month:'long',year:'numeric'}); }
 function setArchiveSort(col){ archiveSortDir=(archiveSortCol===col&&archiveSortDir==='asc')?'desc':'asc'; archiveSortCol=col; const el=document.getElementById('archive-table'); if(el) el.innerHTML=renderArchiveTable(); }
 function toggleArchiveSearch(){ archiveSearchActive=!archiveSearchActive; if(!archiveSearchActive) archiveSearch=''; const el=document.getElementById('archive-table'); if(el) el.innerHTML=renderArchiveTable(); if(archiveSearchActive){ const inp=document.getElementById('archive-search-inp'); if(inp) inp.focus(); } }
 function archiveSearchInput(val){ archiveSearch=val; const el=document.getElementById('archive-table'); if(el) el.innerHTML=renderArchiveTable(); const inp=document.getElementById('archive-search-inp'); if(inp){ inp.focus(); try{ inp.setSelectionRange(val.length,val.length); }catch(e){} } }
@@ -2906,7 +2905,6 @@ function renderArchiveTable(){
       <button class="btn-ghost btn-sm${archiveMonthOffset===-1?' active':''}" onclick="setArchiveMonthOffset(-1)">Last Month</button>
       <button class="btn-ghost btn-sm" onclick="stepArchiveMonth(-1)">One Month Back</button>
       <button class="btn-ghost btn-sm" onclick="stepArchiveMonth(1)"${fwdDisabled?' disabled style="opacity:.4;cursor:default;"':''}>One Month Forward</button>
-      ${archiveMonthOffset!=null?`<span style="font-size:var(--text-sm);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--fg);margin-left:6px;">${archiveMonthName(archiveMonthOffset)}</span>`:''}
       <div style="flex:1;"></div>
       <button class="btn-ghost btn-sm${archiveSearchActive?' active':''}" onclick="toggleArchiveSearch()">${archiveSearchActive?'Close Search':'Search'}</button>
     </div>
