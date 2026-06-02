@@ -155,11 +155,19 @@ tbody tr:hover{background:#f9f9f9;}
 
 /* ── TASKS ───────────────────────────────────────────────────────── */
 .task-list{border-top:2px solid #000;}
-.task-card{padding:var(--space-5) 0;margin-bottom:0;position:relative;}
+.task-card{min-height:230px;display:flex;flex-direction:column;justify-content:center;padding:var(--space-5) 0;margin-bottom:0;position:relative;}
 .task-card:hover{background:#fafafa;}
 .task-card.completed{opacity:.5;}
 .task-card.cancelled{opacity:.35;}
 .task-card-title{font-size:var(--text-lg);font-weight:900;letter-spacing:-.3px;line-height:1.2;}
+/* Fixed left column anchors the middle (Members) column at the same x on every card */
+.tc-head{display:grid;grid-template-columns:360px 300px minmax(160px,1fr);gap:0 24px;align-items:center;}
+.tc-right{display:flex;align-items:center;justify-content:flex-end;gap:12px;}
+@media(max-width:900px){
+  .task-card{min-height:0;}
+  .tc-head{grid-template-columns:1fr;gap:10px 0;}
+  .tc-right{justify-content:flex-start;flex-wrap:wrap;}
+}
 .p-badge{display:inline-block;padding:2px 7px;font-size:var(--text-md);font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-right:6px;}
 .p-urgent{background:var(--red);color:#fff;}
 .p-high{background:#f97316;color:#fff;}
@@ -3183,8 +3191,8 @@ function renderTasksList() {
 
     return `<div class="task-card ${t.priority} ${t.status}" onclick="toggleTaskExpand('${esc(t._id)}')" role="button" tabindex="0" aria-expanded="${isExpanded?'true':'false'}" aria-label="Project: ${esc(t.title)}" style="cursor:pointer;">
       <!-- Header: left (title/goal) · middle (members/progress) · right (by + join + expand) -->
-      <div style="display:flex;align-items:flex-start;gap:28px;flex-wrap:wrap;">
-        <div style="flex:2 1 300px;min-width:0;">
+      <div class="tc-head">
+        <div style="min-width:0;">
           <div style="display:flex;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:6px;">
             <span class="p-badge ${pb.cls}">${pb.label}</span>
             <span class="task-card-title">${esc(t.title)}</span>
@@ -3192,11 +3200,11 @@ function renderTasksList() {
           ${t.goal?`<div style="font-size:var(--text-md);color:var(--fg);">${esc(t.goal)}</div>`:''}
           ${t.description&&!t.goal?`<div style="font-size:var(--text-md);color:var(--fg);">${esc(t.description)}</div>`:''}
         </div>
-        <div style="flex:1 1 220px;min-width:0;font-size:var(--text-md);">
+        <div style="min-width:0;font-size:var(--text-md);">
           <div style="margin-bottom:4px;">${membersLine}</div>
           ${itemsSummary?`<div>${itemsSummary}</div>`:''}
         </div>
-        <div style="display:flex;align-items:center;gap:12px;flex-shrink:0;margin-left:auto;">
+        <div class="tc-right">
           <span style="font-size:var(--text-sm);color:var(--fg);white-space:nowrap;">by ${esc(t.createdByName)}</span>
           ${joinLeaveBtn}
           <span class="caret${isExpanded?' open':''}" aria-hidden="true"></span>
