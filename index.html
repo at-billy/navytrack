@@ -1661,7 +1661,7 @@ function buildHeadlines(){
   // Shuffle (seeded once per page load) and pick ~20 for the front page.
   const list = fpShuffle(out, fpSeed).slice(0, 20);
   // Colophon — always the very last headline, always solo (see pageOverview).
-  list.push({ kicker:'The Fine Print', text:'billy made this with ai and no clue what he was doing.', text2:'it works. mostly. handle with care.', credits:true });
+  list.push({ kicker:'The Fine Print', text:'billy made this with ai and no clue what he was doing.', foot:'it works. mostly. handle with care.', credits:true });
   return list;
 }
 
@@ -1723,7 +1723,7 @@ function pageOverview() {
     const clickAttrs = go ? ` role="button" tabindex="0" aria-label="${esc(h.text)}" onclick="${go}"` : '';
     return `<div class="fp-item ${s.tone} ${s.box}" style="grid-column:${s.col};"${clickAttrs}>
       <div class="fp-kicker">${esc(h.kicker)}</div>
-      <div class="fp-head">${esc(h.text)}${h.credits&&h.text2?`<br>${esc(h.text2)}`:''}</div>
+      <div class="fp-head">${esc(h.text)}</div>
       ${h.foot?`<div class="fp-foot" style="color:${footColor};">${go?'→ ':''}${esc(h.foot)}</div>`:''}
     </div>`;
   }).join('')}</div>`;
