@@ -3299,9 +3299,9 @@ function renderTaskRequiredItems(task) {
     const inStock = state.navItems.filter(i=>i.status==='available'&&i.name===req.name&&i.category===req.category).reduce((s,i)=>s+i.quantity,0);
     const collected = Math.min(inStock, req.quantityNeeded);
     const done = collected >= req.quantityNeeded;
-    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;">
-      <span style="font-size:var(--text-sm);">${esc(req.name)} <span style="font-size:var(--text-sm);color:var(--fg);">(${esc(itemCatLabel(req.category))})</span></span>
-      <span style="font-size:var(--text-sm);font-weight:700;color:${done?'#16a34a':'inherit'};">${collected}/${req.quantityNeeded}</span>
+    return `<div style="display:flex;align-items:baseline;gap:10px;padding:3px 0;">
+      <span style="font-size:var(--text-sm);font-weight:700;color:${done?'#16a34a':'inherit'};min-width:54px;flex-shrink:0;">${collected}/${req.quantityNeeded}</span>
+      <span style="font-size:var(--text-sm);">${esc(req.name)} <span style="color:var(--fg);">(${esc(itemCatLabel(req.category))})</span></span>
     </div>`;
   });
   return `<div style="margin:8px 0;padding:8px 10px;background:var(--bg);border:1px solid var(--border-m);">
