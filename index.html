@@ -248,12 +248,13 @@ tbody tr:hover{background:#f9f9f9;}
 .fp-foot{font-size:var(--text-sm);font-weight:700;letter-spacing:.04em;text-transform:uppercase;margin-top:12px;}
 .fp-red .fp-head{color:var(--red);}
 .fp-box{padding:22px 24px;}
-.fp-dots{background-color:var(--bg);background-image:radial-gradient(var(--border-l) 1.5px, transparent 1.5px);background-size:7px 7px;}
-.fp-bd{border:2px solid #000;}
-.fp-bd-red{border:2px solid var(--red);}
+.fp-dots{background-color:var(--bg);background-image:radial-gradient(#000 1.2px, transparent 1.2px);background-size:6px 6px;}
+.fp-bd{border:3px solid #000;}
+.fp-bd-red{border:3px solid var(--red);}
 body.dark .fp-head{color:#e0e0e0;}
 body.dark .fp-red .fp-head{color:var(--red);}
 body.dark .fp-bd{border-color:#e0e0e0;}
+body.dark .fp-dots{background-image:radial-gradient(#e0e0e0 1.2px, transparent 1.2px);}
 @media(max-width:760px){
   .fp{grid-template-columns:1fr;gap:44px 0;padding-top:48px;}
   .fp-item{grid-column:1 / -1 !important;}
@@ -1617,18 +1618,18 @@ function buildHeadlines(){
 // Some slots span wide enough (>=9 of 12 cols) that they sit ALONE on their row;
 // the rest pair up two-per-row. The seed offset rotates which headlines land where.
 const FP_SLOTS = [
-  { tone:'',       box:'',                  col:'1 / span 12' },  // solo, full width
+  { tone:'',       box:'fp-box fp-bd',      col:'1 / span 12' },  // solo, full width
   { tone:'fp-red', box:'fp-box fp-dots',    col:'9 / span 4'  },
   { tone:'',       box:'fp-box fp-bd',      col:'1 / span 6'  },
   { tone:'fp-red', box:'fp-box fp-bd-red',  col:'8 / span 5'  },
-  { tone:'fp-red', box:'',                  col:'2 / span 9'  },  // solo, offset
+  { tone:'fp-red', box:'fp-box fp-dots',    col:'2 / span 9'  },  // solo, offset
   { tone:'',       box:'fp-box fp-dots',    col:'1 / span 4'  },
-  { tone:'fp-red', box:'',                  col:'8 / span 5'  },
+  { tone:'fp-red', box:'fp-box fp-bd-red',  col:'8 / span 5'  },
   { tone:'',       box:'fp-box fp-bd',      col:'1 / span 6'  },
-  { tone:'',       box:'fp-box fp-bd',      col:'1 / span 6'  },
+  { tone:'',       box:'fp-box fp-dots',    col:'1 / span 6'  },
   { tone:'fp-red', box:'fp-box fp-bd-red',  col:'7 / span 5'  },
   { tone:'',       box:'fp-box fp-dots',    col:'2 / span 4'  },
-  { tone:'fp-red', box:'',                  col:'8 / span 5'  },
+  { tone:'fp-red', box:'fp-box fp-bd',      col:'8 / span 5'  },
 ];
 
 // Map a headline to a navigation action (clicking the card jumps there).
