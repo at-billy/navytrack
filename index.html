@@ -244,7 +244,7 @@ tbody tr:hover{background:#f9f9f9;}
 .fp-item{min-width:0;justify-self:start;max-width:100%;}
 .fp-item[role="button"]{cursor:pointer;}
 .fp-kicker{font-size:var(--text-sm);font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--red);margin-bottom:8px;}
-.fp-head{font-size:clamp(23px,2.6vw,36px);font-weight:900;line-height:1.06;letter-spacing:-.5px;color:#000;}
+.fp-head{font-size:clamp(23px,2.6vw,36px);font-weight:900;line-height:1.06;letter-spacing:-.5px;color:var(--fg);}
 .fp-foot{font-size:var(--text-sm);font-weight:700;letter-spacing:.04em;text-transform:uppercase;margin-top:12px;}
 .fp-red{color:var(--red);}
 .fp-red .fp-head{color:var(--red);}
@@ -255,9 +255,8 @@ tbody tr:hover{background:#f9f9f9;}
 .fp-dots .fp-head,.fp-dots .fp-kicker,.fp-dots .fp-foot{text-shadow:.5px 0 0 var(--bg),-.5px 0 0 var(--bg),0 .5px 0 var(--bg),0 -.5px 0 var(--bg),.5px .5px 0 var(--bg),-.5px -.5px 0 var(--bg),.5px -.5px 0 var(--bg),-.5px .5px 0 var(--bg),1px 0 0 var(--bg),-1px 0 0 var(--bg),0 1px 0 var(--bg),0 -1px 0 var(--bg),1px .5px 0 var(--bg),1px -.5px 0 var(--bg),-1px .5px 0 var(--bg),-1px -.5px 0 var(--bg),.5px 1px 0 var(--bg),-.5px 1px 0 var(--bg),.5px -1px 0 var(--bg),-.5px -1px 0 var(--bg),1px 1px 0 var(--bg),-1px -1px 0 var(--bg),1px -1px 0 var(--bg),-1px 1px 0 var(--bg);}
 /* Border always matches the headline colour (currentColor follows tone) */
 .fp-bd,.fp-bd-red{border:3px solid currentColor;}
-body.dark .fp-head{color:#e0e0e0;}
-body.dark .fp-red,body.dark .fp-red .fp-head{color:var(--red);}
-body.dark .fp-dots{background-image:radial-gradient(#e0e0e0 0.8px, transparent 0.8px),radial-gradient(#e0e0e0 0.8px, transparent 0.8px);}
+/* The front page keeps its light treatment even in dark mode — the imagery
+   already provides a dark backdrop (tokens are overridden on .fp-stage). */
 @media(max-width:760px){
   .fp{grid-template-columns:1fr;gap:44px 0;padding:calc(var(--nav-h,120px) + 28px) var(--space-4) 80px;}
   .fp-item{grid-column:1 / -1 !important;}
@@ -269,7 +268,7 @@ body.dark .fp-dots{background-image:radial-gradient(#e0e0e0 0.8px, transparent 0
    runs under the (transparent) nav. Headlines flow with their normal
    spacing on top and simply land wherever they land — on an image or in
    a gap. */
-.fp-stage{position:relative;}
+.fp-stage{position:relative;--bg:#fff;--fg:#000;color:var(--fg);background:#fff;}
 .fp-bg{position:relative;z-index:0;}                  /* full-bleed images drive the page height */
 .fp-img{display:block;width:100%;height:auto;}        /* full bleed, native aspect ratio, never cropped */
 .fp-gap{width:100%;}
