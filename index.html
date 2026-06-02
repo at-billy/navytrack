@@ -155,16 +155,11 @@ tbody tr:hover{background:#f9f9f9;}
 
 /* ── TASKS ───────────────────────────────────────────────────────── */
 .task-list{border-top:2px solid #000;}
-.task-card{padding:var(--space-6) 0;margin-bottom:0;position:relative;padding-left:20px;}
-.task-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;}
-.task-card.urgent::before{background:var(--red);}
-.task-card.high::before{background:#f97316;}
-.task-card.normal::before{background:#3b82f6;}
-.task-card.whenever::before{background:#d1d5db;}
+.task-card{padding:var(--space-5) 0;margin-bottom:0;position:relative;}
 .task-card:hover{background:#fafafa;}
 .task-card.completed{opacity:.5;}
 .task-card.cancelled{opacity:.35;}
-.task-card-title{font-size:var(--text-lg);font-weight:900;letter-spacing:-.3px;line-height:1.2;margin-bottom:var(--space-3);}
+.task-card-title{font-size:var(--text-lg);font-weight:900;letter-spacing:-.3px;line-height:1.2;}
 .p-badge{display:inline-block;padding:2px 7px;font-size:var(--text-md);font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-right:6px;}
 .p-urgent{background:var(--red);color:#fff;}
 .p-high{background:#f97316;color:#fff;}
@@ -3160,7 +3155,7 @@ function renderTasksList() {
       },0);
       const pct=Math.round((collected/total)*100);
       const color=pct>=100?'#16a34a':pct>0?'inherit':'var(--fg)';
-      itemsSummary=`<span style="font-size:var(--text-sm);color:${color};">· needs items · ${pct}%</span>`;
+      itemsSummary=`<span style="font-size:var(--text-md);color:${color};font-weight:700;">needs items · ${pct}%</span>`;
     }
 
     const buttons=`
@@ -3187,30 +3182,32 @@ function renderTasksList() {
       : `<span style="color:var(--fg);">No members yet</span>`;
 
     return `<div class="task-card ${t.priority} ${t.status}" onclick="toggleTaskExpand('${esc(t._id)}')" role="button" tabindex="0" aria-expanded="${isExpanded?'true':'false'}" aria-label="Project: ${esc(t.title)}" style="cursor:pointer;">
-      <!-- Header row: priority + title + join/expand -->
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
-        <div style="flex:1;min-width:0;">
+      <!-- Header: left (title/goal) · middle (members/progress) · right (by + join + expand) -->
+      <div style="display:flex;align-items:flex-start;gap:28px;flex-wrap:wrap;">
+        <div style="flex:2 1 300px;min-width:0;">
           <div style="display:flex;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:6px;">
             <span class="p-badge ${pb.cls}">${pb.label}</span>
             <span class="task-card-title">${esc(t.title)}</span>
           </div>
-          ${t.goal?`<div style="font-size:var(--text-md);margin-bottom:5px;">${esc(t.goal)}</div>`:''}
-          ${t.description&&!t.goal?`<div style="font-size:var(--text-md);color:var(--fg);margin-bottom:5px;">${esc(t.description)}</div>`:''}
-          <div style="font-size:var(--text-sm);margin-bottom:3px;">${membersLine}</div>
-          ${itemsSummary?`<div style="font-size:var(--text-sm);margin-bottom:3px;">${itemsSummary}</div>`:''}
-          <div style="font-size:var(--text-sm);color:var(--fg);">by ${esc(t.createdByName)}</div>
+          ${t.goal?`<div style="font-size:var(--text-md);color:var(--fg);">${esc(t.goal)}</div>`:''}
+          ${t.description&&!t.goal?`<div style="font-size:var(--text-md);color:var(--fg);">${esc(t.description)}</div>`:''}
         </div>
-        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;padding-top:2px;">
+        <div style="flex:1 1 220px;min-width:0;font-size:var(--text-md);">
+          <div style="margin-bottom:4px;">${membersLine}</div>
+          ${itemsSummary?`<div>${itemsSummary}</div>`:''}
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;flex-shrink:0;margin-left:auto;">
+          <span style="font-size:var(--text-sm);color:var(--fg);white-space:nowrap;">by ${esc(t.createdByName)}</span>
           ${joinLeaveBtn}
-          <span class="caret${isExpanded?' open':''}" aria-hidden="true" style="margin-left:2px;"></span>
+          <span class="caret${isExpanded?' open':''}" aria-hidden="true"></span>
         </div>
       </div>
       <!-- Expanded detail -->
       ${isExpanded?`
-      <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border-m);">
-        ${t.goal&&t.description?`<div style="font-size:var(--text-md);color:var(--fg);margin-bottom:8px;">${esc(t.description)}</div>`:''}
+      <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border-m);">
+        ${t.goal&&t.description?`<div style="font-size:var(--text-md);color:var(--fg);margin-bottom:10px;">${esc(t.description)}</div>`:''}
         ${renderTaskRequiredItems(t)}
-        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">${mgmtBtns}</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;">${mgmtBtns}</div>
       </div>`:''}
     </div>`;
   }).join('');
@@ -3299,14 +3296,14 @@ function renderTaskRequiredItems(task) {
     const inStock = state.navItems.filter(i=>i.status==='available'&&i.name===req.name&&i.category===req.category).reduce((s,i)=>s+i.quantity,0);
     const collected = Math.min(inStock, req.quantityNeeded);
     const done = collected >= req.quantityNeeded;
-    return `<div style="display:flex;align-items:baseline;gap:10px;padding:3px 0;">
-      <span style="font-size:var(--text-sm);font-weight:700;color:${done?'#16a34a':'inherit'};min-width:54px;flex-shrink:0;">${collected}/${req.quantityNeeded}</span>
-      <span style="font-size:var(--text-sm);">${esc(req.name)} <span style="color:var(--fg);">(${esc(itemCatLabel(req.category))})</span></span>
+    return `<div style="display:flex;align-items:baseline;gap:10px;padding:4px 0;">
+      <span style="font-size:var(--text-md);font-weight:700;color:${done?'#16a34a':'inherit'};min-width:58px;flex-shrink:0;text-align:right;">${collected}/${req.quantityNeeded}</span>
+      <span style="font-size:var(--text-md);">${esc(req.name)} <span style="color:var(--fg);font-size:var(--text-sm);">${esc(itemCatLabel(req.category))}</span></span>
     </div>`;
   });
-  return `<div style="margin:8px 0;padding:8px 10px;background:var(--bg);border:1px solid var(--border-m);">
-    <div style="font-size:var(--text-xs);font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--fg);margin-bottom:4px;">Required Items</div>
-    ${rows.join('')}
+  return `<div style="margin:8px 0;padding:12px 14px;background:var(--bg2);border:1px solid var(--border-m);">
+    <div style="font-size:var(--text-xs);font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--fg);margin-bottom:8px;">Required Items</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:0 28px;">${rows.join('')}</div>
   </div>`;
 }
 
