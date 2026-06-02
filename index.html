@@ -930,7 +930,9 @@ let archiveAllLoaded = false;
 let archiveLoading = false;
 const ARCHIVE_PAGE_SIZE = 200;
 // Log table controls (mirror the ITEM table: month box-filters, search, column sort).
-let archiveMonthFilter = 'all';   // 'all' | 'this' | 'last' | 'back' | 'forward'
+// archiveMonthOffset: null = All; 0 = this month, -1 = last month, etc. Back/Forward
+// step it by -1/+1 (Forward capped at the current month).
+let archiveMonthOffset = null;
 let archiveSearch = '';
 let archiveSearchActive = false;
 let archiveSortCol = 'date';
@@ -2789,7 +2791,10 @@ function stripTags(html){ return String(html).replace(/<[^>]*>/g,''); }
 
 // Log controls — same template as the ITEM table: month box-filters, search on the
 // right, sortable columns. Re-renders #archive-table on every interaction.
-function setArchiveMonth(f){ archiveMonthFilter=f; const el=document.getElementById('archive-table'); if(el) el.innerHTML=renderArchiveTable(); }
+function rerenderArchiveTable(){ const el=document.getElementById('archive-table'); if(el) el.innerHTML=renderArchiveTable(); }
+function setArchiveMonthOffset(o){ archiveMonthOffset=o; rerenderArchiveTable(); }
+function stepArchiveMonth(d){ const eff=(archiveMonthOffset==null?0:archiveMonthOffset); let n=eff+d; if(n>0) n=0; archiveMonthOffset=n; rerenderArchiveTable(); }
+function archiveMonthName(off){ const d=new Date(); d.setDate(1); d.setMonth(d.getMonth()+off); return d.toLocaleDateString('en-GB',{month:'long',year:'numeric'}); }
 function setArchiveSort(col){ archiveSortDir=(archiveSortCol===col&&archiveSortDir==='asc')?'desc':'asc'; archiveSortCol=col; const el=document.getElementById('archive-table'); if(el) el.innerHTML=renderArchiveTable(); }
 function toggleArchiveSearch(){ archiveSearchActive=!archiveSearchActive; if(!archiveSearchActive) archiveSearch=''; const el=document.getElementById('archive-table'); if(el) el.innerHTML=renderArchiveTable(); if(archiveSearchActive){ const inp=document.getElementById('archive-search-inp'); if(inp) inp.focus(); } }
 function archiveSearchInput(val){ archiveSearch=val; const el=document.getElementById('archive-table'); if(el) el.innerHTML=renderArchiveTable(); const inp=document.getElementById('archive-search-inp'); if(inp){ inp.focus(); try{ inp.setSelectionRange(val.length,val.length); }catch(e){} } }
@@ -2798,10 +2803,9 @@ function renderArchiveTable(){
   const admin=isAdmin(state.user);
   let entries = combinedArchive().filter(e => !LOTTERY_LOG_TYPES.has(e.type));
 
-  // Month box-filter (relative to the current month).
-  if(archiveMonthFilter!=='all'){
-    const off={this:0,last:-1,back:-2,forward:1}[archiveMonthFilter];
-    const d=new Date(); d.setDate(1); d.setMonth(d.getMonth()+off);
+  // Month filter (offset relative to the current month; null = all months).
+  if(archiveMonthOffset!=null){
+    const d=new Date(); d.setDate(1); d.setMonth(d.getMonth()+archiveMonthOffset);
     const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
     entries=entries.filter(e=>{ const x=new Date(e._creationTime); return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}`===key; });
   }
@@ -2823,16 +2827,21 @@ function renderArchiveTable(){
     return archiveSortDir==='asc'?cmp:-cmp;
   });
 
+  const fwdDisabled = archiveMonthOffset===0;
   const filterRow = `
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;align-items:center;">
-      ${[['all','All'],['this','This Month'],['last','Last Month'],['back','One Month Back'],['forward','One Month Forward']].map(([id,label])=>
-        `<button class="btn-ghost btn-sm${archiveMonthFilter===id?' active':''}" onclick="setArchiveMonth('${id}')">${label}</button>`).join('')}
+      <button class="btn-ghost btn-sm${archiveMonthOffset==null?' active':''}" onclick="setArchiveMonthOffset(null)">All</button>
+      <button class="btn-ghost btn-sm${archiveMonthOffset===0?' active':''}" onclick="setArchiveMonthOffset(0)">This Month</button>
+      <button class="btn-ghost btn-sm${archiveMonthOffset===-1?' active':''}" onclick="setArchiveMonthOffset(-1)">Last Month</button>
+      <button class="btn-ghost btn-sm" onclick="stepArchiveMonth(-1)">One Month Back</button>
+      <button class="btn-ghost btn-sm" onclick="stepArchiveMonth(1)"${fwdDisabled?' disabled style="opacity:.4;cursor:default;"':''}>One Month Forward</button>
+      ${archiveMonthOffset!=null?`<span style="font-size:var(--text-sm);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--fg);margin-left:6px;">${archiveMonthName(archiveMonthOffset)}</span>`:''}
       <div style="flex:1;"></div>
       <button class="btn-ghost btn-sm${archiveSearchActive?' active':''}" onclick="toggleArchiveSearch()">${archiveSearchActive?'Close Search':'Search'}</button>
     </div>
     ${archiveSearchActive?`<div style="margin-bottom:20px;"><input type="text" id="archive-search-inp" placeholder="Search log…" value="${esc(archiveSearch)}" style="width:100%;max-width:400px;" oninput="archiveSearchInput(this.value)"></div>`:''}`;
 
-  if(!entries.length) return filterRow + `<div class="empty">${archiveMonthFilter!=='all'||archiveSearch.trim()?'No actions match this filter.':'No actions logged yet.'}</div>`;
+  if(!entries.length) return filterRow + `<div class="empty">${archiveMonthOffset!=null||archiveSearch.trim()?'No actions match this filter.':'No actions logged yet.'}</div>`;
 
   const cols=[['date','Date'],['action','Action'],['user','User'],['details','Details']];
   const table = `
