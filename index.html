@@ -240,22 +240,24 @@ tbody tr:hover{background:#f9f9f9;}
 .hint-box strong{color:#000;}
 
 /* ── FRONT PAGE (editorial headline grid) ────────────────────────── */
-.fp{display:grid;grid-template-columns:repeat(12,1fr);gap:40px 28px;padding:8px 0 40px;align-items:start;}
+.fp{display:grid;grid-template-columns:repeat(12,1fr);gap:72px 36px;padding:16px 0 80px;align-items:start;}
 .fp-item{min-width:0;}
-.fp-kicker{font-size:var(--text-sm);font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--red);margin-bottom:6px;}
+.fp-kicker{font-size:var(--text-sm);font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--red);margin-bottom:8px;}
 .fp-head{font-weight:900;line-height:1.04;letter-spacing:-.5px;color:#000;}
-.fp-foot{font-size:var(--text-sm);font-weight:700;letter-spacing:.04em;text-transform:uppercase;margin-top:10px;}
+.fp-foot{font-size:var(--text-sm);font-weight:700;letter-spacing:.04em;text-transform:uppercase;margin-top:12px;}
 .fp-xl .fp-head{font-size:clamp(30px,4.2vw,56px);}
 .fp-lg .fp-head{font-size:clamp(23px,2.6vw,36px);}
 .fp-md .fp-head{font-size:clamp(19px,1.6vw,26px);}
 .fp-red .fp-head{color:var(--red);}
-.fp-box{padding:18px 20px;}
-.fp-solid{background:var(--bg2);}
+.fp-box{padding:22px 24px;}
 .fp-dots{background-color:var(--bg);background-image:radial-gradient(var(--border-l) 1.5px, transparent 1.5px);background-size:7px 7px;}
+.fp-bd{border:2px solid #000;}
+.fp-bd-red{border:2px solid var(--red);}
 body.dark .fp-head{color:#e0e0e0;}
 body.dark .fp-red .fp-head{color:var(--red);}
+body.dark .fp-bd{border-color:#e0e0e0;}
 @media(max-width:760px){
-  .fp{grid-template-columns:1fr;gap:28px 0;}
+  .fp{grid-template-columns:1fr;gap:44px 0;}
   .fp-item{grid-column:1 / -1 !important;}
 }
 
@@ -1490,6 +1492,18 @@ function renderPage() {
 }
 
 // ─── OVERVIEW PAGE ────────────────────────────────────────────────────────────
+// Seed picked once per page load → layout/order stays stable during the session
+// but reshuffles on reload.
+const fpSeed = Math.floor(Math.random()*1e9) >>> 0;
+function fpShuffle(arr, seed){
+  const a=arr.slice(); let s=seed>>>0;
+  for(let i=a.length-1;i>0;i--){
+    s=(s*1664525+1013904223)>>>0;
+    const j=s%(i+1);
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
 function fpDate(ts){ return new Date(ts).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}); }
 
 // Turn an archive entry into a newspaper-style headline (or null to skip).
@@ -1541,31 +1555,52 @@ function buildHeadlines(){
     out.push({kicker: t.priority==='urgent'?'Urgent':'Project', text, foot});
   });
 
+  // Logistics status (shown even when there's nothing going on)
+  const openLog=state.logistics.filter(l=>l.status==='open').length;
+  out.push(openLog
+    ? {kicker:'Logistics', text:`${openLog} move${openLog!==1?'s':''} in transit`, foot:'Logistics'}
+    : {kicker:'Logistics', text:`Logistics is all quiet — no moves queued`, foot:'Logistics'});
+
+  // Lottery status (state.lotteries is only populated for command/admin)
+  if(state.lotteries.length){
+    const liveLot=state.lotteries.filter(l=>l.status==='open'||l.status==='drawn').length;
+    out.push(liveLot
+      ? {kicker:'Lottery', text:`A lottery is live — get your picks in`, foot:'Lottery'}
+      : {kicker:'Lottery', text:`No lottery running right now`, foot:'Lottery'});
+  }
+
+  // Inventory texture
+  const types=new Set(state.navItems.filter(i=>i.status==='available').map(i=>i.name+'|'+i.category)).size;
+  if(types) out.push({kicker:'Databank', text:`${itemsCnt} items across ${types} kind${types!==1?'s':''} on the shelves`, foot:'Inventory'});
+
   // Recent activity (skip lottery + password events)
   state.archive
     .filter(e=>!LOTTERY_LOG_TYPES.has(e.type) && e.type!=='password_reset_issued' && e.type!=='password_reset_completed' && e.type!=='member_removed')
-    .slice(0,7)
+    .slice(0,8)
     .forEach(e=>{ const h=fpActivityHeadline(e); if(h) out.push(h); });
 
   // Closing facts
   out.push({kicker:'The Roster', text:`${memberCnt} member${memberCnt!==1?'s':''} strong`, foot:'Members'});
   if(urgentCnt) out.push({kicker:'Heads Up', text:`${urgentCnt} project${urgentCnt!==1?'s':''} flagged urgent`, foot:'Projects'});
+  if(!openTasks.length) out.push({kicker:'Projects', text:`No active projects — time to start one?`, foot:'Projects'});
 
-  return out.slice(0, 10);
+  // Shuffle for an editorial, ever-changing feel — seeded per page load (stable
+  // within the session, reshuffles on reload).
+  return fpShuffle(out, fpSeed).slice(0, 11);
 }
 
 // Editorial layout slots — varied size / tone / box / column, cycled across headlines.
 const FP_SLOTS = [
-  { size:'fp-xl', tone:'',       box:'',                col:'1 / span 7'  },
-  { size:'fp-lg', tone:'fp-red', box:'fp-box fp-dots',  col:'9 / span 4'  },
-  { size:'fp-lg', tone:'fp-red', box:'',                col:'1 / span 6'  },
-  { size:'fp-md', tone:'',       box:'fp-box fp-solid', col:'8 / span 5'  },
-  { size:'fp-lg', tone:'',       box:'',                col:'2 / span 6'  },
-  { size:'fp-md', tone:'fp-red', box:'fp-box fp-dots',  col:'9 / span 4'  },
-  { size:'fp-md', tone:'fp-red', box:'',                col:'1 / span 5'  },
-  { size:'fp-md', tone:'',       box:'fp-box fp-solid', col:'7 / span 5'  },
-  { size:'fp-lg', tone:'fp-red', box:'',                col:'4 / span 6'  },
-  { size:'fp-md', tone:'',       box:'fp-box fp-dots',  col:'1 / span 4'  },
+  { size:'fp-xl', tone:'',       box:'',                       col:'1 / span 7'  },
+  { size:'fp-lg', tone:'fp-red', box:'fp-box fp-dots',         col:'9 / span 4'  },
+  { size:'fp-lg', tone:'',       box:'fp-box fp-bd',           col:'1 / span 6'  },
+  { size:'fp-md', tone:'fp-red', box:'fp-box fp-bd-red',       col:'8 / span 5'  },
+  { size:'fp-lg', tone:'fp-red', box:'',                       col:'3 / span 6'  },
+  { size:'fp-md', tone:'',       box:'fp-box fp-dots',         col:'9 / span 4'  },
+  { size:'fp-md', tone:'fp-red', box:'',                       col:'1 / span 5'  },
+  { size:'fp-lg', tone:'',       box:'fp-box fp-dots fp-bd',   col:'7 / span 6'  },
+  { size:'fp-md', tone:'fp-red', box:'fp-box fp-bd-red',       col:'2 / span 5'  },
+  { size:'fp-md', tone:'',       box:'fp-box fp-bd',           col:'8 / span 4'  },
 ];
 
 function pageOverview() {
@@ -1575,9 +1610,10 @@ function pageOverview() {
   const headlines = buildHeadlines();
   if(!headlines.length) return `<div class="empty" style="padding:120px 0;">Nothing to report yet.</div>`;
 
+  const slotOffset = fpSeed % FP_SLOTS.length;
   return `<div class="fp">
     ${headlines.map((h,i)=>{
-      const s=FP_SLOTS[i % FP_SLOTS.length];
+      const s=FP_SLOTS[(i + slotOffset) % FP_SLOTS.length];
       const footColor = s.tone==='fp-red' ? 'var(--red)' : 'var(--fg)';
       return `<div class="fp-item ${s.size} ${s.tone} ${s.box}" style="grid-column:${s.col};">
         <div class="fp-kicker">${esc(h.kicker)}</div>
