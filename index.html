@@ -140,7 +140,7 @@ tbody tr:hover{background:#f9f9f9;}
 .q{display:inline-block;padding:2px 7px;font-size:var(--text-md);font-weight:700;background:#000;color:#fff;}
 .unit-tag{display:inline-block;padding:1px 5px;font-size:var(--text-md);font-weight:700;letter-spacing:.06em;color:#000;margin-left:4px;}
 .cat-tag{display:inline-block;padding:1px 5px;font-size:var(--text-md);font-weight:700;letter-spacing:.06em;background:#f0f0f0;color:#000;}
-.item-cat-tag{display:inline-block;padding:2px var(--space-2);font-size:var(--text-md);font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:#000;color:#fff;}
+.item-cat-tag,.sys-badge{display:inline-block;padding:2px var(--space-2);font-size:var(--text-md);font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:#000;color:#fff;}
 .craft-box{border:2px solid #000;padding:36px;margin-bottom:var(--space-7);}
 .craft-box.err{border-color:var(--red);}
 .q-big{font-size:var(--text-2xl);font-weight:900;letter-spacing:-2px;line-height:1;}
@@ -152,7 +152,7 @@ tbody tr:hover{background:#f9f9f9;}
 .badge-item_updated,.badge-item_removed{background:none;color:#000;}
 
 /* ── ITEMS ───────────────────────────────────────────────────────── */
-.item-cat-tag{font-size:var(--text-sm);font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border:1px solid #000;white-space:nowrap;}
+.item-cat-tag,.sys-badge{font-size:var(--text-sm);font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border:1px solid #000;white-space:nowrap;}
 
 
 /* ── TASKS ───────────────────────────────────────────────────────── */
@@ -227,9 +227,8 @@ tbody tr:hover{background:#f9f9f9;}
 /* ── INLINE UTILS ────────────────────────────────────────────────── */
 .unit-inline{font-size:var(--text-md);font-weight:700;color:#000;margin-left:4px;}
 .loc-display{font-size:var(--text-md);color:#000;}
-.sys-badge{font-size:var(--text-md);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#fff;background:#333;padding:1px 5px;margin-right:4px;}
-.sys-badge.pyro{background:var(--red);}
-.sys-badge.nyx{background:#005080;}
+/* .sys-badge shares the .item-cat-tag styling (above) so location/system tags
+   match the category tag exactly, theming included. */
 
 /* ── FILTER TABS (inline content) ────────────────────────────────── */
 .filter-tabs{display:flex;gap:var(--space-7);flex-wrap:wrap;margin-bottom:52px;padding-bottom:20px;}
@@ -349,7 +348,7 @@ body.dark tbody tr:hover{background:#1a1a1a;}
 body.dark .empty{color:#e0e0e0;}
 body.dark .q{background:#e0e0e0;color:#111;}
 body.dark .cat-tag{background:#222;color:#e0e0e0;}
-body.dark .item-cat-tag{background:#e0e0e0;color:#111;}
+body.dark .item-cat-tag,body.dark .sys-badge{background:#e0e0e0;color:#111;}
 body.dark .craft-box{border-color:#e0e0e0;}
 body.dark .task-list{border-top-color:#e0e0e0;}
 body.dark .task-card:hover{background:#1a1a1a;}
@@ -376,9 +375,6 @@ body.dark .filter-tab.active{border-bottom-color:#e0e0e0;color:#e0e0e0;}
 body.dark .hint-box{background:#1a1a1a;border-left-color:#e0e0e0;}
 body.dark .code-block{background:#1a1a1a;}
 body.dark .pending-note{background:#1a1a12;color:#e0e0e0;}
-body.dark .sys-badge{background:#444;color:#e0e0e0;}
-body.dark .sys-badge.pyro{background:var(--red);}
-body.dark .sys-badge.nyx{background:#004a6e;}
 body.dark .log-month-arrow{color:#e0e0e0;}
 body.dark details.log-month>summary{border-bottom-color:#333;}
 body.dark .unit-tag{color:#e0e0e0;}
@@ -443,7 +439,7 @@ body.billy tbody tr:hover{background:#eef1f9;}
 body.billy .empty{color:#3a57a4;}
 body.billy .q{background:#3a57a4;color:#fff;}
 body.billy .cat-tag{background:#e3e9f6;color:#3a57a4;}
-body.billy .item-cat-tag{background:#3a57a4;color:#fff;}
+body.billy .item-cat-tag,body.billy .sys-badge{background:#3a57a4;color:#fff;}
 body.billy .craft-box{border-color:#3a57a4;}
 body.billy .task-list{border-top-color:#3a57a4;}
 body.billy .task-card:hover{background:#eef1f9;}
