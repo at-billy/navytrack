@@ -282,11 +282,7 @@ tbody tr:hover{background:#f9f9f9;}
 .fp-gap{width:100%;}
 .fp-stage .fp{position:absolute;top:0;left:0;right:0;z-index:1;}  /* headlines overlaid on top */
 /* Over the imagery the nav simply inverts to white. */
-body.fp-on .nav-main{color:#ffffff;}
-body.fp-on .nav-main.outline{-webkit-text-stroke:2px #ffffff;color:transparent;}
-body.fp-on .nav-sub-item{color:#ffffff;}
-body.fp-on .nav-sub-item.active{border-bottom-color:#ffffff;}
-body.fp-on .nav-divider{border-top-color:#ffffff;}
+/* (front-page nav stays white — rules live after the theme blocks so they win) */
 
 /* ── OVERVIEW / LANDING ──────────────────────────────────────────── */
 .ov-wrap{}
@@ -461,6 +457,14 @@ body.billy .comp-type-badge{background:#3a57a4;color:#fff;}
 /* Front page: blue ink + new red (it otherwise forces light tokens). */
 body.billy .fp-stage{--fg:#3a57a4;}
 body.billy .fp-dots{background-image:radial-gradient(#3a57a4 0.8px,transparent 0.8px),radial-gradient(#3a57a4 0.8px,transparent 0.8px);}
+
+/* Front-page nav floats over the images and stays white in every theme.
+   Placed after the theme blocks so it wins on equal specificity. */
+body.fp-on .nav-main{color:#ffffff;}
+body.fp-on .nav-main.outline{-webkit-text-stroke:2px #ffffff;color:transparent;}
+body.fp-on .nav-sub-item{color:#ffffff;}
+body.fp-on .nav-sub-item.active{border-bottom-color:#ffffff;}
+body.fp-on .nav-divider{border-top-color:#ffffff;}
 
 .comp-grade-mil{color:#cc0000;}
 .comp-grade-sth{color:#7c3aed;}
