@@ -240,7 +240,7 @@ tbody tr:hover{background:#f9f9f9;}
 .hint-box strong{color:#000;}
 
 /* ── FRONT PAGE (editorial headline grid) ────────────────────────── */
-.fp{display:grid;grid-template-columns:repeat(12,1fr);gap:230px 36px;padding:170px 0 140px;align-items:start;}
+.fp{display:grid;grid-template-columns:repeat(12,1fr);gap:230px 36px;padding:calc(var(--nav-h,170px) + 70px) 40px 160px;align-items:start;}
 .fp-item{min-width:0;justify-self:start;max-width:100%;}
 .fp-item[role="button"]{cursor:pointer;}
 .fp-kicker{font-size:var(--text-sm);font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--red);margin-bottom:8px;}
@@ -259,28 +259,27 @@ body.dark .fp-head{color:#e0e0e0;}
 body.dark .fp-red,body.dark .fp-red .fp-head{color:var(--red);}
 body.dark .fp-dots{background-image:radial-gradient(#e0e0e0 0.8px, transparent 0.8px),radial-gradient(#e0e0e0 0.8px, transparent 0.8px);}
 @media(max-width:760px){
-  .fp{grid-template-columns:1fr;gap:44px 0;padding-top:48px;}
+  .fp{grid-template-columns:1fr;gap:44px 0;padding:calc(var(--nav-h,120px) + 28px) var(--space-4) 80px;}
   .fp-item{grid-column:1 / -1 !important;}
 }
 
-/* ── FRONT PAGE MEDIA (full-bleed image bands, headlines overlaid) ── */
-/* Bands run edge to edge; the first sits under the (fixed, transparent)
-   nav. Headline boxes are absolutely positioned IN FRONT of the photos,
-   with background-colour gaps between images. */
-.fp-media{}
-.fp-band{position:relative;width:100%;height:clamp(520px,80vh,880px);background-size:cover;background-position:center;background-repeat:no-repeat;}
-.fp-band.fp-hero{height:clamp(620px,92vh,1000px);}
+/* ── FRONT PAGE MEDIA (full-bleed images BEHIND the headline grid) ── */
+/* The images form a fixed-order full-bleed column behind the editorial
+   grid, with seeded background-colour gaps between them. The first image
+   runs under the (transparent) nav. Headlines flow with their normal
+   spacing on top and simply land wherever they land — on an image or in
+   a gap. */
+.fp-stage{position:relative;}
+.fp-bg{position:absolute;top:0;left:0;right:0;bottom:0;z-index:0;overflow:hidden;}
+.fp-band{width:100%;height:clamp(560px,78vh,860px);background-size:cover;background-position:center;background-repeat:no-repeat;}
 .fp-gap{width:100%;}
-.fp-tail{height:120px;}
-.fp-ov{position:absolute;max-width:min(44%,480px);z-index:2;}
-/* nav text stays legible where it floats over the hero image */
-body.fp-on .nav-main,body.fp-on .nav-sub-item{text-shadow:0 0 4px var(--bg),0 0 8px var(--bg),0 1px 2px var(--bg),0 -1px 2px var(--bg),1px 0 2px var(--bg),-1px 0 2px var(--bg);}
-@media(max-width:760px){
-  .fp-band,.fp-band.fp-hero{height:auto;min-height:300px;display:flex;flex-direction:column;justify-content:center;gap:16px;padding:28px 0;}
-  .fp-ov{position:static!important;inset:auto!important;max-width:none;margin:0 16px;}
-  .fp-gap{height:60px!important;}
-  .fp-tail{height:60px;}
-}
+.fp-stage .fp{position:relative;z-index:1;}
+/* Over the imagery the nav simply inverts to white. */
+body.fp-on .nav-main{color:#ffffff;}
+body.fp-on .nav-main.outline{-webkit-text-stroke:2px #ffffff;color:transparent;}
+body.fp-on .nav-sub-item{color:#ffffff;}
+body.fp-on .nav-sub-item.active{border-bottom-color:#ffffff;}
+body.fp-on .nav-divider{border-top-color:#ffffff;}
 
 /* ── OVERVIEW / LANDING ──────────────────────────────────────────── */
 .ov-wrap{}
@@ -1668,12 +1667,8 @@ const FP_SLOTS = [
   { tone:'fp-red', box:'fp-box fp-bd',      col:'8 / span 5'  },
 ];
 
-// Full-bleed front-page imagery (fixed order) + overlay anchor positions.
+// Full-bleed front-page imagery (fixed order; the headlines reshuffle around it).
 const FP_IMAGES = ['media/front-1.jpg','media/front-2.jpg','media/front-3.jpg','media/front-4.jpg'];
-// Anchor spots for overlaid headline boxes. Left/right columns + three vertical
-// bands so two boxes never collide. Hero (first) band keeps clear of the nav.
-const FP_OV_POS = ['top:6%;left:3%','top:8%;right:4%','top:39%;left:6%','top:42%;right:7%','bottom:9%;left:4%','bottom:11%;right:5%'];
-const FP_OV_POS_HERO = ['top:46%;left:4%','top:50%;right:6%','top:70%;left:6%','bottom:18%;right:5%','bottom:9%;left:4%','bottom:11%;right:6%'];
 // Deterministic background-colour gap height between images: 80–240px, stable
 // per page load (seeded), independent per gap.
 function fpGap(i){ let s=(fpSeed ^ (i*0x9e3779b1))>>>0; s=(s*1664525+1013904223)>>>0; return 80 + (s % 161); }
@@ -1693,35 +1688,29 @@ function pageOverview() {
   const headlines = buildHeadlines();
   if(!headlines.length) return `<div style="padding:160px 40px;font-size:var(--text-lg);font-weight:900;">Nothing to report yet.</div>`;
 
-  // Spread the (shuffled) headlines across the fixed-order image bands, then
-  // overlay each as a positioned box. Images stay put; headlines reshuffle.
-  const nb = FP_IMAGES.length;
-  const bands = Array.from({length:nb}, ()=>[]);
-  headlines.forEach((h,i)=>bands[i % nb].push(h));
-  const boxOffset = fpSeed % FP_SLOTS.length;
-
-  let html = '<div class="fp-media">';
-  bands.forEach((group, bi)=>{
-    if(bi>0) html += `<div class="fp-gap" style="height:${fpGap(bi)}px"></div>`;
-    const pos = bi===0 ? FP_OV_POS_HERO : FP_OV_POS;
-    const posOff = (bi + (fpSeed >>> (bi+1))) % pos.length;
-    html += `<section class="fp-band${bi===0?' fp-hero':''}" style="background-image:url('${FP_IMAGES[bi]}')">`;
-    group.forEach((h,j)=>{
-      const s = FP_SLOTS[(j + bi + boxOffset) % FP_SLOTS.length];
-      const footColor = s.tone==='fp-red' ? 'var(--red)' : 'var(--fg)';
-      const go = fpGoFor(h);
-      const clickAttrs = go ? ` role="button" tabindex="0" aria-label="${esc(h.text)}" onclick="${go}"` : '';
-      const p = pos[(j + posOff) % pos.length];
-      html += `<div class="fp-item fp-ov ${s.tone} ${s.box}" style="${p};"${clickAttrs}>
-        <div class="fp-kicker">${esc(h.kicker)}</div>
-        <div class="fp-head">${esc(h.text)}</div>
-        ${h.foot?`<div class="fp-foot" style="color:${footColor};">${go?'→ ':''}${esc(h.foot)}</div>`:''}
-      </div>`;
-    });
-    html += `</section>`;
+  // Background layer: fixed-order full-bleed images with seeded colour gaps.
+  let bg = '<div class="fp-bg" aria-hidden="true">';
+  FP_IMAGES.forEach((src,i)=>{
+    if(i>0) bg += `<div class="fp-gap" style="height:${fpGap(i)}px"></div>`;
+    bg += `<div class="fp-band" style="background-image:url('${src}')"></div>`;
   });
-  html += `<div class="fp-tail"></div></div>`;
-  return html;
+  bg += '</div>';
+
+  // Foreground layer: the editorial headline grid, original spacing, on top.
+  const slotOffset = fpSeed % FP_SLOTS.length;
+  const grid = `<div class="fp">${headlines.map((h,i)=>{
+    const s=FP_SLOTS[(i + slotOffset) % FP_SLOTS.length];
+    const footColor = s.tone==='fp-red' ? 'var(--red)' : 'var(--fg)';
+    const go = fpGoFor(h);
+    const clickAttrs = go ? ` role="button" tabindex="0" aria-label="${esc(h.text)}" onclick="${go}"` : '';
+    return `<div class="fp-item ${s.tone} ${s.box}" style="grid-column:${s.col};"${clickAttrs}>
+      <div class="fp-kicker">${esc(h.kicker)}</div>
+      <div class="fp-head">${esc(h.text)}</div>
+      ${h.foot?`<div class="fp-foot" style="color:${footColor};">${go?'→ ':''}${esc(h.foot)}</div>`:''}
+    </div>`;
+  }).join('')}</div>`;
+
+  return `<div class="fp-stage">${bg}${grid}</div>`;
 }
 
 function pageRecruitOverview(u) {
