@@ -240,7 +240,7 @@ tbody tr:hover{background:#f9f9f9;}
 .hint-box strong{color:#000;}
 
 /* ── FRONT PAGE (editorial headline grid) ────────────────────────── */
-.fp{display:grid;grid-template-columns:repeat(12,1fr);gap:72px 36px;padding:16px 0 80px;align-items:start;}
+.fp{display:grid;grid-template-columns:repeat(12,1fr);gap:160px 36px;padding:24px 0 120px;align-items:start;}
 .fp-item{min-width:0;}
 .fp-kicker{font-size:var(--text-sm);font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--red);margin-bottom:8px;}
 .fp-head{font-weight:900;line-height:1.04;letter-spacing:-.5px;color:#000;}
@@ -1525,68 +1525,93 @@ function fpActivityHeadline(e){
   }
 }
 
-// Build the pool of headlines from live data. Order is stable (no reshuffle on
-// re-render); the "scattered" feel comes from the layout slots, not the content.
+// Build a rich pool of newspaper-style headlines from everything the app tracks:
+// projects, inventory depth/spread/holders, logistics, lottery, the roster, the
+// activity log, plus "quiet" status facts. Shuffled per page load.
 function buildHeadlines(){
   const out=[];
+  const push=(kicker,text,foot)=>out.push({kicker,text,foot});
+  const avail=state.navItems.filter(i=>i.status==='available');
   const openTasks=state.tasks.filter(t=>t.status==='open');
-  const itemsCnt=state.navItems.filter(i=>i.status==='available').reduce((s,i)=>s+i.quantity,0);
-  const memberCnt=state.allUsers.filter(x=>!x.roles.includes('removed')).length;
+  const itemsCnt=avail.reduce((s,i)=>s+i.quantity,0);
+  const members=state.allUsers.filter(x=>!x.roles.includes('removed'));
   const urgentCnt=openTasks.filter(t=>t.priority==='urgent').length;
+  const topByQty=(arr,key)=>{const m={};arr.forEach(i=>{const k=i[key];if(k)m[k]=(m[k]||0)+i.quantity;});return Object.entries(m).sort((a,b)=>b[1]-a[1]);};
 
-  // Lead
-  out.push({kicker:'The Wing Today', text:`${openTasks.length} project${openTasks.length!==1?'s':''} underway, ${itemsCnt} items in the databank`, foot:'Overview'});
+  // ── Lead ──
+  push('The Wing Today', `${openTasks.length} project${openTasks.length!==1?'s':''} underway, ${itemsCnt} items in the databank`, 'Overview');
 
-  // Project progress (urgent first)
+  // ── Projects: progress, closest-to-done, biggest shortfall ──
   const prio={urgent:0,high:1,normal:2,whenever:3};
-  openTasks.slice().sort((a,b)=>(prio[a.priority]??2)-(prio[b.priority]??2)).forEach(t=>{
-    let text, foot=`${t.members.length} on it`;
-    if(t.requiredItems?.length){
-      const total=t.requiredItems.reduce((s,r)=>s+r.quantityNeeded,0);
-      const collected=t.requiredItems.reduce((s,r)=>{
-        const inStock=state.navItems.filter(i=>i.status==='available'&&i.name===r.name&&i.category===r.category).reduce((s2,i)=>s2+i.quantity,0);
-        return s+Math.min(inStock,r.quantityNeeded);
-      },0);
-      const pct=total?Math.round(collected/total*100):0;
-      text = pct>=100 ? `"${t.title}" is fully supplied` : `"${t.title}" is ${pct}% supplied`;
-    } else {
-      text = `"${t.title}" is looking for hands`;
-    }
-    out.push({kicker: t.priority==='urgent'?'Urgent':'Project', text, foot});
+  const progress=openTasks.map(t=>{
+    if(!t.requiredItems?.length) return {t,pct:null};
+    const total=t.requiredItems.reduce((s,r)=>s+r.quantityNeeded,0);
+    const got=t.requiredItems.reduce((s,r)=>{const n=avail.filter(i=>i.name===r.name&&i.category===r.category).reduce((s2,i)=>s2+i.quantity,0);return s+Math.min(n,r.quantityNeeded);},0);
+    return {t,pct:total?Math.round(got/total*100):0};
   });
+  progress.slice().sort((a,b)=>(prio[a.t.priority]??2)-(prio[b.t.priority]??2)).forEach(p=>{
+    const k=p.t.priority==='urgent'?'Urgent':'Project', f=`${p.t.members.length} on it`;
+    if(p.pct===null) push(k,`"${p.t.title}" is looking for hands`,f);
+    else push(k, p.pct>=100?`"${p.t.title}" is fully supplied`:`"${p.t.title}" is ${p.pct}% supplied`, f);
+  });
+  const racing=progress.filter(p=>p.pct!==null&&p.pct>0&&p.pct<100);
+  if(racing.length>1){ const top=racing.reduce((a,b)=>b.pct>a.pct?b:a); push('Almost There',`"${top.t.title}" is closest to ready at ${top.pct}%`,'Projects'); }
+  const gaps={};
+  openTasks.forEach(t=>(t.requiredItems||[]).forEach(r=>{const n=avail.filter(i=>i.name===r.name&&i.category===r.category).reduce((s,i)=>s+i.quantity,0);const g=r.quantityNeeded-n;if(g>0)gaps[r.name]=(gaps[r.name]||0)+g;}));
+  const gapTop=Object.entries(gaps).sort((a,b)=>b[1]-a[1])[0];
+  if(gapTop) push('Most Wanted', `The wing still needs ${gapTop[1]}× ${gapTop[0]}`, 'Projects');
+  if(urgentCnt) push('Heads Up', `${urgentCnt} project${urgentCnt!==1?'s':''} flagged urgent`, 'Projects');
+  if(!openTasks.length) push('Projects', `No active projects. Time to start one?`, 'Projects');
 
-  // Logistics status (shown even when there's nothing going on)
+  // ── Inventory: depth, spread, holders, categories ──
+  const types=new Set(avail.map(i=>i.name+'|'+i.category)).size;
+  if(types) push('Databank', `${itemsCnt} items across ${types} kind${types!==1?'s':''} on the shelves`, 'Inventory');
+  if(avail.length){ const deepest=avail.reduce((a,b)=>b.quantity>a.quantity?b:a); push('Deepest Stockpile', `${deepest.quantity}× ${deepest.name} is the largest hoard`, 'Inventory'); }
+  const byLoc=topByQty(avail,'location');
+  if(byLoc.length>1) push('Main Depot', `Most stock sits at ${byLoc[0][0]}`, 'Inventory');
+  const byHolder=topByQty(avail,'heldBy');
+  if(byHolder.length) push('Quartermaster', `${byHolder[0][0]} is holding the most kit`, 'Inventory');
+  const comps=avail.filter(i=>i.category==='ship_component').reduce((s,i)=>s+i.quantity,0);
+  if(comps) push('Hangar', `${comps} ship component${comps!==1?'s':''} on the racks`, 'Inventory');
+  const wik=avail.filter(i=>i.category==='wikelo').reduce((s,i)=>s+i.quantity,0);
+  if(wik) push('Wikelo Vault', `${wik} Wikelo item${wik!==1?'s':''} stashed away`, 'Inventory');
+  const fieldQty=state.navItems.filter(i=>i.status==='handed_out').reduce((s,i)=>s+(i.handedOutQty||i.quantity),0);
+  if(fieldQty) push('In the Field', `${fieldQty} item${fieldQty!==1?'s':''} out with members right now`, 'Logistics');
+  const usedQty=state.navItems.filter(i=>i.status==='used').reduce((s,i)=>s+i.quantity,0);
+  if(usedQty) push('Spent', `${usedQty} item${usedQty!==1?'s':''} consumed on projects so far`, 'Archive');
+
+  // ── Logistics ──
   const openLog=state.logistics.filter(l=>l.status==='open').length;
-  out.push(openLog
-    ? {kicker:'Logistics', text:`${openLog} move${openLog!==1?'s':''} in transit`, foot:'Logistics'}
-    : {kicker:'Logistics', text:`Logistics is all quiet — no moves queued`, foot:'Logistics'});
+  push('Logistics', openLog?`${openLog} move${openLog!==1?'s':''} in transit`:`Logistics is all quiet, nothing queued`, 'Logistics');
 
-  // Lottery status (state.lotteries is only populated for command/admin)
+  // ── Lottery (managers only see lottery data) ──
   if(state.lotteries.length){
-    const liveLot=state.lotteries.filter(l=>l.status==='open'||l.status==='drawn').length;
-    out.push(liveLot
-      ? {kicker:'Lottery', text:`A lottery is live — get your picks in`, foot:'Lottery'}
-      : {kicker:'Lottery', text:`No lottery running right now`, foot:'Lottery'});
+    const live=state.lotteries.filter(l=>l.status==='open'||l.status==='drawn').length;
+    push('Lottery', live?`A lottery is live, get your picks in`:`No lottery running right now`, 'Lottery');
   }
 
-  // Inventory texture
-  const types=new Set(state.navItems.filter(i=>i.status==='available').map(i=>i.name+'|'+i.category)).size;
-  if(types) out.push({kicker:'Databank', text:`${itemsCnt} items across ${types} kind${types!==1?'s':''} on the shelves`, foot:'Inventory'});
+  // ── Roster: size, leadership, newest, top contributor ──
+  const command=members.filter(m=>m.roles.includes('command')||m.roles.includes('admin')).length;
+  const core=members.filter(m=>m.roles.includes('core')).length;
+  push('The Roster', `${members.length} strong: ${command} command, ${core} core`, 'Members');
+  const adds={};
+  state.archive.filter(e=>e.type==='item_added').forEach(e=>{adds[e.userName]=(adds[e.userName]||0)+1;});
+  const addTop=Object.entries(adds).sort((a,b)=>b[1]-a[1])[0];
+  if(addTop && addTop[1]>=2) push('Top Contributor', `${addTop[0]} has stocked the databank ${addTop[1]} times`, 'Roster');
+  const pending=state.allUsers.filter(isRecruit).length;
+  if(pending && isAdmin(state.user)) push('Awaiting Approval', `${pending} recruit${pending!==1?'s':''} waiting to be let in`, 'Admin');
 
-  // Recent activity (skip lottery + password events)
+  // ── Activity pulse + recent items ──
+  const weekAgo=Date.now()-7*864e5;
+  const weekActs=state.archive.filter(e=>e._creationTime>=weekAgo && !LOTTERY_LOG_TYPES.has(e.type) && !e.type.startsWith('password_reset')).length;
+  if(weekActs) push('This Week', `${weekActs} action${weekActs!==1?'s':''} logged in the last 7 days`, 'Archive');
   state.archive
-    .filter(e=>!LOTTERY_LOG_TYPES.has(e.type) && e.type!=='password_reset_issued' && e.type!=='password_reset_completed' && e.type!=='member_removed')
-    .slice(0,8)
+    .filter(e=>!LOTTERY_LOG_TYPES.has(e.type) && !e.type.startsWith('password_reset') && e.type!=='member_removed')
+    .slice(0,6)
     .forEach(e=>{ const h=fpActivityHeadline(e); if(h) out.push(h); });
 
-  // Closing facts
-  out.push({kicker:'The Roster', text:`${memberCnt} member${memberCnt!==1?'s':''} strong`, foot:'Members'});
-  if(urgentCnt) out.push({kicker:'Heads Up', text:`${urgentCnt} project${urgentCnt!==1?'s':''} flagged urgent`, foot:'Projects'});
-  if(!openTasks.length) out.push({kicker:'Projects', text:`No active projects — time to start one?`, foot:'Projects'});
-
-  // Shuffle for an editorial, ever-changing feel — seeded per page load (stable
-  // within the session, reshuffles on reload).
-  return fpShuffle(out, fpSeed).slice(0, 11);
+  // Shuffle (seeded once per page load) and pick a dozen for the front page.
+  return fpShuffle(out, fpSeed).slice(0, 12);
 }
 
 // Editorial layout slots — varied size / tone / box / column, cycled across headlines.
@@ -1598,7 +1623,7 @@ const FP_SLOTS = [
   { size:'fp-lg', tone:'fp-red', box:'',                       col:'3 / span 6'  },
   { size:'fp-md', tone:'',       box:'fp-box fp-dots',         col:'9 / span 4'  },
   { size:'fp-md', tone:'fp-red', box:'',                       col:'1 / span 5'  },
-  { size:'fp-lg', tone:'',       box:'fp-box fp-dots fp-bd',   col:'7 / span 6'  },
+  { size:'fp-lg', tone:'',       box:'fp-box fp-bd',           col:'7 / span 6'  },
   { size:'fp-md', tone:'fp-red', box:'fp-box fp-bd-red',       col:'2 / span 5'  },
   { size:'fp-md', tone:'',       box:'fp-box fp-bd',           col:'8 / span 4'  },
 ];
