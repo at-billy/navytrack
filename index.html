@@ -1661,7 +1661,7 @@ function buildHeadlines(){
   // Shuffle (seeded once per page load) and pick ~20 for the front page.
   const list = fpShuffle(out, fpSeed).slice(0, 20);
   // Colophon — always the very last headline, always solo (see pageOverview).
-  list.push({ kicker:'The Fine Print', text:'billy made this with ai and no clue what he was doing. it works. mostly. handle with care.', credits:true });
+  list.push({ kicker:'The Fine Print', text:'billy made this with ai and no clue what he was doing.', text2:'it works. mostly. handle with care.', credits:true });
   return list;
 }
 
@@ -1684,7 +1684,8 @@ const FP_SLOTS = [
 ];
 
 // Full-bleed front-page imagery (fixed order; the headlines reshuffle around it).
-const FP_IMAGES = ['media/front-1.jpg','media/front-2.jpg','media/front-3.jpg','media/front-4.jpg','media/front-5.jpg'];
+// ?v bust the cache when an image's contents change at the same path.
+const FP_IMAGES = ['media/front-1.jpg?v=2','media/front-2.jpg?v=2','media/front-3.jpg?v=2','media/front-4.jpg?v=2','media/front-5.jpg?v=2'];
 // Deterministic background-colour gap height between images: 80–240px, stable
 // per page load (seeded), independent per gap.
 function fpGap(i){ let s=(fpSeed ^ (i*0x9e3779b1))>>>0; s=(s*1664525+1013904223)>>>0; return 80 + (s % 161); }
@@ -1722,7 +1723,7 @@ function pageOverview() {
     const clickAttrs = go ? ` role="button" tabindex="0" aria-label="${esc(h.text)}" onclick="${go}"` : '';
     return `<div class="fp-item ${s.tone} ${s.box}" style="grid-column:${s.col};"${clickAttrs}>
       <div class="fp-kicker">${esc(h.kicker)}</div>
-      <div class="fp-head">${esc(h.text)}</div>
+      <div class="fp-head">${esc(h.text)}${h.credits&&h.text2?`<br>${esc(h.text2)}`:''}</div>
       ${h.foot?`<div class="fp-foot" style="color:${footColor};">${go?'→ ':''}${esc(h.foot)}</div>`:''}
     </div>`;
   }).join('')}</div>`;
