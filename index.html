@@ -1203,6 +1203,7 @@ function goTo(tab) {
 function toggleDark() {
   const on=document.body.classList.toggle('dark');
   localStorage.setItem('navytrack_dark', on?'1':'0');
+  const b=document.getElementById('dark-toggle-btn'); if(b) b.textContent = on?'LIGHT':'DARK';
   renderNav();
 }
 (function initDark(){
@@ -1460,8 +1461,7 @@ function renderNav() {
 
   let sub='';
   if(main==='mat'){
-    const dark=document.body.classList.contains('dark');
-    sub=`<div class="nav-sub-item" style="cursor:default;">Welcome back, ${esc(u.username)}</div><div class="nav-sub-item" onclick="toggleDark()">${dark?'DAYTIME':'NIGHTTIME'}</div>`;
+    sub=`<div class="nav-sub-item" style="cursor:default;">Welcome back, ${esc(u.username)}</div>`;
   } else if(main==='task'){
     const oc=state.tasks.filter(t=>t.status==='open').length;
     const mine=state.tasks.filter(t=>t.status==='open'&&t.members.some(m=>m.userId===u._id)).length;
@@ -2715,6 +2715,7 @@ function pageArchive(){
       <div class="page-head-left">
         <div class="page-lead" id="archive-count">${archiveCountLabel()}</div>
       </div>
+      <button class="btn btn-black" id="dark-toggle-btn" onclick="toggleDark()">${document.body.classList.contains('dark')?'LIGHT':'DARK'}</button>
     </div>
     <div id="archive-table" style="border-top:2px solid var(--border);">${renderArchiveTable()}</div>`;
 }
