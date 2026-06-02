@@ -1659,7 +1659,10 @@ function buildHeadlines(){
     .forEach(e=>{ const h=fpActivityHeadline(e); if(h) out.push(h); });
 
   // Shuffle (seeded once per page load) and pick ~20 for the front page.
-  return fpShuffle(out, fpSeed).slice(0, 20);
+  const list = fpShuffle(out, fpSeed).slice(0, 20);
+  // Colophon — always the very last headline, always solo (see pageOverview).
+  list.push({ kicker:'The Fine Print', text:'billy made this with ai and no clue what he was doing. it works. mostly. handle with care.', credits:true });
+  return list;
 }
 
 // Editorial layout slots — uniform headline size; varied tone / box / column.
@@ -1681,7 +1684,7 @@ const FP_SLOTS = [
 ];
 
 // Full-bleed front-page imagery (fixed order; the headlines reshuffle around it).
-const FP_IMAGES = ['media/front-1.jpg','media/front-2.jpg','media/front-3.jpg','media/front-4.jpg'];
+const FP_IMAGES = ['media/front-1.jpg','media/front-2.jpg','media/front-3.jpg','media/front-4.jpg','media/front-5.jpg'];
 // Deterministic background-colour gap height between images: 80–240px, stable
 // per page load (seeded), independent per gap.
 function fpGap(i){ let s=(fpSeed ^ (i*0x9e3779b1))>>>0; s=(s*1664525+1013904223)>>>0; return 80 + (s % 161); }
@@ -1712,9 +1715,10 @@ function pageOverview() {
   // Foreground layer: the editorial headline grid, original spacing, on top.
   const slotOffset = fpSeed % FP_SLOTS.length;
   const grid = `<div class="fp">${headlines.map((h,i)=>{
-    const s=FP_SLOTS[(i + slotOffset) % FP_SLOTS.length];
+    // Colophon is always rendered as a full-width solo box, never clickable.
+    const s = h.credits ? {tone:'', box:'fp-box fp-bd', col:'1 / span 12'} : FP_SLOTS[(i + slotOffset) % FP_SLOTS.length];
     const footColor = s.tone==='fp-red' ? 'var(--red)' : 'var(--fg)';
-    const go = fpGoFor(h);
+    const go = h.credits ? '' : fpGoFor(h);
     const clickAttrs = go ? ` role="button" tabindex="0" aria-label="${esc(h.text)}" onclick="${go}"` : '';
     return `<div class="fp-item ${s.tone} ${s.box}" style="grid-column:${s.col};"${clickAttrs}>
       <div class="fp-kicker">${esc(h.kicker)}</div>
