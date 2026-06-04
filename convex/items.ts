@@ -1,5 +1,6 @@
 import { mutation, query, internalMutation } from "./_generated/server";
 import { v, ConvexError } from "convex/values";
+import { COMPONENTS_JSON } from "./_components";
 import { requireSession, requireMember } from "./_helpers";
 import { ITEM_CATEGORIES, assertIn, assertLen, assertPositiveInt } from "./_constants";
 
@@ -267,11 +268,24 @@ export const backfillComponentGrades = internalMutation({
       }
     }
 
-    // 2. Backfill grade onto components that are missing it.
+    // Deterministic fallback from the game catalog (grade is fixed per model
+    // name). Keyed by name (and name|type) so manual / twin gaps are covered.
+    const TYPE_MAP: Record<string, string> = { cooler: "COOL", power: "POWR", quantum: "QDRV", shield: "SHLD" };
+    const gradeByName = new Map<string, string>();
+    const gradeByNameType = new Map<string, string>();
+    for (const c of COMPONENTS_JSON) {
+      if (!gradeByName.has(c.name)) gradeByName.set(c.name, c.field);
+      const t = TYPE_MAP[c.category];
+      if (t) gradeByNameType.set(`${c.name}|${t}`, c.field);
+    }
+
+    // 2. Backfill grade onto components that are missing it (twin, then catalog).
     let backfilled = 0, stillMissing = 0;
     for (const i of all) {
       if (i.compType && !i.compGrade) {
-        const g = gradeByModel.get(modelKey(i));
+        const g = gradeByModel.get(modelKey(i))
+          ?? gradeByNameType.get(`${i.name}|${i.compType}`)
+          ?? gradeByName.get(i.name);
         if (g) { await ctx.db.patch(i._id, { compGrade: g }); backfilled++; }
         else stillMissing++;
       }
