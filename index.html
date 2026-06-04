@@ -2297,7 +2297,7 @@ function renderInventoryList() {
     </div>`:''}
     ${itemsSearchActive?`<div style="margin-bottom:20px;"><input type="text" id="items-search-inp" placeholder="Search items…" value="${esc(itemsSearch)}"
       style="width:100%;max-width:400px;"
-      oninput="itemsSearch=this.value;document.getElementById('items-content').innerHTML=renderInventoryList();"></div>`:''}
+      oninput="itemsSearchInput(this.value)"></div>`:''}
     ${!items.length?`<div class="empty">No items${itemsCatFilter!=='all'?' in '+itemCatLabel(itemsCatFilter):''}.</div>`:`
     <table class="cards">
       <thead><tr>
@@ -2384,6 +2384,8 @@ function itemCompDesc(i){
 }
 
 function setItemsCat(cat){ itemsCatFilter=cat; itemsSubcat='all'; invCompType='all'; invCompSize='all'; invCompTier='all'; document.getElementById('items-content').innerHTML=renderInventoryList(); }
+// Re-render then restore focus + caret so typing in the search isn't interrupted.
+function itemsSearchInput(val){ itemsSearch=val; const el=document.getElementById('items-content'); if(el) el.innerHTML=renderInventoryList(); const inp=document.getElementById('items-search-inp'); if(inp){ inp.focus(); try{ inp.setSelectionRange(val.length,val.length); }catch(e){} } }
 function setItemsSubcat(s){ itemsSubcat=s; document.getElementById('items-content').innerHTML=renderInventoryList(); }
 function toggleItemsSearch(){ itemsSearchActive=!itemsSearchActive; itemsSearch=''; document.getElementById('items-content').innerHTML=renderInventoryList(); setTimeout(()=>{const el=document.getElementById('items-search-inp');if(el)el.focus();},0); }
 

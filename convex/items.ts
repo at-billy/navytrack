@@ -1,4 +1,4 @@
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalMutation } from "./_generated/server";
 import { v, ConvexError } from "convex/values";
 import { requireSession, requireMember } from "./_helpers";
 import { ITEM_CATEGORIES, assertIn, assertLen, assertPositiveInt } from "./_constants";
@@ -245,6 +245,61 @@ export const convertMgScrip = mutation({
       userName: user.username,
       details: { from: "MG Scrip", to: "Wikelo Favor", used: cost, made: favors },
     });
+  },
+});
+
+// One-off migration: older ship components were logged without a grade
+// (Military/Stealth/etc), so they don't stack with newly-added graded copies.
+// A component's grade is a property of its model (name + type + size + tier),
+// so backfill the missing grade from an identical graded copy, then merge the
+// now-identical available rows (same full tags incl. who added it). Idempotent.
+export const backfillComponentGrades = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const all = await ctx.db.query("items").collect();
+
+    // 1. Map component model -> grade, learned from rows that already have one.
+    const modelKey = (i: any) => `${i.name}|${i.compType}|${i.compSize ?? ""}|${i.compTier ?? ""}`;
+    const gradeByModel = new Map<string, string>();
+    for (const i of all) {
+      if (i.compType && i.compGrade && !gradeByModel.has(modelKey(i))) {
+        gradeByModel.set(modelKey(i), i.compGrade);
+      }
+    }
+
+    // 2. Backfill grade onto components that are missing it.
+    let backfilled = 0, stillMissing = 0;
+    for (const i of all) {
+      if (i.compType && !i.compGrade) {
+        const g = gradeByModel.get(modelKey(i));
+        if (g) { await ctx.db.patch(i._id, { compGrade: g }); backfilled++; }
+        else stillMissing++;
+      }
+    }
+
+    // 3. Merge identical AVAILABLE rows (full tag set, including addedBy) into one.
+    const avail = await ctx.db.query("items").withIndex("by_status", q => q.eq("status", "available")).collect();
+    const fullKey = (i: any) => [
+      i.name, i.category, i.subcategory ?? "", i.description ?? "", i.quality ?? "",
+      i.location, i.system ?? "", i.heldBy ?? "",
+      i.compType ?? "", i.compGrade ?? "", i.compSize ?? "", i.compTier ?? "", i.addedBy,
+    ].join("§");
+    const groups = new Map<string, any[]>();
+    for (const i of avail) {
+      const k = fullKey(i);
+      if (!groups.has(k)) groups.set(k, []);
+      groups.get(k)!.push(i);
+    }
+    let rowsMerged = 0;
+    for (const rows of groups.values()) {
+      if (rows.length < 2) continue;
+      rows.sort((a, b) => a._creationTime - b._creationTime);
+      let total = rows[0].quantity;
+      for (let j = 1; j < rows.length; j++) { total += rows[j].quantity; await ctx.db.delete(rows[j]._id); rowsMerged++; }
+      await ctx.db.patch(rows[0]._id, { quantity: total });
+    }
+
+    return { backfilled, stillMissing, rowsMerged };
   },
 });
 
