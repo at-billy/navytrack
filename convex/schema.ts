@@ -143,4 +143,13 @@ export default defineSchema({
     userName: v.string(),
     details: v.any(),
   }),
+
+  // Org bank — running ledger of aUEC deposits/withdrawals (balance = sum).
+  bank: defineTable({
+    type: v.string(),            // "deposit" | "withdrawal"
+    amount: v.number(),          // positive whole aUEC
+    note: v.optional(v.string()),
+    createdBy: v.id("users"),
+    createdByName: v.string(),
+  }),
 });

@@ -981,7 +981,7 @@ function compDefaultValue(comp) {
 // ─── CONFIG / STATE ───────────────────────────────────────────────────────────
 let CONVEX_URL = localStorage.getItem('navytrack_url') || 'https://colorless-stoat-737.eu-west-1.convex.cloud';
 let currentPage = 'overview';
-const state = { user: null, sessionToken: null, navItems: [], archive: [], allUsers: [], tasks: [], lotteries: [], applications: [], logistics: [], passwordResets: [] };
+const state = { user: null, sessionToken: null, navItems: [], archive: [], allUsers: [], tasks: [], lotteries: [], applications: [], logistics: [], passwordResets: [], bank: [] };
 // Archive pagination: state.archive holds the reactive recent window; archiveOlder
 // accumulates on-demand pages fetched via archive:loadOlder on the Log page.
 let archiveOlder = [];
@@ -1127,7 +1127,7 @@ function locationOptions(system) {
 async function refreshAll(silent=false) {
   try {
     const tok = state.sessionToken;
-    const [navItems, archive, allUsers, tasks, lotteries, applications, logistics, passwordResets] = await Promise.all([
+    const [navItems, archive, allUsers, tasks, lotteries, applications, logistics, passwordResets, bank] = await Promise.all([
       convexQuery('items:getAll',{sessionToken:tok}).catch(()=>[]),
       convexQuery('archive:getAll',{sessionToken:tok}).catch(()=>[]),
       convexQuery('users:getAllUsers',{sessionToken:tok}).catch(()=>[]),
@@ -1136,6 +1136,7 @@ async function refreshAll(silent=false) {
       convexQuery('applications:getAll',{sessionToken:tok}).catch(()=>[]),
       convexQuery('logistics:getAll',{sessionToken:tok}).catch(()=>[]),
       convexQuery('passwordResets:list',{sessionToken:tok}).catch(()=>[]),
+      convexQuery('bank:list',{sessionToken:tok}).catch(()=>[]),
     ]);
     state.navItems      = navItems      || [];
     state.archive       = archive       || [];
@@ -1145,6 +1146,7 @@ async function refreshAll(silent=false) {
     state.applications  = applications  || [];
     state.logistics     = logistics     || [];
     state.passwordResets = passwordResets || [];
+    state.bank          = bank          || [];
     // Sync logged-in user's roles from server
     if(state.user) {
       const fresh=state.allUsers.find(u=>u._id===state.user._id);
@@ -1167,6 +1169,7 @@ const REALTIME_TABLES = [
   ['applications', 'getAll', 'applications'],
   ['logistics',    'getAll', 'logistics'],
   ['passwordResets', 'list', 'passwordResets'],
+  ['bank',         'list', 'bank'],
 ];
 
 function startData() {
@@ -1241,6 +1244,10 @@ function updateLiveView(silent=false) {
   if (currentPage==='admin') {
     const el=document.getElementById('admin-wrap');
     if(el) el.innerHTML=renderAdminContent();
+  }
+  if (currentPage==='bank') {
+    const el=document.getElementById('bank-wrap');
+    if(el) el.innerHTML=renderBankContent();
   }
   if (currentPage==='tasks') {
     const el=document.getElementById('tasks-list'); if(el) el.innerHTML=renderTasksList();
@@ -1541,7 +1548,7 @@ function renderNav() {
     return;
   }
 
-  const inLog=['archive','admin','member',...(canManageLottery(u)?['lottery']:[])];
+  const inLog=['archive','admin','member','bank',...(canManageLottery(u)?['lottery']:[])];
   let main='mat';
   if(currentPage==='tasks') main='task';
   else if(currentPage==='items') main='items';
@@ -1571,6 +1578,7 @@ function renderNav() {
       <div class="nav-sub-item${currentPage==='archive'?' active':''}" onclick="goTo('archive')">Log</div>
       ${isAdmin(u)?`<div class="nav-sub-item${currentPage==='admin'?' active':''}" onclick="goTo('admin')">${(()=>{const pending=state.allUsers.filter(u=>isRecruit(u)).length+state.passwordResets.length;return `Admin${pending?` (${pending})`:''}`})()}</div>`:''}
       ${canManageLottery(u)?`<div class="nav-sub-item${currentPage==='lottery'?' active':''}" onclick="goTo('lottery')">Lottery${openLotteries?' ('+openLotteries+')':''}</div>`:''}
+      ${isAdmin(u)?`<div class="nav-sub-item${currentPage==='bank'?' active':''}" onclick="goTo('bank')">Bank</div>`:''}
       <div class="nav-sub-item${currentPage==='member'?' active':''}" onclick="goTo('member')">${esc(u.username)}</div>
       <div class="nav-sub-item" onclick="doLogout()">Sign out</div>`;
   }
@@ -1610,7 +1618,7 @@ function renderPageContent() {
   } else {
     document.body.classList.remove('fp-on');
     pw.style.marginTop=navH+'px';
-    const pages={overview:pageOverview,items:pageItems,tasks:pageTasks,archive:pageArchive,admin:pageAdmin,member:pageMember,lottery:pageLottery};
+    const pages={overview:pageOverview,items:pageItems,tasks:pageTasks,archive:pageArchive,admin:pageAdmin,member:pageMember,lottery:pageLottery,bank:pageBank};
     pw.innerHTML=`<div class="page">${(pages[currentPage]||pageOverview)()}</div>`;
   }
 }
@@ -2829,6 +2837,85 @@ function archiveCountLabel(){
   const n = combinedArchive().length;
   const more = !archiveAllLoaded && state.archive.length >= ARCHIVE_PAGE_SIZE;
   return `${n}${more?'+':''} action${n!==1?'s':''} recorded`;
+}
+
+// ─── BANK PAGE (admin only) — org aUEC ledger ────────────────────────────────
+function bankBalance(){ return state.bank.reduce((s,t)=> s + (t.type==='deposit' ? t.amount : -(t.amount||0)), 0); }
+function fmtAuec(n){ return `${Number(n||0).toLocaleString('en-US')} aUEC`; }
+
+function pageBank(){
+  if(!isAdmin(state.user)){ currentPage='archive'; return pageArchive(); }
+  return `
+    <div class="page-head">
+      <div class="page-head-left">
+        <div class="page-lead" id="bank-balance">${fmtAuec(bankBalance())}</div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-black" onclick="openBankModal('deposit')">+ Add Funds</button>
+        <button class="btn btn-outline" onclick="openBankModal('withdraw')">&minus; Take Funds</button>
+      </div>
+    </div>
+    <div id="bank-wrap">${renderBankContent()}</div>`;
+}
+
+function renderBankContent(){
+  const txns = [...state.bank].sort((a,b)=>b._creationTime-a._creationTime);
+  if(!txns.length) return `<div class="empty" style="border-top:2px solid var(--border);padding-top:24px;">No transactions yet. Add funds to get started.</div>`;
+  return `<table class="cards">
+    <thead><tr><th>Date</th><th>Type</th><th>Amount</th><th>By</th><th>Note</th><th></th></tr></thead>
+    <tbody>${txns.map(t=>{
+      const dep = t.type==='deposit';
+      return `<tr>
+        <td data-label="Date" style="font-size:var(--text-md);color:var(--fg);white-space:nowrap;">${fmtDT(t._creationTime)}</td>
+        <td data-label="Type"><span class="item-cat-tag"${dep?'':' style="background:var(--red);border-color:var(--red);"'}>${dep?'Deposit':'Withdrawal'}</span></td>
+        <td data-label="Amount" style="font-weight:700;white-space:nowrap;color:${dep?'var(--fg)':'var(--red)'};">${dep?'+':'−'}${fmtAuec(t.amount)}</td>
+        <td data-label="By" style="color:var(--fg);">${esc(t.createdByName)}</td>
+        <td data-label="Note" style="color:var(--fg);">${t.note?esc(t.note):'—'}</td>
+        <td data-label=""><button class="btn-del" onclick="bankDelete('${esc(t._id)}')" aria-label="Delete transaction">&times;</button></td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table>`;
+}
+
+function openBankModal(mode){
+  if(!isAdmin(state.user)) return;
+  const dep = mode==='deposit';
+  showModal(`
+    <div class="modal-title">${dep?'Add Funds':'Take Funds'}</div>
+    <div style="font-size:var(--text-md);color:var(--fg);margin-bottom:18px;">Current balance: <strong>${fmtAuec(bankBalance())}</strong></div>
+    <div class="field"><label class="lbl">Amount (aUEC)</label>
+      <input type="number" id="bank-amt" min="1" step="1" placeholder="0" onkeydown="if(event.key==='Enter')confirmBank('${mode}')">
+    </div>
+    <div class="field"><label class="lbl">Note (optional)</label>
+      <input type="text" id="bank-note" maxlength="200" placeholder="${dep?'e.g. event payout':'e.g. ship purchase'}">
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-black" onclick="confirmBank('${mode}')">${dep?'Add Funds':'Take Funds'}</button>
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+    </div>`);
+  setTimeout(()=>{const el=document.getElementById('bank-amt');if(el)el.focus();},0);
+}
+
+async function confirmBank(mode){
+  const dep = mode==='deposit';
+  const amt = parseInt((document.getElementById('bank-amt')||{value:''}).value);
+  const note = (document.getElementById('bank-note')||{value:''}).value.trim();
+  if(!Number.isInteger(amt) || amt<1){ toast('Enter a valid amount'); return; }
+  if(!dep && amt>bankBalance()){ toast('Not enough funds in the bank'); return; }
+  try {
+    await convexMutation(dep?'bank:deposit':'bank:withdraw',{sessionToken:state.sessionToken,amount:amt,note:note||undefined});
+    closeModal(); toast(dep?`Added ${fmtAuec(amt)}`:`Took ${fmtAuec(amt)}`);
+    await refreshAll(); renderPage();
+  } catch(e){ notifyError(e); }
+}
+
+async function bankDelete(txnId){
+  const ok = await confirmModal({title:'Delete transaction', body:'Remove this bank entry? The balance will adjust.', confirmLabel:'Delete', danger:true});
+  if(!ok) return;
+  try {
+    await convexMutation('bank:remove',{sessionToken:state.sessionToken,txnId});
+    toast('Transaction removed'); await refreshAll(); renderPage();
+  } catch(e){ notifyError(e); }
 }
 
 function pageArchive(){
