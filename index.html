@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NAVYTRACK</title>
+<title>navytrack</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 :root{--red:#cc0000;--mid:#888;--fg:#000;--bg:#fff;--bg2:#f5f5f5;--border:#000;--border-l:#e0e0e0;--border-m:#e8e8e8;}
@@ -204,7 +204,7 @@ tbody tr:hover{background:#f9f9f9;}
 /* ── AUTH ────────────────────────────────────────────────────────── */
 .center-screen{min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:40px;}
 .auth-box{width:100%;max-width:400px;}
-.auth-logo{font-size:clamp(44px,8vw,100px);font-weight:900;letter-spacing:-4px;text-align:center;margin-bottom:72px;}
+.auth-logo{font-size:clamp(40px,10vw,76px);font-weight:900;letter-spacing:-3px;text-align:center;margin-bottom:72px;}
 .tabs{display:flex;border-bottom:2px solid #000;margin-bottom:40px;}
 .tab-btn{flex:1;padding:var(--space-3);font-size:var(--text-md);font-weight:700;letter-spacing:.1em;text-transform:uppercase;text-align:center;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;background:none;color:#000;}
 .tab-btn.active{border-bottom-color:#000;color:#000;}
@@ -1562,7 +1562,7 @@ function renderNav() {
     const mine=state.tasks.filter(t=>t.status==='open'&&t.members.some(m=>m.userId===u._id)).length;
     sub=`
       <div class="nav-sub-item${tasksFilter==='open'&&!tasksSearchActive?' active':''}" onclick="setTasksFilter('open')">Open${oc>0?` (${oc})`:''}</div>
-      <div class="nav-sub-item${tasksFilter==='mine'&&!tasksSearchActive?' active':''}" onclick="setTasksFilter('mine')">Mine${mine>0?` (${mine})`:''}</div>
+      <div class="nav-sub-item${tasksFilter==='mine'&&!tasksSearchActive?' active':''}" onclick="setTasksFilter('mine')">Joined${mine>0?` (${mine})`:''}</div>
       <div class="nav-sub-item${tasksFilter==='closed'&&!tasksSearchActive?' active':''}" onclick="setTasksFilter('closed')">Closed</div>
       <div class="nav-sub-item${tasksSearchActive?' active':''}" onclick="toggleTaskSearch()">Search</div>`;
   } else if(main==='items'){
@@ -2513,7 +2513,7 @@ function openConvertModal(itemId){
       You have <strong>${item.quantity}</strong> MG Scrip. Convert at <strong>${MG_SCRIP_RATE} : 1</strong> into Wikelo Favors.
     </div>
     <div class="field"><label class="lbl">Favors to make (max ${max})</label>
-      <input type="number" id="cv-favors" min="1" max="${max}" value="${max}" oninput="updateConvertPreview('${esc(itemId)}')">
+      <input type="number" id="cv-favors" min="1" step="1" max="${max}" value="${max}" oninput="updateConvertPreview('${esc(itemId)}')">
     </div>
     <div id="cv-preview" style="font-size:var(--text-sm);color:var(--fg);margin-bottom:18px;"></div>
     <div style="display:flex;gap:10px;">
@@ -2877,6 +2877,13 @@ function renderBankContent(){
   </table>`;
 }
 
+// Live thousands separators while typing large aUEC sums.
+function bankAmtFormat(el){
+  const atEnd = el.selectionStart===el.value.length;
+  const digits = el.value.replace(/[^0-9]/g,'');
+  el.value = digits ? Number(digits).toLocaleString('en-US') : '';
+  if(atEnd){ el.selectionStart=el.selectionEnd=el.value.length; }
+}
 function openBankModal(mode){
   if(!isAdmin(state.user)) return;
   const dep = mode==='deposit';
@@ -2884,7 +2891,7 @@ function openBankModal(mode){
     <div class="modal-title">${dep?'Add Funds':'Take Funds'}</div>
     <div style="font-size:var(--text-md);color:var(--fg);margin-bottom:18px;">Current balance: <strong>${fmtAuec(bankBalance())}</strong></div>
     <div class="field"><label class="lbl">Amount (aUEC)</label>
-      <input type="number" id="bank-amt" min="1" step="1" placeholder="0" onkeydown="if(event.key==='Enter')confirmBank('${mode}')">
+      <input type="text" inputmode="numeric" autocomplete="off" id="bank-amt" placeholder="0" oninput="bankAmtFormat(this)" onkeydown="if(event.key==='Enter')confirmBank('${mode}')">
     </div>
     <div class="field"><label class="lbl">Note (optional)</label>
       <input type="text" id="bank-note" maxlength="200" placeholder="${dep?'e.g. event payout':'e.g. ship purchase'}">
@@ -2898,7 +2905,7 @@ function openBankModal(mode){
 
 async function confirmBank(mode){
   const dep = mode==='deposit';
-  const amt = parseInt((document.getElementById('bank-amt')||{value:''}).value);
+  const amt = parseInt(((document.getElementById('bank-amt')||{value:''}).value).replace(/[^0-9]/g,''),10);
   const note = (document.getElementById('bank-note')||{value:''}).value.trim();
   if(!Number.isInteger(amt) || amt<1){ toast('Enter a valid amount'); return; }
   if(!dep && amt>bankBalance()){ toast('Not enough funds in the bank'); return; }
@@ -3684,7 +3691,7 @@ function openEditTaskModal(taskId) {
         <div id="ct-item-results"></div>
         <div style="display:flex;gap:6px;align-items:center;margin-top:8px;padding-top:8px;border-top:1px solid var(--border-m);">
           <input type="text" id="ct-custom-name" placeholder="Custom item name…" style="flex:1;margin:0;">
-          <input type="number" id="ct-custom-qty" min="1" value="1" style="width:72px;margin:0;">
+          <input type="number" id="ct-custom-qty" min="1" step="1" value="1" style="width:72px;margin:0;">
           <button class="btn btn-outline btn-sm" onclick="ctAddCustom()">Add</button>
         </div>
       </div>
@@ -3834,7 +3841,7 @@ function openCreateTaskModal() {
         <div id="ct-item-results"></div>
         <div style="display:flex;gap:6px;align-items:center;margin-top:8px;padding-top:8px;border-top:1px solid var(--border-m);">
           <input type="text" id="ct-custom-name" placeholder="Custom item name…" style="flex:1;margin:0;">
-          <input type="number" id="ct-custom-qty" min="1" value="1" style="width:72px;margin:0;">
+          <input type="number" id="ct-custom-qty" min="1" step="1" value="1" style="width:72px;margin:0;">
           <button class="btn btn-outline btn-sm" onclick="ctAddCustom()">Add</button>
         </div>
       </div>
@@ -3927,7 +3934,7 @@ function renderCtItemResults() {
             <td style="font-size:var(--text-sm);font-weight:700;">${esc(t.name)}</td>
             <td style="font-size:var(--text-sm);color:var(--fg);">${esc(itemCatLabel(t.category))}</td>
             <td style="font-size:var(--text-sm);color:${t.inStock>0?'#16a34a':'var(--fg)'};">${t.inStock > 0 ? `${t.inStock} in stock` : 'not in stock'}</td>
-            <td style="padding:4px 2px;"><input type="number" id="ctqty${i}" min="1" value="1" style="width:72px;margin:0;"></td>
+            <td style="padding:4px 2px;"><input type="number" id="ctqty${i}" min="1" step="1" value="1" style="width:72px;margin:0;"></td>
             <td style="padding:4px 2px;"><button class="btn btn-black btn-sm" onclick="ctAddRequired(${i})">Add</button></td>
           </tr>`).join('')}
         </tbody>
@@ -4135,7 +4142,7 @@ function renderLotteryDraftDetail(l) {
           <div style="font-size:var(--text-md);font-weight:700;margin-bottom:12px;letter-spacing:.08em;text-transform:uppercase;">Generate Packages</div>
           <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
             <label style="font-size:var(--text-md);">Number of packages:</label>
-            <input type="number" id="pkg-count" min="2" max="20" value="${lotteryPkgCount}" style="width:70px;margin:0;padding:6px;font-size:var(--text-md);" oninput="lotteryPkgCount=parseInt(this.value)||2">
+            <input type="number" id="pkg-count" min="2" step="1" max="20" value="${lotteryPkgCount}" style="width:70px;margin:0;padding:6px;font-size:var(--text-md);" oninput="lotteryPkgCount=parseInt(this.value)||2">
             <button class="btn btn-black btn-sm" onclick="doGeneratePackages('${esc(l._id)}')">Generate</button>
           </div>
           <div id="lottery-gen-status">${pkgs.length?`<div style="margin-top:10px;font-size:var(--text-md);color:#22c55e;font-weight:700;">${pkgs.length} packages generated</div>`:''}</div>
